@@ -1,0 +1,48 @@
+# Changelog
+
+## Unreleased
+- Added baseline project governance documentation.
+- Added Codex-first instruction guidance through `.codex/project-governor.md`.
+- Added `.codex/rough-request.prompt.md` as the project-local rough request template.
+- Documented initial audit findings and implementation plan.
+- Expanded implementation planning with a model matrix and phased remediation plan.
+- Added `.env.example`.
+- Added centralized env loading and validation through `src/config/env.ts`.
+- Added `PORT` fallback to `3000`.
+- Changed server startup to listen only after MongoDB connection succeeds.
+- Fixed partial booking updates so email verification only runs when email is supplied.
+- Fixed booking get/update/delete not-found responses.
+- Fixed booking delete success response to return an empty `204`.
+- Reviewed password handling risk and recommended removing passwords from booking data before implementation.
+- Removed password collection/storage from booking schema and interface.
+- Added a booking serialization guard to strip legacy password values from API output.
+- Added Node built-in tests for validators, booking service behavior, and booking controller responses.
+- Fixed phone validation so valid numbers return explicit boolean results.
+- Added preferred REST route aliases while preserving legacy booking routes.
+- Added README documentation for setup, route usage, and known gaps.
+- Added route registration tests for alias and legacy endpoint coverage.
+- Added `.gitignore` and `.editorconfig` for repository hygiene and shared editor behavior.
+- Documented build artifact, dependency, secret, and CI policy for the project.
+- Expanded `IMPLEMENTATION_PLAN.md` with Slotwise phases 8-14 for identity, architecture, platform features, business features, creative differentiators, UI/UX planning, and frontend roadmap.
+- Added progress tracking rules and immediate model-switch approval rules to the implementation plan.
+- Updated project context, system map, workflow, task matrix, and audit report for the Slotwise direction.
+- Added `UI_UX_DESIGN_BRIEF.md` for the future admin dashboard and customer booking portal.
+- Added explicit mitigation tasks for source/package/folder rename risks, including import/test checks and root-folder rename verification.
+- Added Phase 15 dependency audit and modernization planning for `npm audit`, vulnerability fixes, package updates, major-version migrations, obsolete package removal, and justified modern package adoption.
+- Reconfirmed Phase 15 is blocked at `npm --version` because the active npm shim points to a missing roaming npm installation path.
+- Captured a manifest-based direct dependency inventory as a temporary Phase 15 fallback while npm remains unavailable.
+- Verified the bundled npm CLI as a working fallback for `npm ls --depth=0`, `npm audit`, and `npm outdated`.
+- Documented the current direct dependency inventory, a 17-vulnerability audit result, and the current outdated-package matrix for Phase 15.
+- Applied approved safe dependency maintenance with `npm audit fix` and `npm update`, reducing the audit result to 0 vulnerabilities.
+- Fixed a post-update Mongoose typing regression by making `IBooking._id` required.
+- Removed deprecated `@types/mongoose` and verified compile/tests still pass.
+- Upgraded `dotenv` to `17.4.2` and restored quiet env-loading behavior for tests and local startup.
+- Upgraded `express` to `5.2.1` with `@types/express` `5.0.6` and tightened controller route-param typing for compatibility.
+- Upgraded `mongoose` to `9.7.0` and aligned validator/document typing with the new type surface.
+- Aligned `package.json` and the lockfile root metadata to the final audited dependency versions.
+- Repaired the normal unsandboxed npm workflow by updating user-level npm to `11.16.0` and re-verifying `npm run build` and `npm test`.
+- Documented that the remaining Node 24 LTS upgrade is blocked by a Windows Installer administrator requirement.
+- Standardized Phase 8 documentation around the `Slotwise` product identity while keeping legacy workspace and package identifiers tracked for approved rename tasks.
+- Renamed package metadata from `booking-system` to `slotwise-api`.
+- Renamed booking source folders/files to dot-case conventions and updated imports/tests while preserving `/bookings` route compatibility.
+- Documented the remaining root workspace folder rename from `Booking System` to `Slotwise` as an external/manual step to avoid invalidating the active Codex workspace path.
