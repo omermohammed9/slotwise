@@ -1,30 +1,70 @@
 import { Request, Response } from "express";
-import {BookingService} from "../services/booking.service";
+import { BookingService, BookingStatusChangeContext } from "../services/booking.service";
+import { sendError, sendSuccess } from "../utils/apiResponse";
 
 
 export class BookingController {
     private bookingService: BookingService;
 
-    constructor() {
-        this.bookingService = BookingService.getInstance();
+    constructor(bookingService: BookingService = BookingService.getInstance()) {
+        this.bookingService = bookingService;
     }
 
     public createBooking = async (req: Request, res: Response)=> {
         try {
             const bookingData = req.body;
             const booking = await this.bookingService.createBooking(bookingData);
-            res.status(201).json(booking);
+            sendSuccess(res, 201, booking);
         } catch (error) {
-            res.status(400).json({ message: (error as Error).message });
+            sendError(res, 400, (error as Error).message);
         }
     };
 
     public getAllBookings = async (req: Request, res: Response) => {
         try {
-            const bookings = await this.bookingService.getAllBookings();
-            res.status(200).json(bookings);
+            const bookings = await this.bookingService.getAllBookings(req.query);
+            sendSuccess(res, 200, bookings.data, {
+                pagination: bookings.pagination,
+                sort: bookings.sort,
+            });
         } catch (error) {
-            res.status(400).json({ message: (error as Error).message });
+            sendError(res, 400, (error as Error).message);
+        }
+    };
+
+    public getBookingSuggestions = async (req: Request, res: Response) => {
+        try {
+            const suggestions = await this.bookingService.getBookingSuggestions(req.body);
+            sendSuccess(res, 200, suggestions.data, suggestions.meta);
+        } catch (error) {
+            sendError(res, 400, (error as Error).message);
+        }
+    };
+
+    public getCancellationNoShowInsights = async (req: Request, res: Response) => {
+        try {
+            const insights = await this.bookingService.getCancellationNoShowInsights(req.query);
+            sendSuccess(res, 200, insights);
+        } catch (error) {
+            sendError(res, 400, (error as Error).message);
+        }
+    };
+
+    public getBookingDashboardInsights = async (req: Request, res: Response) => {
+        try {
+            const insights = await this.bookingService.getBookingDashboardInsights(req.query);
+            sendSuccess(res, 200, insights);
+        } catch (error) {
+            sendError(res, 400, (error as Error).message);
+        }
+    };
+
+    public getBookingTimeline = async (req: Request, res: Response) => {
+        try {
+            const timeline = await this.bookingService.getBookingTimeline(req.query);
+            sendSuccess(res, 200, timeline.data, timeline.meta);
+        } catch (error) {
+            sendError(res, 400, (error as Error).message);
         }
     };
 
@@ -33,11 +73,11 @@ export class BookingController {
             const { id } = req.params;
             const booking = await this.bookingService.getBookingById(id);
             if (!booking) {
-                return res.status(404).json({ message: 'Booking not found' });
+                return sendError(res, 404, 'Booking not found');
             }
-            res.status(200).json(booking);
+            sendSuccess(res, 200, booking);
         } catch (error) {
-            res.status(400).json({ message: (error as Error).message });
+            sendError(res, 400, (error as Error).message);
         }
     };
 
@@ -47,11 +87,11 @@ export class BookingController {
             const bookingData = req.body;
             const booking = await this.bookingService.updateBooking(id, bookingData);
             if (!booking) {
-                return res.status(404).json({ message: 'Booking not found' });
+                return sendError(res, 404, 'Booking not found');
             }
-            res.status(200).json(booking);
+            sendSuccess(res, 200, booking);
         } catch (error) {
-            res.status(400).json({ message: (error as Error).message });
+            sendError(res, 400, (error as Error).message);
         }
     };
 
@@ -60,11 +100,145 @@ export class BookingController {
             const { id } = req.params;
             const deleted = await this.bookingService.deleteBooking(id);
             if (!deleted) {
-                return res.status(404).json({ message: 'Booking not found' });
+                return sendError(res, 404, 'Booking not found');
             }
             res.status(204).send();
         } catch (error) {
-            res.status(400).json({ message: (error as Error).message });
+            sendError(res, 400, (error as Error).message);
         }
     };
+
+    public approveBooking = async (req: Request<{ id: string }>, res: Response)=> {
+        try {
+            const { id } = req.params;
+            const booking = await this.bookingService.updateBookingStatus(id, 'approved', this.getStatusChangeContext(req));
+            if (!booking) {
+                return sendError(res, 404, 'Booking not found');
+            }
+            sendSuccess(res, 200, booking);
+        } catch (error) {
+            sendError(res, 400, (error as Error).message);
+        }
+    };
+
+    public rejectBooking = async (req: Request<{ id: string }>, res: Response)=> {
+        try {
+            const { id } = req.params;
+            const booking = await this.bookingService.updateBookingStatus(id, 'rejected', this.getStatusChangeContext(req));
+            if (!booking) {
+                return sendError(res, 404, 'Booking not found');
+            }
+            sendSuccess(res, 200, booking);
+        } catch (error) {
+            sendError(res, 400, (error as Error).message);
+        }
+    };
+
+    public cancelBooking = async (req: Request<{ id: string }>, res: Response)=> {
+        try {
+            const { id } = req.params;
+            const booking = await this.bookingService.updateBookingStatus(id, 'cancelled', this.getStatusChangeContext(req));
+            if (!booking) {
+                return sendError(res, 404, 'Booking not found');
+            }
+            sendSuccess(res, 200, booking);
+        } catch (error) {
+            sendError(res, 400, (error as Error).message);
+        }
+    };
+
+    public completeBooking = async (req: Request<{ id: string }>, res: Response)=> {
+        try {
+            const { id } = req.params;
+            const booking = await this.bookingService.updateBookingStatus(id, 'completed', this.getStatusChangeContext(req));
+            if (!booking) {
+                return sendError(res, 404, 'Booking not found');
+            }
+            sendSuccess(res, 200, booking);
+        } catch (error) {
+            sendError(res, 400, (error as Error).message);
+        }
+    };
+
+    public markBookingNoShow = async (req: Request<{ id: string }>, res: Response)=> {
+        try {
+            const { id } = req.params;
+            const booking = await this.bookingService.updateBookingStatus(id, 'no_show', this.getStatusChangeContext(req));
+            if (!booking) {
+                return sendError(res, 404, 'Booking not found');
+            }
+            sendSuccess(res, 200, booking);
+        } catch (error) {
+            sendError(res, 400, (error as Error).message);
+        }
+    };
+
+    public rescheduleBooking = async (req: Request<{ id: string }>, res: Response)=> {
+        try {
+            const { id } = req.params;
+            const booking = await this.bookingService.rescheduleBooking(id, req.body, this.getStatusChangeContext(req));
+            if (!booking) {
+                return sendError(res, 404, 'Booking not found');
+            }
+            sendSuccess(res, 200, booking);
+        } catch (error) {
+            sendError(res, 400, (error as Error).message);
+        }
+    };
+
+    public customerCancelBooking = async (req: Request<{ id: string }>, res: Response)=> {
+        try {
+            const { id } = req.params;
+            const booking = await this.bookingService.cancelBookingAsCustomer(id, this.getCustomerBookingActionPayload(req));
+            if (!booking) {
+                return sendError(res, 404, 'Booking not found');
+            }
+            sendSuccess(res, 200, booking);
+        } catch (error) {
+            sendError(res, 400, (error as Error).message);
+        }
+    };
+
+    public customerRescheduleBooking = async (req: Request<{ id: string }>, res: Response)=> {
+        try {
+            const { id } = req.params;
+            const booking = await this.bookingService.rescheduleBookingAsCustomer(id, {
+                ...req.body,
+                ...this.getCustomerBookingActionPayload(req),
+            });
+            if (!booking) {
+                return sendError(res, 404, 'Booking not found');
+            }
+            sendSuccess(res, 200, booking);
+        } catch (error) {
+            sendError(res, 400, (error as Error).message);
+        }
+    };
+
+    private getStatusChangeContext(req: Request): BookingStatusChangeContext {
+        if (!req.slotwiseSession) {
+            throw new Error("Authenticated session is required");
+        }
+
+        return {
+            changedByRole: req.slotwiseSession.role,
+            changedBy: req.slotwiseSession.actorId,
+            ...(typeof req.body?.reason === 'string' && req.body.reason.trim()
+                ? { reason: req.body.reason.trim() }
+                : {}),
+        };
+    }
+
+    private getCustomerBookingActionPayload(req: Request): { customerId: string; reason?: string } {
+        if (!req.slotwiseSession || req.slotwiseSession.role !== "customer") {
+            throw new Error("Authenticated customer session is required");
+        }
+
+        return {
+            customerId: req.slotwiseSession.actorId,
+            ...(typeof req.body?.reason === "string" && req.body.reason.trim()
+                ? { reason: req.body.reason.trim() }
+                : {}),
+        };
+    }
 }

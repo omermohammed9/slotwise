@@ -7,7 +7,8 @@
     "start": "node dist/app.js",
     "dev": "nodemon src/app.ts",
     "build": "tsc",
-    "test": "tsc && node --test tests\\*.test.js"
+    "test": "tsc && node --test tests\\*.test.js",
+    "backfill:bookings": "tsc && node dist/scripts/backfill-booking-metadata.js"
   },
   "keywords": [],
   "author": "",

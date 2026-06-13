@@ -18,4 +18,9 @@ export const getRequiredEnv = (name: string): string => {
     return value;
 };
 
+export const getOptionalEnv = (name: string): string | undefined => {
+    const value = process.env[name];
+    return value && value.trim() ? value : undefined;
+};
+
 export const getPort = (): string => process.env.PORT || "3000";

@@ -14,13 +14,35 @@ const getRouteMethods = (path) => {
 
 test("preferred REST aliases are registered", () => {
     assert.deepEqual(getRouteMethods("/"), ["get", "post"]);
+    assert.deepEqual(getRouteMethods("/insights/dashboard"), ["get"]);
+    assert.deepEqual(getRouteMethods("/insights/cancellation-no-show"), ["get"]);
+    assert.deepEqual(getRouteMethods("/timeline"), ["get"]);
+    assert.deepEqual(getRouteMethods("/suggestions"), ["post"]);
     assert.deepEqual(getRouteMethods("/:id"), ["delete", "get", "patch", "put"]);
+    assert.deepEqual(getRouteMethods("/:id/approve"), ["patch"]);
+    assert.deepEqual(getRouteMethods("/:id/reject"), ["patch"]);
+    assert.deepEqual(getRouteMethods("/:id/cancel"), ["patch"]);
+    assert.deepEqual(getRouteMethods("/:id/complete"), ["patch"]);
+    assert.deepEqual(getRouteMethods("/:id/no-show"), ["patch"]);
+    assert.deepEqual(getRouteMethods("/:id/reschedule"), ["patch"]);
+    assert.deepEqual(getRouteMethods("/:id/customer-cancel"), ["post"]);
+    assert.deepEqual(getRouteMethods("/:id/customer-reschedule"), ["post"]);
 });
 
 test("legacy routes remain registered for backward compatibility", () => {
     assert.deepEqual(getRouteMethods("/createbookings"), ["post"]);
+    assert.deepEqual(getRouteMethods("/insights/dashboard"), ["get"]);
+    assert.deepEqual(getRouteMethods("/timeline"), ["get"]);
     assert.deepEqual(getRouteMethods("/all"), ["get"]);
     assert.deepEqual(getRouteMethods("/get/:id"), ["get"]);
     assert.deepEqual(getRouteMethods("/update/:id"), ["put"]);
+    assert.deepEqual(getRouteMethods("/approve/:id"), ["patch"]);
+    assert.deepEqual(getRouteMethods("/reject/:id"), ["patch"]);
+    assert.deepEqual(getRouteMethods("/cancel/:id"), ["patch"]);
+    assert.deepEqual(getRouteMethods("/complete/:id"), ["patch"]);
+    assert.deepEqual(getRouteMethods("/no-show/:id"), ["patch"]);
+    assert.deepEqual(getRouteMethods("/reschedule/:id"), ["patch"]);
+    assert.deepEqual(getRouteMethods("/customer-cancel/:id"), ["post"]);
+    assert.deepEqual(getRouteMethods("/customer-reschedule/:id"), ["post"]);
     assert.deepEqual(getRouteMethods("/delete/:id"), ["delete"]);
 });
