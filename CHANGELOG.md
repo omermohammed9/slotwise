@@ -27,8 +27,69 @@
 - Added progress tracking rules and immediate model-switch approval rules to the implementation plan.
 - Updated project context, system map, workflow, task matrix, and audit report for the Slotwise direction.
 - Added `UI_UX_DESIGN_BRIEF.md` for the future admin dashboard and customer booking portal.
+- Expanded `UI_UX_DESIGN_BRIEF.md` with Slotwise brand direction, admin information architecture, customer portal structure, responsive layout expectations, design-system guidance, and accessibility requirements.
+- Deepened `UI_UX_DESIGN_BRIEF.md` with visual-language tokens, screen-composition guidance, admin/customer interaction patterns, hosted booking-surface direction, analytics presentation rules, and content/copy standards.
+- Added localization and internationalization guidance to `UI_UX_DESIGN_BRIEF.md`, including translation-friendly copy structure, locale-aware formatting, timezone clarity, layout expansion, and RTL-readiness expectations.
+- Added operational UX standards and a frontend planning-gap checklist to `UI_UX_DESIGN_BRIEF.md`, covering loading/error/feedback behavior, privacy expectations, form resilience, perceived performance, and the remaining Phase 14 planning inputs.
+- Added `FRONTEND_IMPLEMENTATION_ROADMAP.md` as the Phase 14 frontend planning/selection artifact, selecting a future React + Vite + React Router + TanStack Query direction and documenting needed screens, components, API dependencies, state rules, accessibility/localization expectations, verification, and deferred implementation decisions.
+- Added a Phase 14 approval/fix process requiring frontend architecture and package adoption approval before scaffolding `frontend/`, plus explicit checks for package security, token/session storage, deployment topology, SSR/pre-rendering, and widget style isolation.
+- Recorded approval of the Phase 14 pre-scaffold decisions and resolved the planning risks with explicit baselines for candidate package adoption, memory-only token storage, static SPA deployment, deferred SSR/pre-rendering, and iframe-based widget isolation.
+- Ran the Phase 14 implementation-time npm metadata review for the approved frontend package set before scaffolding.
+- Added the first isolated `frontend/` Vite + React + TypeScript scaffold with an operational admin dashboard shell, API envelope client foundation, memory-only session storage foundation, Tailwind CSS styling, Vitest setup, and smoke tests.
+- Verified the frontend scaffold with install, build, tests, audit, and local Vite HTTP smoke checks.
 - Added explicit mitigation tasks for source/package/folder rename risks, including import/test checks and root-folder rename verification.
 - Added Phase 15 dependency audit and modernization planning for `npm audit`, vulnerability fixes, package updates, major-version migrations, obsolete package removal, and justified modern package adoption.
+- Added `.codex/instructions.md` as the Slotwise-specific Codex instruction entrypoint for Phase 9 work.
+- Added `.codex/rules/code-standards.md` to define Slotwise backend layering, typing, persistence, error-handling, testing, and change-discipline rules.
+- Added `.codex/rules/strict-resource-management.md` to define Slotwise database, external API, request lifecycle, cleanup, and test-isolation rules.
+- Added `BookingRepository` and moved booking persistence access out of `BookingService`.
+- Updated booking service tests to stub the repository boundary instead of the Mongoose model.
+- Polished touched booking service methods with explicit public contracts and safer non-secret error wrapping.
+- Added constructor injection support for booking service/controller tests while preserving runtime singleton compatibility.
+- Updated booking availability checks to use `startDate`, `endDate`, `timein`, and `timeout`.
+- Added owner/admin role-gated booking approval and rejection routes.
+- Added booking lifecycle statuses for cancelled and completed bookings, with transition checks and owner/admin cancel/complete routes.
+- Added booking list filters for status, date range, email, phone, and customer name.
+- Added booking list pagination and sorting metadata for scalable reads.
+- Added booking request validation middleware for create/update payloads, list queries, and route ids.
+- Added standard JSON success and error response envelopes while preserving the delete `204` no-body response.
+- Added booking status audit history entries for status changes, including previous status, next status, timestamp, role, optional actor id, and optional reason.
+- Hardened privileged status-action routes with a shared admin secret and required actor-id metadata.
+- Added automatic legacy `statusHistory` backfill behavior for older bookings and seeded initial history for new bookings.
+- Shifted booking list text filters onto normalized searchable fields with indexes and a one-time legacy backfill.
+- Added `/auth/session` login/logout/current-session endpoints with env-backed operator credentials and bearer sessions.
+- Added an explicit `backfill:bookings` maintenance command for legacy booking metadata instead of lazy runtime backfill.
+- Added optional `SLOTWISE_DNS_SERVERS` support for MongoDB SRV resolution in environments where local DNS blocks Atlas SRV lookups.
+- Added Phase 11 business-domain foundations with new business-profile, service-resource, and customer interfaces/models.
+- Added Phase 11 booking workflow foundations for business/customer/resource links, scoped scheduling rules, notification planning metadata, and reschedule history.
+- Added `/businesses`, `/service-resources`, and `/customers` management APIs with validation and role gates.
+- Added staff operator session support through `SLOTWISE_STAFF_*` credentials.
+- Added staff booking reschedule routes plus lightweight customer self-service cancel/reschedule booking routes.
+- Added persistent auth and notification foundations with operator-account, auth-session, verification-token, and notification-job models/interfaces.
+- Migrated operator login and session resolution to persistent Argon2-backed operator accounts and MongoDB auth sessions.
+- Added customer magic-link request/verify auth flows and session-protected customer booking self-service routes.
+- Added provider-backed notification outbox processing with worker lifecycle, retry handling, booking/auth email queueing, and post-send magic-link payload scrubbing.
+- Added derived booking `conflictRisk` response metadata to flag urgent, stale, repeatedly rescheduled, or large-party bookings before approval.
+- Added `POST /bookings/suggestions` to return ranked nearby available slots using the existing scheduling and availability rules.
+- Added targeted validation and regression coverage for booking suggestions route, controller, and service behavior.
+- Added focused regression tests for low, medium, and high booking conflict-risk scenarios.
+- Persisted booking `conflictRisk` snapshots and added `GET /bookings?conflictRiskLevel=low|medium|high` filtering.
+- Enriched booking conflict-risk scoring with adjacent-booking turnaround pressure and heavy same-day booking load signals.
+- Added `GET /bookings/timeline` to return day-grouped timeline entries with sorted booking slots, duration metadata, reschedule flags, conflict-risk context, and per-day summary counts.
+- Added explicit `no_show` booking lifecycle support for approved bookings.
+- Added `GET /bookings/insights/cancellation-no-show` to summarize cancellation and no-show rates, reasons, and weekday patterns.
+- Added `GET /bookings/insights/dashboard` to return KPI summaries, lifecycle funnel counts, weekday/resource utilization, peak booking-hour aggregates, and average party-size analytics.
+- Added reusable business template presets for restaurant, clinic, salon, consulting, venue, rental, and fitness workflows.
+- Added `GET /businesses/templates` and `GET /businesses/templates/:templateKey`, plus optional `templateKey` support on business-profile create/update payloads.
+- Added persisted business `widgetSettings` defaults to business templates and business-profile create/update flows.
+- Added public `GET /businesses/public/:slug/widget` so embeddable consumers can fetch widget branding, copy, active resource previews, and booking endpoint hints by business slug.
+- Added persisted business `publicPageSettings` defaults to business templates and business-profile create/update flows.
+- Added public `GET /businesses/public/:slug/booking-page` so public booking-page consumers can fetch page copy, optional contact/hours visibility, resource previews, and booking endpoint hints by business slug.
+- Added focused tests for widget settings validation, public widget controller responses, service-level widget config assembly, and public widget route registration.
+- Added focused tests for public booking-page settings validation, controller responses, service-level config assembly, and public route registration.
+- Added focused tests for booking timeline route registration, controller response metadata, and service-level grouping/sorting behavior.
+- Added focused tests for dashboard route registration, controller response wiring, and service-level analytics aggregation behavior.
+- Added focused tests for role middleware, admin status controllers, admin route registration, injected service repositories, and time-aware availability.
 - Reconfirmed Phase 15 is blocked at `npm --version` because the active npm shim points to a missing roaming npm installation path.
 - Captured a manifest-based direct dependency inventory as a temporary Phase 15 fallback while npm remains unavailable.
 - Verified the bundled npm CLI as a working fallback for `npm ls --depth=0`, `npm audit`, and `npm outdated`.
@@ -46,3 +107,7 @@
 - Renamed package metadata from `booking-system` to `slotwise-api`.
 - Renamed booking source folders/files to dot-case conventions and updated imports/tests while preserving `/bookings` route compatibility.
 - Documented the remaining root workspace folder rename from `Booking System` to `Slotwise` as an external/manual step to avoid invalidating the active Codex workspace path.
+- Renumbered frontend/backend feature alignment as Phase 16 to avoid colliding with the completed Phase 15 dependency modernization work.
+- Added the Phase 16 frontend-backend coverage matrix, covering admin/operator, customer portal, public booking page, and iframe-first widget feature targets.
+- Added the Phase 16.2 frontend route map and app shell routing with React Router routes for admin dashboard, bookings, timeline, customers, resources, settings, customer portal, public booking page, and widget surfaces.
+- Added responsive route placeholders and navigation tests for the new frontend route shell.

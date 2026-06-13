@@ -44,6 +44,7 @@ Evolve the legacy Booking System backend into `Slotwise`: a flexible, profession
 | 13 | Professional frontend/UI/UX planning | GPT-5 Codex low | No | Documentation and design brief only. |
 | 14 | Frontend implementation roadmap | GPT-5 Codex high when implemented | Yes | New app architecture and auth-aware UI decisions. |
 | 15 | Dependency audit and modernization | GPT-5 Codex medium/high | Yes | Security fixes, package upgrades, new packages, and migration changes can alter runtime behavior. |
+| 16 | Frontend/backend feature alignment and full frontend component coverage | GPT-5 Codex medium/high | Yes | Route/API/client/component implementation is medium; auth, lifecycle actions, and customer session flows are high. |
 
 ## Phase 1: Documentation And Audit Baseline
 Status: In progress
@@ -310,18 +311,18 @@ Completed mitigation:
 5. Left the root workspace folder rename as an external/manual workspace step because moving the active Codex root can invalidate the current terminal path and writable root.
 
 ## Phase 9: Architecture And Coding Standards
-Status: Planned
+Status: Done
 
 Purpose: Make Slotwise easier to grow by introducing clear engineering standards and a repository boundary between business logic and persistence.
 
 Progress:
 | Task | Type | Status | Model | Approval | Verification |
 |---|---|---:|---|---|---|
-| 9.1 Add `.codex/instructions.md` | Documentation | Planned | Low | No | Manual doc review |
-| 9.2 Add `.codex/rules/code-standards.md` | Documentation | Planned | Low | No | Manual doc review |
-| 9.3 Add `.codex/rules/strict-resource-management.md` | Documentation | Planned | Low | No | Manual doc review |
-| 9.4 Introduce Repository Pattern | Architecture | Planned | High | Yes | Compile and tests |
-| 9.5 Improve comments, error boundaries, and return types | Refactor | Planned | Medium | Yes | Compile and targeted review |
+| 9.1 Add `.codex/instructions.md` | Documentation | Done | Low | No | Manual doc review |
+| 9.2 Add `.codex/rules/code-standards.md` | Documentation | Done | Low | No | Manual doc review |
+| 9.3 Add `.codex/rules/strict-resource-management.md` | Documentation | Done | Low | No | Manual doc review |
+| 9.4 Introduce Repository Pattern | Architecture | Done | High | Yes | Compile and tests |
+| 9.5 Improve comments, error boundaries, and return types | Refactor | Done | Medium | Yes | Compile and targeted review |
 
 Architecture target:
 - Controllers stay thin and handle HTTP request/response concerns.
@@ -331,77 +332,227 @@ Architecture target:
 - Utilities remain pure or integration-focused helpers.
 
 Verification:
-- Compile and tests.
-- Confirm no secrets are logged.
-- Confirm booking service no longer directly depends on the Mongoose booking model after repository extraction.
+- `.\node_modules\.bin\tsc.cmd` passed.
+- `node --test tests\*.test.js` passed with 12 tests.
+- `npm test` passed outside the sandbox after the sandboxed npm shim hit the known missing roaming `npm-cli.js` path.
+- `rg -n "../models/booking.model|bookingModel|findByIdAndUpdate|findByIdAndDelete|findOne" src\services tests` found no remaining direct Mongoose model usage from the service/tests.
+- No secrets are logged by the repository extraction.
+- Booking service no longer directly depends on the Mongoose booking model after repository extraction.
+
+Completed notes:
+1. Added `.codex/instructions.md` as the Phase 9 Codex entrypoint for Slotwise-specific reading order, phase discipline, backend boundaries, and safe working rules.
+2. Added `.codex/rules/code-standards.md` to define Slotwise backend layering, typing, error-handling, persistence, naming, testing, and change-discipline rules.
+3. Added `.codex/rules/strict-resource-management.md` to define shared rules for database lifecycle, external API usage, request-response ownership, cleanup expectations, and test isolation.
+4. Added `src/repositories/booking.repository.ts` and moved booking persistence access behind the repository boundary while preserving service behavior and `/bookings` compatibility.
+5. Polished touched service methods with explicit public contracts and removed raw error-object concatenation from `getAllBookings`.
 
 ## Phase 10: Mandatory Platform Features
-Status: Planned
+Status: Done
 
 Purpose: Move Slotwise from basic CRUD toward a reliable booking platform.
+
+Progress bar: `[########] 8/8 complete`
+
+Checked:
+- [x] 10.1 Full date-time availability logic
+- [x] 10.2 Booking status lifecycle
+- [x] 10.3 Admin approval/rejection endpoints
+- [x] 10.4 Search and filtering
+- [x] 10.5 Pagination and sorting
+- [x] 10.6 Audit trail for status changes
+- [x] 10.7 Request validation layer
+- [x] 10.8 Standard response format
+
+Currently under progress:
+- None
 
 Progress:
 | Task | Type | Status | Model | Approval | Notes |
 |---|---|---:|---|---|---|
-| 10.1 Full date-time availability logic | Bug Fix | Planned | Medium | Yes | Use `startDate`, `endDate`, `timein`, `timeout`. |
-| 10.2 Booking status lifecycle | Feature | Planned | Medium | Yes | Add `cancelled` and `completed`. |
-| 10.3 Admin approval/rejection endpoints | Security | Planned | High | Yes | Requires auth scope first. |
-| 10.4 Search and filtering | Feature | Planned | Medium | Yes | Status, date range, email, phone, customer name. |
-| 10.5 Pagination and sorting | Performance | Planned | Medium | Yes | Booking lists must scale. |
-| 10.6 Audit trail for status changes | Security | Planned | High | Yes | Preserve accountability. |
-| 10.7 Request validation layer | Architecture | Planned | Medium | Yes | Cleaner API contracts. |
-| 10.8 Standard response format | Architecture | Planned | Medium | Yes | Consistent errors and success responses. |
+| 10.1 Full date-time availability logic | Bug Fix | Done | Medium | Yes | Repository overlap query now uses `startDate`, `endDate`, `timein`, and `timeout`. |
+| 10.2 Booking status lifecycle | Feature | Done | Medium | Yes | Added `cancelled` and `completed`, lifecycle transitions, and cancel/complete routes. |
+| 10.3 Admin approval/rejection endpoints | Security | Done | High | Yes | Added owner/admin approval/rejection actions; later hardened to bearer-session auth in post-Phase 10 mitigation work. |
+| 10.4 Search and filtering | Feature | Done | Medium | Yes | Added status, date range, email, phone, and customer name filters. |
+| 10.5 Pagination and sorting | Performance | Done | Medium | Yes | Added `page`, `limit`, `sortBy`, and `sortOrder` support with metadata. |
+| 10.6 Audit trail for status changes | Security | Done | High | Yes | Status changes now append audit entries with role, optional actor id, optional reason, and timestamp. |
+| 10.7 Request validation layer | Architecture | Done | Medium | Yes | Added route-level body, id, and query validation. |
+| 10.8 Standard response format | Architecture | Done | Medium | Yes | Added success/error envelopes for JSON responses. |
 
 Verification:
 - Compile and tests.
 - Add focused tests per behavior.
 - Keep existing `/bookings` compatibility unless a breaking migration is approved.
 
+Completed notes:
+1. Full availability checks now pass `startDate`, `endDate`, `timein`, and `timeout` to the repository overlap query.
+2. Added preferred `PATCH /bookings/:id/approve` and `PATCH /bookings/:id/reject` endpoints.
+3. Added legacy-compatible `PATCH /bookings/approve/:id` and `PATCH /bookings/reject/:id` endpoints.
+4. Added a minimal owner/admin approval boundary first; later mitigation work replaced the header-only gate with bearer-session auth.
+5. Full identity/session authentication remains a future hardening task; the current mitigation is role-gated authorization at the route boundary.
+6. Verification passed with `.\node_modules\.bin\tsc.cmd`, `node --test tests\*.test.js`, and unsandboxed `npm test`.
+7. Booking lifecycle now supports `pending`, `approved`, `rejected`, `cancelled`, and `completed`.
+8. Added status-transition rules and owner/admin cancel/complete endpoints while preserving existing route compatibility.
+9. Booking list reads now support filters for `status`, `startDateFrom`, `startDateTo`, `email`, `phone`, and `customerName`.
+10. Booking list reads now support pagination and sorting with `page`, `limit`, `sortBy`, and `sortOrder`.
+11. Added request validation middleware for booking create/update payloads, list queries, and route ids.
+12. JSON responses now use `{ success, data, meta }` for success and `{ success, error }` for errors; delete keeps its `204` no-body contract.
+13. Status changes now append `statusHistory` audit entries with `fromStatus`, `toStatus`, `changedAt`, `changedByRole`, optional `changedBy`, and optional `reason`.
+14. Phase 10 verification passed with `.\node_modules\.bin\tsc.cmd`, `node --test tests\*.test.js`, and unsandboxed `npm test`.
+
 ## Phase 11: Professional Business Features
-Status: Planned
+Status: Done
+
+Progress bar: `[########] 8/8 complete`
+
+Completed groundwork:
+- [x] 11.0 Shared domain foundations
+- [x] 11.0a Booking workflow integration foundation
+
+Currently under progress:
+- None
+
+## Post-Phase 10 Carry-Forward Risk Mitigation
+Status: Done
+
+Purpose: Reduce the three known carry-forward risks left after Phase 10 without pulling Phase 11 work forward.
+
+Progress bar: `[###] 3/3 complete`
+
+Checked:
+- [x] Harden privileged status-action authorization
+- [x] Mitigate missing legacy `statusHistory`
+- [x] Reduce regex-heavy booking text filters
+
+Currently under progress:
+- None
+
+Progress:
+| Task | Type | Status | Model | Approval | Notes |
+|---|---|---:|---|---|---|
+| Harden privileged status-action authorization | Security | Done | High | Yes | Added shared-secret and actor-id checks for owner/admin status actions. |
+| Mitigate missing legacy `statusHistory` | Data | Done | High | Yes | Legacy bookings now surface synthetic baseline history and future writes backfill persisted history when needed. |
+| Reduce regex-heavy booking text filters | Performance | Done | Medium | Yes | Added normalized search fields, indexes, and one-time backfill for legacy records. |
+
+Verification:
+- `.\node_modules\.bin\tsc.cmd`
+- Focused tests first, then full `node --test tests\*.test.js`
+- Unsandboxed `npm test` after behavior changes if sandbox npm remains unhealthy
+
+Completed notes:
+1. Privileged status-action routes now require operator login through `/auth/session` and bearer sessions.
+2. Legacy bookings with empty `statusHistory` now surface a synthetic baseline entry, and the next status change persists that baseline before the real transition.
+3. Booking search now uses normalized indexed fields for email, phone, and customer-name prefixes.
+4. An explicit `npm run backfill:bookings` command now backfills missing normalized search fields and legacy `statusHistory` entries.
+5. The explicit backfill command is currently blocked by the configured MongoDB host refusing the connection from this machine.
 
 Purpose: Make Slotwise adaptable across business types instead of tied to one booking scenario.
 
 Progress:
 | Task | Type | Status | Model | Approval | Notes |
 |---|---|---:|---|---|---|
-| 11.1 Business profile model | Feature | Planned | High | Yes | Supports flexible business types. |
-| 11.2 Service/resource model | Feature | Planned | High | Yes | Staff, rooms, tables, equipment, appointments, events. |
-| 11.3 Configurable availability rules | Feature | Planned | High | Yes | Per-business rules. |
-| 11.4 Working hours and blackout dates | Feature | Planned | High | Yes | Holidays, buffers, unavailable windows. |
-| 11.5 Customer records | Feature | Planned | Medium | Yes | Link customers to bookings. |
-| 11.6 Notification planning | Feature | Planned | Medium/High | Yes | Email/SMS reminders if provider is added. |
-| 11.7 Cancellation and rescheduling | Feature | Planned | Medium | Yes | Customer/staff flows. |
-| 11.8 Role model | Security | Planned | High | Yes | Owner, admin, staff, customer. |
+| 11.0 Shared domain foundations | Architecture | Done | High | Yes | Added Phase 11 interfaces and Mongoose models for business profiles, service/resources, and customers. |
+| 11.0a Booking workflow integration foundation | Architecture | Done | High | Yes | Bookings now support business/customer/resource links, scoped availability context, notification plans, and reschedule history metadata. |
+| 11.1 Business profile model | Feature | Done | High | Yes | Added business profile models, repositories, services, controllers, routes, and validation. |
+| 11.2 Service/resource model | Feature | Done | High | Yes | Added service/resource models plus CRUD-style management APIs for services, staff, rooms, tables, equipment, appointments, and events. |
+| 11.3 Configurable availability rules | Feature | Done | High | Yes | Booking creation/update now enforces per-business and per-resource availability rules. |
+| 11.4 Working hours and blackout dates | Feature | Done | High | Yes | Booking scheduling now checks configured working hours and blackout windows. |
+| 11.5 Customer records | Feature | Done | Medium | Yes | Added reusable customer records, search filters, upsert support, and booking linkage. |
+| 11.6 Notification planning | Feature | Done | Medium/High | Yes | Booking workflows now attach reminder/confirmation/cancellation/reschedule planning metadata without sending provider traffic. |
+| 11.7 Cancellation and rescheduling | Feature | Done | Medium | Yes | Added staff reschedule flow plus lightweight customer cancel/reschedule flows. |
+| 11.8 Role model | Security | Done | High | Yes | Added staff operator sessions, business-member roles, and customer-role audit/self-service flows. |
 
 Verification:
-- Architecture notes before implementation.
-- Schema/API review before model changes.
-- Tests for each added domain rule.
+- `.\node_modules\.bin\tsc.cmd`
+- `node --test tests\*.test.js`
+
+Completed notes:
+1. Added `src/interfaces/business.interface.ts`, `src/interfaces/service-resource.interface.ts`, and `src/interfaces/customer.interface.ts` as the shared Phase 11 domain contracts.
+2. Added `src/models/business-profile.model.ts`, `src/models/service-resource.model.ts`, and `src/models/customer.model.ts` with validation, indexes, and serialization guards where appropriate.
+3. Compile verification passed after adding the new Phase 11 domain foundations.
+4. Extended booking data and service logic so business-scoped bookings can enforce advance notice, working hours, blackout windows, slot intervals, capacity, and scoped overlap checks.
+5. Added customer upsert/count support, notification planning metadata, and reschedule-history metadata in the booking workflow foundation.
+6. Added protected `/businesses`, `/service-resources`, and `/customers` management APIs with targeted validation and role gates.
+7. Added staff operator authentication support plus staff booking reschedule routes and customer self-service cancel/reschedule routes.
+8. Phase 11 verification passed with `.\node_modules\.bin\tsc.cmd` and `node --test tests\*.test.js` with 59 passing tests.
+
+## Post-Phase 11 Modern Auth And Notification Hardening
+Status: Done
+
+Purpose: Resolve the three carried-forward risks left after Phase 11 using a modern backend architecture that fits the current Slotwise stack.
+
+Progress:
+| Task | Type | Status | Model | Approval | Notes |
+|---|---|---:|---|---|---|
+| H1 Persistent auth and notification foundations | Architecture | Done | High | Yes | Added DB models/interfaces for operator accounts, auth sessions, verification tokens, and notification jobs. |
+| H2 Operator auth migration to DB sessions | Security | Done | High | Yes | `/auth/session` now uses Argon2-hashed operator accounts plus persistent MongoDB-backed sessions. |
+| H3 Customer passwordless auth | Security | Done | High | Yes | Added customer magic-link request/verify flows, persistent customer sessions, and session-protected customer booking actions. |
+| H4 Notification outbox delivery | Feature | Done | High | Yes | Added provider-backed email outbox processing with worker lifecycle, templates, retries, and booking/auth email queue execution. |
+
+Verification:
+- `.\node_modules\.bin\tsc.cmd`
+- `node --test tests\*.test.js`
+
+Completed notes:
+1. Added persistent auth and notification domain contracts for operator accounts, auth sessions, verification tokens, and notification jobs.
+2. Added MongoDB TTL-backed models for auth sessions and verification tokens, plus indexed notification job storage for the future outbox worker.
+3. Compile verification passed after the persistence foundations were added.
+4. Replaced the in-memory operator session path with persistent operator-account lookup, Argon2 password verification, hashed opaque session tokens, TTL-backed auth sessions, and startup bootstrap seeding from env credentials.
+5. Compile verification passed after the operator auth migration.
+6. Added customer magic-link request and verification flows backed by persisted verification tokens and customer auth sessions.
+7. Customer self-service booking cancellation and rescheduling now require authenticated customer sessions instead of booking-id-plus-email request bodies.
+8. Compile verification passed after the customer passwordless auth migration.
+9. Added outbox processing with template rendering, Resend/noop provider delivery, retries, payload scrubbing for magic links, and worker startup/shutdown wiring.
+10. Post-Phase 11 hardening verification passed with `.\node_modules\.bin\tsc.cmd` and `node --test tests\*.test.js` with 63 passing tests.
 
 ## Phase 12: Creative Differentiator Features
-Status: Planned
+Status: In Progress
 
 Purpose: Add product ideas that make Slotwise feel more useful, polished, and memorable after the core platform is stable.
 
 Progress:
 | Task | Type | Status | Model | Approval | Notes |
 |---|---|---:|---|---|---|
-| 12.1 Smart booking suggestions | Feature | Planned | High | Yes | Recommend best available slots. |
-| 12.2 Conflict-risk indicators | Feature | Planned | Medium | Yes | Flag risk before approval. |
-| 12.3 Booking timeline view | UX/UI | Planned | Medium | Yes | Backend/frontend coordination. |
-| 12.4 No-show and cancellation insights | Feature | Planned | Medium | Yes | Analytics-oriented. |
-| 12.5 Flexible business templates | Feature | Planned | Medium | Yes | Clinic, salon, restaurant, consultant, venue, rental. |
-| 12.6 Embeddable booking widget plan | UX/UI | Planned | High | Yes | Public integration surface. |
-| 12.7 Public booking page customization | UX/UI | Planned | Medium | Yes | Branding and fields. |
-| 12.8 Analytics dashboard | Feature | Planned | Medium | Yes | Conversion, utilization, peak times, approval rate. |
+| 12.1 Smart booking suggestions | Feature | Done | High | Yes | Added `POST /bookings/suggestions` with ranked nearby slot recommendations driven by existing availability rules. |
+| 12.2 Conflict-risk indicators | Feature | Done | Medium | Yes | `conflictRisk` is now persisted, filterable, and enriched with urgency, stale approval, repeat reschedule, large-party, tight-turnaround, and heavy-load signals. |
+| 12.3 Booking timeline view | UX/UI | Done | Medium | Yes | Added a backend timeline feed grouped by day with sorted bookings and per-day summary counts. |
+| 12.4 No-show and cancellation insights | Feature | Done | Medium | Yes | Added explicit `no_show` lifecycle support plus `GET /bookings/insights/cancellation-no-show` analytics. |
+| 12.5 Flexible business templates | Feature | Done | Medium | Yes | Added business template presets plus template-backed business-profile create/update and discovery endpoints. |
+| 12.6 Embeddable booking widget plan | UX/UI | Done | High | Yes | Added persisted widget settings plus a public widget-config endpoint with active resource previews. |
+| 12.7 Public booking page customization | UX/UI | Done | Medium | Yes | Added persisted public-page settings plus a public booking-page config endpoint by business slug. |
+| 12.8 Analytics dashboard | Feature | Done | Medium | Yes | Added a backend dashboard insights endpoint with KPI, funnel, utilization, and peak-time aggregates. |
 
 Verification:
-- Keep as planned features until core architecture and auth are stable.
-- Add implementation specs before coding each feature.
+- `.\node_modules\.bin\tsc.cmd`
+- `node --test tests\*.test.js`
+
+Completed notes:
+1. Implemented Phase 12.1 smart booking suggestions with `POST /bookings/suggestions`.
+2. Suggestions reuse the existing availability engine and return ranked nearby alternatives based on slot proximity and current conflict-risk score.
+3. Added targeted validation and regression coverage for the new suggestions route, controller, and booking-service behavior.
+4. Implemented Phase 12.2 conflict-risk indicators as the first creative differentiator slice.
+5. `conflictRisk` snapshots are now persisted on booking mutations and can be filtered through `GET /bookings?conflictRiskLevel=...`.
+6. Risk scoring now combines current metadata signals with actionable operational context: tight turnaround windows and heavy same-day booking load.
+7. Implemented Phase 12.4 with an explicit `no_show` lifecycle state for approved bookings and a cancellation/no-show insights endpoint.
+8. Insights now summarize cancellation rate, no-show rate, service-delivery rate, reason breakdowns, and weekday patterns using persisted booking history.
+9. Implemented Phase 12.5 flexible business templates with reusable presets for restaurant, clinic, salon, consulting, venue, rental, and fitness workflows.
+10. Added `GET /businesses/templates` and `GET /businesses/templates/:templateKey`, plus optional `templateKey` support on business-profile create/update so presets can safely fill scheduling defaults while still allowing overrides.
+11. Template presets currently provide business rules, working-hours defaults, notification defaults, and suggested resource blueprints; automatic resource seeding remains deferred.
+12. Added focused regression coverage for low, medium, and high conflict-risk scenarios plus the new query/filter surface, no-show analytics flow, and business-template behavior.
+13. Implemented Phase 12.6 as a backend-ready embeddable widget foundation with persisted `widgetSettings` on business profiles and template presets.
+14. Added `GET /businesses/public/:slug/widget` so public consumers can bootstrap widget branding, copy, active resources, and booking endpoint hints by business slug.
+15. Added focused regression coverage for widget-setting validation, public widget config responses, and slug validation.
+16. Implemented Phase 12.7 as a backend-ready public booking page customization layer with persisted `publicPageSettings` on business profiles and template presets.
+17. Added `GET /businesses/public/:slug/booking-page` so public consumers can fetch page-title, hero-copy, optional contact/work-hours visibility, active resource previews, and booking endpoint hints.
+18. Added focused regression coverage for public-page setting validation, controller responses, route registration, and service-level visibility behavior.
+19. Implemented Phase 12.3 as a backend-ready booking timeline feed without introducing frontend calendar code.
+20. Added `GET /bookings/timeline` so operators can fetch day-grouped bookings with sorted timeline entries, duration metadata, reschedule flags, conflict-risk context, and per-day summary counts.
+21. Added focused regression coverage for the timeline controller response, route registration, and service-level grouping/sorting behavior.
+22. Implemented Phase 12.8 as a backend-ready analytics dashboard feed without introducing frontend dashboard code.
+23. Added `GET /bookings/insights/dashboard` so operators can fetch KPI summaries, lifecycle funnel counts, weekday/resource utilization, and peak booking-hour aggregates.
+24. Added focused regression coverage for dashboard route registration, controller response wiring, and service-level analytics aggregation behavior.
 
 ## Phase 13: Attractive Professional Frontend/UI/UX
-Status: Planned
+Status: Done
 
 Purpose: Define a serious, attractive, professional frontend direction before implementation starts.
 
@@ -409,12 +560,15 @@ Progress:
 | Task | Type | Status | Model | Approval | Verification |
 |---|---|---:|---|---|---|
 | 13.1 Add `UI_UX_DESIGN_BRIEF.md` | UX/UI | Done | Low | No | Manual doc review |
-| 13.2 Define Slotwise brand direction | UX/UI | Planned | Low | No | Design brief review |
-| 13.3 Plan admin dashboard | UX/UI | Planned | Low | No | Design brief review |
-| 13.4 Plan customer portal | UX/UI | Planned | Low | No | Design brief review |
-| 13.5 Plan responsive layouts | UX/UI | Planned | Low | No | Design brief review |
-| 13.6 Define design system | UX/UI | Planned | Low | No | Design brief review |
-| 13.7 Define accessibility requirements | UX/UI | Planned | Low | No | Design brief review |
+| 13.2 Define Slotwise brand direction | UX/UI | Done | Low | No | Expanded `UI_UX_DESIGN_BRIEF.md` with brand posture, palette direction, and visual principles. |
+| 13.3 Plan admin dashboard | UX/UI | Done | Low | No | Expanded the brief with admin IA, screen priorities, and dashboard/timeline expectations. |
+| 13.4 Plan customer portal | UX/UI | Done | Low | No | Expanded the brief with customer flow priorities and page structure expectations. |
+| 13.5 Plan responsive layouts | UX/UI | Done | Low | No | Added explicit desktop, tablet, and mobile behavior guidance. |
+| 13.6 Define design system | UX/UI | Done | Low | No | Added component, motion, color, and typography direction. |
+| 13.7 Define accessibility requirements | UX/UI | Done | Low | No | Added concrete accessibility requirements for focus, forms, timeline, and state messaging. |
+| 13.8 Deepen screen composition and interaction patterns | UX/UI | Done | Low | No | Expanded the brief with visual tokens, admin/customer interaction patterns, hosted-surface guidance, analytics direction, and content/copy rules. |
+| 13.9 Add localization and internationalization guidance | UX/UI | Done | Low | No | Expanded the brief with locale-aware copy, formatting, layout-resilience, timezone, and RTL-readiness expectations. |
+| 13.10 Add frontend gaps and operational UX standards | UX/UI | Done | Low | No | Expanded the brief with planning-gap checkpoints plus standards for loading, error handling, privacy, feedback, form resilience, and performance perception. |
 
 Admin dashboard targets:
 - Booking queue, status cards, calendar/timeline, filters/search, booking detail drawer/page, approve/reject/reschedule actions, customer profile view, and business settings.
@@ -428,10 +582,35 @@ Design system targets:
 Accessibility targets:
 - Keyboard navigation, readable contrast, text labels for status, form error messages, and touch-friendly controls.
 
+Verification:
+- Manual review of `UI_UX_DESIGN_BRIEF.md`
+- Targeted markdown sync across project docs
+
+Completed notes:
+1. Expanded `UI_UX_DESIGN_BRIEF.md` into the active Phase 13 frontend planning artifact for brand, admin, customer, responsive, design-system, and accessibility direction.
+2. Defined Slotwise’s product character as calm, professional, and operationally trustworthy rather than marketing-heavy.
+3. Added admin information architecture and screen-priority planning for dashboard, bookings, timeline, customers, resources, and settings.
+4. Added customer experience priorities and page-structure guidance for public booking, confirmation, and booking-management flows.
+5. Added design-system direction for status chips, tables, drawers, date/time controls, motion, and visual hierarchy.
+6. Added explicit responsive behavior expectations for desktop, tablet, mobile admin, and mobile customer flows.
+7. Added stronger accessibility requirements for focus visibility, reading order, screen-reader labeling, validation, and state messaging.
+8. Deepened the brief with screen-composition guidance, interaction-pattern expectations, hosted booking-surface direction, analytics presentation rules, and product-copy principles so Phase 14 has a more opinionated UI/UX target.
+9. Added localization and internationalization guidance so future frontend work accounts for translated copy, locale-aware formatting, timezone clarity, layout expansion, and RTL readiness from the start.
+10. Added a frontend gap checklist and operational UX standards so the next frontend phase can close remaining planning holes around screen inventory, role-based UX, state coverage, API contract readiness, and design QA.
+
 ## Phase 14: Frontend Implementation Roadmap
-Status: Deferred
+Status: Done
 
 Purpose: Preserve frontend implementation as a later architecture decision after UI/UX direction, auth, and platform APIs are clearer.
+
+Progress:
+| Task | Type | Status | Model | Approval | Verification |
+|---|---|---:|---|---|---|
+| 14.1 Select frontend implementation direction | UX/UI | Done | Low | No | Manual roadmap review |
+| 14.2 Add frontend approval/fix process before scaffolding | Documentation | Done | Low | No | Targeted roadmap sync check |
+| 14.3 Resolve approved pre-scaffold decisions and remaining risks | Documentation | Done | Medium | Approved by user | Targeted risk sync check |
+| 14.4 Run implementation-time frontend package/security review | Audit | Done | Medium | Approved by user | `npm view` package metadata |
+| 14.5 Scaffold isolated frontend workspace | UX/UI | Done | Medium | Approved by user | Frontend install, build, tests, audit, HTTP smoke |
 
 Planned app features:
 - Admin web app.
@@ -444,12 +623,57 @@ Planned app features:
 - Booking form and validation UX.
 - Professional loading, empty, success, and error states.
 
-Deferred decisions:
-- Frontend framework selection.
-- UI component library.
-- State management approach.
-- Authentication UI.
-- Deployment target.
+Selected implementation direction:
+- Create a future separate `frontend/` TypeScript SPA when implementation is approved.
+- Use React with Vite as the planned app foundation.
+- Use React Router for SPA/data routing.
+- Use TanStack Query for server-state reads, mutations, cache invalidation, loading states, and query lifecycle handling.
+- Use design-token-first CSS, likely with Tailwind CSS as the utility layer, plus accessible headless primitives only where they reduce custom interaction risk.
+- Build Slotwise-specific admin, customer, and widget components instead of adopting a heavy pre-styled admin template.
+
+Planning artifact:
+- `FRONTEND_IMPLEMENTATION_ROADMAP.md`
+
+Implementation sequence:
+1. Approve frontend architecture and package adoption before adding `frontend/`.
+2. Scaffold the frontend workspace and baseline scripts.
+3. Add API client and typed response envelopes.
+4. Build auth/session screens and route guards after a security review of token storage.
+5. Build admin shell, dashboard, booking queue, timeline, detail drawer, customers, resources, and settings.
+6. Build public booking page from public business-page config.
+7. Build embeddable widget from public widget config.
+8. Add responsive, accessibility, localization, and browser QA checks.
+
+Approved pre-scaffold decisions:
+- Architecture/package direction is approved for a future separate `frontend/` TypeScript SPA with React, Vite, React Router, TanStack Query, Tailwind CSS, and Slotwise-owned components.
+- Candidate package categories are approved for implementation-time review: runtime, routing, server-state, styling, accessible primitives, forms, schema validation, date/time utilities, charts, icons, tests, browser QA, and accessibility checks.
+- Token/session storage baseline is in-memory bearer-token storage only for the first slice; no `localStorage` for operator or customer session tokens.
+- Deployment baseline is a separately built static SPA with an environment-specific API base URL.
+- SSR/pre-rendering is deferred for the first implementation slice.
+- Widget style isolation baseline is iframe-based embed isolation for third-party hosts.
+
+Verification:
+- Manual review of `FRONTEND_IMPLEMENTATION_ROADMAP.md`.
+- Targeted markdown sync across Phase 14 references.
+- `node "C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js" install` in `frontend/` passed with 0 vulnerabilities.
+- `node "C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js" run build` in `frontend/` passed.
+- `node "C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js" run test:run` in `frontend/` passed with 2 tests.
+- `node "C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js" audit --audit-level=moderate` in `frontend/` passed with 0 vulnerabilities.
+- Same-shell Vite HTTP smoke check returned `200` for `/` and `/src/main.tsx`.
+- In-app browser QA was attempted twice but blocked by the Windows sandbox browser runtime error `CreateProcessAsUserW failed: 5`.
+
+Completed notes:
+1. Added `FRONTEND_IMPLEMENTATION_ROADMAP.md` as the Phase 14 planning/selection artifact.
+2. Selected a future React + Vite + React Router + TanStack Query direction for the frontend without adding packages or source code.
+3. Documented the needed admin, customer, public booking-page, and widget screens.
+4. Documented required components, API dependencies, state rules, localization/accessibility expectations, and future verification.
+5. Kept frontend implementation, package installation, auth storage, deployment topology, SSR, and widget style-isolation decisions deferred until explicit approval.
+6. Added an approval and fix process requiring architecture/package approval, package/security review, token/session storage review, deployment confirmation, SSR/pre-rendering decision, and widget style-isolation selection before scaffolding `frontend/`.
+7. Recorded user approval for the pre-scaffold decisions and resolved the planning risks into explicit baselines: approved candidate package set, memory-only token storage, static SPA deployment, deferred SSR/pre-rendering, and iframe-based widget isolation.
+8. Remaining risk is implementation-time only: package security/version review, API DTO drift, static hosting/CORS details, and the re-authentication tradeoff from memory-only tokens.
+9. Completed the implementation-time npm metadata review for the first frontend package set on June 13, 2026.
+10. Created the isolated `frontend/` Vite + React + TypeScript scaffold with an operational admin dashboard shell, API envelope client foundation, memory-only session store, Tailwind-powered styling, and smoke tests.
+11. Verified frontend install/build/tests/audit and local Vite HTTP serving; visual in-app browser QA remains blocked by the current Windows sandbox.
 
 ## Phase 15: Dependency Audit And Modernization
 Status: Done
@@ -541,6 +765,79 @@ Outdated snapshot:
 - `express` was upgraded to `5.2.1` with `@types/express` `5.0.6`; `src/controllers/booking.controller.ts` now uses typed route params for Express 5 compatibility.
 - `mongoose` was upgraded to `9.7.0`; `src/utils/validators.ts` now uses a minimal local cast inside `endDateValidator`, and `src/interfaces/booking.interface.ts` keeps `_id` as a required `mongoose.Types.ObjectId` for current Mongoose typing.
 - Final project dependency state: `npm outdated` returned no remaining direct package updates for this repository after modernization.
+
+## Phase 16: Frontend/Backend Feature Alignment
+Status: In progress
+
+Purpose: Turn the current frontend scaffold into a complete product frontend that matches the implemented backend feature surface for the admin/operator app, customer portal, public booking page, and iframe-first widget foundation.
+
+Progress:
+| Task | Type | Status | Model | Approval | Verification |
+|---|---|---:|---|---|---|
+| 16.1 Create frontend-backend coverage matrix | Documentation / Audit | Done | Low | User approved Phase 16 renumber | Manual matrix review |
+| 16.2 Add frontend route map and app shell routing | UX/UI | Done | Medium | User switched to 5.5 medium | Frontend build/tests |
+| 16.3 Add shared API client modules and DTOs | Architecture | Planned | Medium | Ask before implementation | Typecheck/tests |
+| 16.4 Add operator auth screens and memory-session flow | Security / UX/UI | Planned | High | Yes | Auth tests/build |
+| 16.5 Add bookings list with filters, sorting, pagination | Feature / UX/UI | Planned | Medium | Ask | Component/API tests |
+| 16.6 Add booking detail drawer/page | Feature / UX/UI | Planned | Medium | Ask | Component tests |
+| 16.7 Add booking lifecycle actions | Security / UX/UI | Planned | High | Yes | Action tests |
+| 16.8 Add booking reschedule and suggestion flows | Feature / UX/UI | Planned | Medium/High | Ask | Flow tests |
+| 16.9 Add timeline/calendar frontend view | UX/UI | Planned | Medium | Ask | Build/tests |
+| 16.10 Add dashboard analytics views | UX/UI | Planned | Medium | Ask | Chart/data tests |
+| 16.11 Add cancellation/no-show insights views | UX/UI | Planned | Medium | Ask | Component tests |
+| 16.12 Add business profile/settings screens | Feature / UX/UI | Planned | Medium | Ask | Form tests |
+| 16.13 Add service/resource management screens | Feature / UX/UI | Planned | Medium | Ask | Form/list tests |
+| 16.14 Add customer management screens | Feature / UX/UI | Planned | Medium | Ask | Form/list tests |
+| 16.15 Add business template selection UI | UX/UI | Planned | Medium | Ask | Component tests |
+| 16.16 Add public booking page flow | UX/UI | Planned | Medium/High | Ask | Public flow tests |
+| 16.17 Add customer magic-link and booking management flow | Security / UX/UI | Planned | High | Yes | Auth flow tests |
+| 16.18 Add embeddable widget frontend foundation | UX/UI | Planned | Medium/High | Ask | iframe/widget smoke |
+| 16.19 Add global loading, empty, error, success states | UX/UI | Planned | Medium | Ask | Component tests |
+| 16.20 Add responsive and accessibility QA pass | Test / UX/UI | Planned | Medium | Ask | Build/tests/browser QA |
+
+Frontend-backend coverage matrix:
+| Backend capability | Route/API surface | Current frontend coverage | Phase 16 target |
+|---|---|---|---|
+| Operator session auth | `POST /auth/session`, `GET /auth/session`, `DELETE /auth/session` | Memory-session store only; no login route or guard | Login, session status, logout, guarded admin shell |
+| Customer magic-link auth | `POST /auth/customer/magic-link`, `POST /auth/customer/verify` | Not covered | Customer sign-in, verification, session-aware management |
+| Booking list and search | `GET /bookings` with filters, pagination, sorting | `/admin/bookings` route placeholder plus static dashboard queue | Query-backed list, filters, sorting, pagination, responsive table/list |
+| Booking detail | `GET /bookings/:id` | Not covered | Detail drawer/page with customer, time, notes, status history, risk |
+| Booking lifecycle | approve, reject, cancel, complete, no-show routes | Not covered | Role-aware action controls, confirmations, mutation states |
+| Booking reschedule | `PATCH /bookings/:id/reschedule` | Not covered | Operator reschedule form with validation and feedback |
+| Booking suggestions | `POST /bookings/suggestions` | Not covered | Nearby slot suggestions integrated with reschedule/create flows |
+| Timeline feed | `GET /bookings/timeline` | `/admin/timeline` route placeholder plus static dashboard timeline | Query-backed day/week/resource timeline |
+| Dashboard analytics | `GET /bookings/insights/dashboard` | `/admin` route with static metric cards | KPI, funnel, utilization, peak-time analytics |
+| Cancellation/no-show insights | `GET /bookings/insights/cancellation-no-show` | Admin route map exists; no dedicated insights component | Insight cards, trends, reason summaries |
+| Business profiles | `/businesses` | `/admin/settings` route placeholder | Profile/settings screens, working hours, blackout dates, public/widget settings |
+| Business templates | `GET /businesses/templates`, `GET /businesses/templates/:templateKey` | `/admin/settings` route placeholder mentions templates | Template gallery/selection flow |
+| Service/resources | `/service-resources` | `/admin/resources` route placeholder | Resource list, create/edit forms, active/inactive states |
+| Customers | `/customers` | `/admin/customers` route placeholder | Customer list/profile, booking history entry points |
+| Public booking page config | `GET /businesses/public/:slug/booking-page` | `/book/:slug` route placeholder and surface nav link | Branded public flow consuming backend config |
+| Widget config | `GET /businesses/public/:slug/widget` | `/widget/:slug` route placeholder and surface nav link | Compact iframe-ready widget foundation |
+
+Design and engineering guardrails:
+- Keep frontend implementation inside `frontend/`.
+- Use React, Vite, TypeScript, React Router, TanStack Query, Tailwind CSS, Vitest, and the already-approved packages only.
+- Do not add packages unless a missing capability cannot reasonably be built with the approved stack and package review is approved first.
+- Prefer reusable screen, layout, form, status, state, and data-display components instead of one-off UI.
+- Keep UI modern, minimalist, operationally dense where appropriate, fully responsive across mobile, tablet, and desktop, and aligned with `UI_UX_DESIGN_BRIEF.md`.
+- Keep API behavior unchanged unless a backend gap is found and separately approved.
+- Preserve memory-only token storage until a high-reasoning auth/session review approves another storage model.
+
+Completed notes:
+1. Renumbered the new frontend/backend alignment phase as Phase 16 to avoid colliding with the completed dependency modernization Phase 15.
+2. Created the first frontend-backend coverage matrix, showing current scaffold coverage versus the backend feature surface.
+3. Confirmed low reasoning is sufficient only for Phase 16 documentation/audit work; implementation tasks require medium, and auth/security tasks require high approval.
+4. Added a central frontend route map, real React Router shell routing, admin navigation links, public-surface links, and responsive route placeholders for admin, customer portal, public booking page, and widget surfaces.
+5. Kept Phase 16.2 free of auth guards, token-storage changes, backend API behavior changes, and new packages.
+
+Verification:
+- Manual documentation review for the Phase 16 matrix and numbering.
+- `.\node_modules\.bin\vitest.cmd run` in `frontend/` passed with 4 tests.
+- `.\node_modules\.bin\tsc.cmd -b` in `frontend/` passed.
+- `.\node_modules\.bin\vite.cmd build` in `frontend/` passed.
+- Local HTTP smoke check returned `200` for `http://127.0.0.1:5173/admin` when Vite stayed up.
+- In-app browser QA remains blocked by the Windows sandbox browser runtime error `CreateProcessAsUserW failed: 5`.
 
 ## Completion Criteria
 - Required docs are current after every phase.

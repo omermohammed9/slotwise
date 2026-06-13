@@ -6,13 +6,12 @@ Initial audit found a compact Express/Mongoose booking API with missing project 
 ## Findings
 
 ### High
-- Availability checks date range only and does not account for `timein`/`timeout`.
-- Current architecture has service logic coupled directly to Mongoose model access; Repository Pattern is planned for Phase 9.
-- Authentication, authorization, and role model remain undefined, blocking safe admin approval/rejection implementation.
 - Legacy identity remains only in the current workspace folder name `Booking System`; package metadata now uses `slotwise-api` and source files now use dot-case naming.
 - Environment/toolchain risk remains outside the repo: current Node is `v23.6.0`, which the official Node.js releases page marks as EOL as of June 11, 2026, and the Node 24 LTS installer fails with Windows Installer error `1730` because removing the current machine-wide Node install requires administrator rights.
 
 ### Medium
+- Operator authentication now exists for privileged booking actions, but it is still env-backed and uses in-memory sessions rather than a persistent user/session store.
+- MongoDB SRV resolution can now be overridden with `SLOTWISE_DNS_SERVERS`, but the active `MONGODB_URI` hostname still returns `ENOTFOUND` against public DNS.
 - The machine-level `npm` issue is no longer a normal-shell blocker: outside the sandbox, `npm` now works at `11.16.0`, and `npm run build` plus `npm test` both pass through the standard npm workflow.
 - The Codex sandbox can still make `npm` appear broken because the shim resolves through `C:\Users\omarz\AppData\Roaming\npm\...`, but that is now understood as a sandbox-path limitation rather than the main machine state.
 - Dependency updates exposed one TypeScript compatibility issue in `src/interfaces/booking.interface.ts`; it was fixed by making `_id` required to match the updated Mongoose `Document` typing.
@@ -22,9 +21,27 @@ Initial audit found a compact Express/Mongoose booking API with missing project 
 
 ### Low
 - No linting or formatting tools.
-- No frontend or UI/UX design brief exists yet; Phase 13 now plans this before UI implementation.
+- Frontend implementation is still deferred, but the Phase 13 UI/UX planning brief now exists and covers brand, admin, customer, responsive, design-system, and accessibility direction.
+- Phase 14 frontend planning is now documented in `FRONTEND_IMPLEMENTATION_ROADMAP.md`; it selects a future React + Vite + React Router + TanStack Query direction without adding frontend packages or source code.
+- The Phase 14 roadmap now includes a pre-scaffold approval/fix process so frontend architecture/package adoption, package security review, token/session storage, deployment topology, SSR/pre-rendering, and widget style isolation are resolved before implementation begins.
+- User approval resolved the Phase 14 planning decisions: candidate package adoption is approved for implementation-time review, first-slice token storage is memory-only, deployment defaults to a separate static SPA, SSR/pre-rendering is deferred, and third-party widget isolation defaults to iframe embeds.
+- Phase 14 implementation-time package review completed against npm metadata on June 13, 2026; no immediate license blocker was found for the approved first-slice frontend package set.
+- The isolated `frontend/` scaffold now exists and verification passed for install, production build, Vitest tests, npm audit, and a local Vite HTTP smoke check.
+- In-app browser QA is currently blocked by a Windows sandbox browser runtime failure: `CreateProcessAsUserW failed: 5`.
+- Phase 13 planning is stronger than a generic high-level brief now: it also defines visual-language tokens, screen-composition expectations, admin/customer interaction patterns, hosted booking-surface direction, analytics presentation rules, and product-copy guidance.
+- Localization had been a planning gap; the Phase 13 brief now includes locale-aware copy structure, formatting, timezone clarity, layout-resilience, and RTL-readiness guidance.
+- Frontend planning gaps are now more explicit: the brief includes a checklist for screen inventory, role-based UX differences, state coverage, component inventory, public-surface constraints, API contract readiness, and design QA before implementation begins.
 
 ## Resolved
+- Added smart booking suggestions so Slotwise can recommend nearby available alternatives without a separate scheduling engine.
+- Added derived booking conflict-risk indicators on booking responses so operators can spot urgent or operationally risky bookings before approval without requiring a schema migration.
+- Persisted booking conflict-risk snapshots and exposed list filtering by `conflictRiskLevel`.
+- Enriched conflict-risk scoring with actionable operational context from existing data: adjacent booking pressure and heavy same-day load.
+- Added a dedicated no-show lifecycle state and cancellation/no-show insights endpoint so this analytics area now has a backend source of truth.
+- Added reusable business template presets and template discovery endpoints so multiple business verticals can start from opinionated defaults instead of manual per-profile setup.
+- Added persisted widget settings plus a public widget-config endpoint so businesses now have a backend-ready embeddable booking surface without introducing a second booking engine.
+- Added persisted public booking-page settings plus a public booking-page config endpoint so businesses now have a hosted-page customization surface ready for a future frontend.
+- Added Phase 11 domain foundations for business profiles, service/resources, and customer records with Mongoose validation and indexing.
 - Added `.env.example` for non-secret config documentation.
 - Centralized env loading in `src/config/env.ts`, preferring root `.env` with a temporary `src/.env` fallback.
 - Added required env validation for `MONGODB_URI` and `HUNTER_API_KEY` usage.
@@ -38,6 +55,19 @@ Initial audit found a compact Express/Mongoose booking API with missing project 
 - Added REST-style booking route aliases while preserving legacy endpoints.
 - Added `README.md` with setup, route reference, examples, and current limitations.
 - Added `.gitignore` and `.editorconfig` for repository and editor hygiene.
+- Added `.codex/instructions.md`, `.codex/rules/code-standards.md`, and `.codex/rules/strict-resource-management.md` for Phase 9 governance.
+- Introduced `BookingRepository` so booking service no longer directly depends on the Mongoose booking model.
+- Polished touched booking service methods with explicit public contracts and removed raw error-object concatenation from `getAllBookings`.
+- Reworked availability checks to use `startDate`, `endDate`, `timein`, and `timeout`.
+- Added owner/admin role-gated booking approval and rejection endpoints.
+- Added owner/admin booking cancellation and completion endpoints plus service-level lifecycle transition checks.
+- Added booking list filtering, pagination, and sorting to reduce unbounded list-read behavior.
+- Added route-level request validation for booking payloads, list queries, and route ids.
+- Generic booking update routes now reject direct `status` edits so lifecycle status changes flow through status-action endpoints.
+- Added standard JSON response envelopes for successful data responses and handled errors.
+- Added `statusHistory` audit entries to booking documents for status changes.
+- Added operator login and bearer-session authentication for privileged booking status actions.
+- Replaced lazy booking-metadata backfill with an explicit maintenance script.
 - `npm run build` is blocked by a broken global npm install, but local TypeScript compilation passes with `.\node_modules\.bin\tsc.cmd`.
 - On June 10, 2026, a fresh Phase 15 check reconfirmed that `npm --version` fails because the active npm shim points to a missing roaming npm installation path.
 - On June 10, 2026, the bundled npm CLI at `C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js` was verified as a working fallback for `npm ls --depth=0`, `npm audit`, and `npm outdated`.
@@ -48,10 +78,16 @@ No existing project documentation was found, so there is no implementation-vs-do
 ## Planning Update
 - `.codex/rough-request.prompt.md` is now the project-local rough-request template.
 - `.codex/` is the preferred instruction directory; `.agents/` is legacy fallback only if present.
+- `.codex/instructions.md` now exists as the Slotwise-specific Codex entrypoint for reading order, phase discipline, architecture boundaries, and safe working rules.
+- `.codex/rules/code-standards.md` now exists and defines the expected layering, typing, persistence, error-handling, testing, and change-discipline rules for backend work.
+- `.codex/rules/strict-resource-management.md` now exists and defines shared rules for database lifecycle, external API usage, request-response ownership, cleanup expectations, and test isolation.
 - `IMPLEMENTATION_PLAN.md` now owns the phased remediation plan and model matrix.
 - `IMPLEMENTATION_PLAN.md` now includes planned Slotwise phases 8-14 for identity, structure, architecture, mandatory platform features, professional business features, creative differentiators, UI/UX planning, and deferred frontend implementation.
 - Medium/high work now requires immediate model-switch approval before implementation starts.
 - Phase 15 now tracks dependency audit, vulnerability fixes, package updates, major-version migrations, and justified modern package adoption.
+- Phase 16 now tracks frontend/backend feature alignment and full frontend component coverage, with dependency modernization preserved as the completed Phase 15.
+- The first Phase 16 coverage matrix shows that the current frontend scaffold covers only a static admin shell, static queue/timeline examples, API envelope basics, and memory-session storage; live routes, DTOs, forms, customer portal, public booking page, and widget UI remain to be implemented.
+- Phase 16.2 route coverage is now improved: the frontend has a central route map, real React Router navigation, admin route placeholders, and public-surface routes, but the routes are not yet query-backed and do not yet include forms or auth guards.
 
 ## Implementation Risks To Carry Forward
 - Configuration fixes may intentionally fail startup earlier when required env vars are missing.
@@ -63,6 +99,9 @@ No existing project documentation was found, so there is no implementation-vs-do
 - Dependency upgrades can break runtime behavior, TypeScript types, tests, or external integration behavior; Phase 15 requires small updates, compile/tests after each change, and explicit major-upgrade migration notes.
 - New packages can increase security and maintenance burden; Phase 15 requires a purpose, maintenance check, security check, and documentation update before adoption.
 - Machine-level npm repair is still desirable, but it is no longer a blocker for read-only Phase 15 audit commands because the bundled CLI fallback works.
+- Phase 16 frontend implementation can drift from backend DTOs unless shared frontend types and query-backed API modules are added early.
+- Phase 16 auth and lifecycle-action UI must stay approval-gated because token handling, customer magic-link flows, and booking status actions are security-sensitive.
+- Browser visual QA remains limited by the in-app browser runtime failure, so Phase 16.2 visual confidence currently comes from responsive CSS review, route tests, Vite build, and a local HTTP smoke check.
 
 ## Phase 4 Security Review
 - Removed `password` from `src/interfaces/booking.interface.ts` and `src/models/booking.model.ts`.
@@ -81,7 +120,7 @@ No existing project documentation was found, so there is no implementation-vs-do
 - Added preferred REST aliases on `/bookings` for create, list, read, update, and delete.
 - Preserved existing legacy routes to avoid client breakage.
 - Added `tests/bookingRoutes.test.js` to verify both alias and legacy route registration.
-- Deferred admin approval/rejection endpoints because there is still no defined authentication or authorization model.
+- Added admin approval/rejection endpoints first behind an owner/admin boundary; later mitigation work replaced the header-only gate with bearer-session auth.
 
 ## Phase 7 DevOps Policy
 - Added `.gitignore` to exclude dependencies, build output, IDE files, logs, and env files.
@@ -115,6 +154,19 @@ No existing project documentation was found, so there is no implementation-vs-do
 - `node --test tests\*.test.js` passes with 12 tests.
 - Final `npm audit --cache C:\tmp\npm-cache` passes with 0 vulnerabilities.
 
+## Phase 9 Verification Snapshot
+- `.\node_modules\.bin\tsc.cmd` passes after repository extraction.
+- `node --test tests\*.test.js` passes with 12 tests after repository extraction.
+- `npm test` passes outside the sandbox after the sandboxed command hits the known missing roaming `npm-cli.js` path.
+- Targeted search confirms `BookingService` no longer imports or calls the Mongoose booking model directly.
+- Touched booking service methods now expose explicit public contracts.
+
+## Phase 10 Verification Snapshot
+- `.\node_modules\.bin\tsc.cmd` passes after availability and role-gated admin changes.
+- `node --test tests\*.test.js` passes with 19 tests after availability and role-gated admin changes.
+- `npm test` passes outside the sandbox with 19 tests after availability and role-gated admin changes.
+- Added coverage for role middleware, admin approval/rejection controller behavior, admin route registration, repository-injected service tests, and time-aware availability forwarding.
+
 ## Toolchain Follow-up
 - Machine Node is `v23.6.0`; the official Node.js releases page lists that release line as EOL, and lists `v24.16.0` as latest LTS and `v26.3.0` as latest Current on June 10, 2026.
 - User-level npm was upgraded successfully to `11.16.0` on June 11, 2026.
@@ -127,10 +179,88 @@ No existing project documentation was found, so there is no implementation-vs-do
 - Phase 8 source structure now uses `src/routes/booking.routes.ts`, `src/controllers/booking.controller.ts`, `src/services/booking.service.ts`, `src/models/booking.model.ts`, and `src/interfaces/booking.interface.ts`.
 - The root workspace folder rename to `Slotwise` was not run inside the active Codex session because the session is bound to the existing workspace path.
 - Phase 8 includes mitigation tasks for import/test breakage and root-folder rename risk.
-- Phase 9 plans coding standards and a Repository Pattern to reduce persistence coupling.
-- Phase 10 plans mandatory platform features required for professional booking behavior.
-- Phase 11 plans business-flexibility features for multiple booking use cases.
-- Phase 12 records creative differentiators that should wait until the core platform is stable.
-- Phase 13 added an attractive professional UI/UX brief for admin and customer experiences.
+- Phase 9 added coding standards, strict resource-management rules, a `BookingRepository` boundary, and narrow service contract cleanup to reduce persistence coupling.
+- Phase 10 is complete: full date-time availability logic, owner/admin status-action endpoints, lifecycle transition checks, filtering, pagination, sorting, request validation, standard responses, and status-change audit trail are implemented.
+
+## Phase 10 Completion Snapshot
+- Booking status changes now append `statusHistory` entries with `fromStatus`, `toStatus`, `changedAt`, `changedByRole`, optional `changedBy`, and optional `reason`.
+- Status action controllers now read the authenticated operator session and optional body `reason` for audit context.
+- `.\node_modules\.bin\tsc.cmd` passes after the audit trail implementation.
+- `node --test tests\*.test.js` passes with 31 tests after the audit trail implementation.
+- Sandboxed `npm test` still hits the known missing roaming npm shim path, but unsandboxed `npm test` passes with 31 tests.
+
+## Phase 11 Foundation Snapshot
+- Added `BusinessProfile`, `ServiceResource`, and `Customer` models as the first Phase 11 implementation slice.
+- Business profiles now define business type, timezone, working hours, blackout dates, notification settings, availability rules, and owner/admin/staff member assignments.
+- Service/resource records now define business-scoped bookable units such as services, staff, rooms, tables, equipment, appointments, and events.
+- Customer records now define reusable business-scoped customer identities with normalized search fields and booking counters.
+- `.\node_modules\.bin\tsc.cmd` passes after adding the Phase 11 domain foundations.
+- Booking create/update flows now support business-aware scheduling checks, scoped overlap detection, customer upsert hooks, notification planning metadata, and reschedule history metadata.
+
+## Phase 11 Completion Snapshot
+- Added protected `/businesses`, `/service-resources`, and `/customers` APIs for Phase 11 business management flows.
+- Added staff operator session support through `SLOTWISE_STAFF_*` credentials and bearer sessions.
+- Booking lifecycle now supports staff rescheduling plus customer-session-protected cancel/reschedule endpoints.
+- Booking and auth notifications now flow through a provider-backed outbox instead of planning metadata alone.
+- `.\node_modules\.bin\tsc.cmd` passes after the full Phase 11 implementation.
+- `node --test tests\*.test.js` passes with 59 tests after the full Phase 11 implementation.
+
+## Post-Phase 11 Hardening Snapshot
+- Added persistent data-model foundations for `OperatorAccount`, `AuthSession`, `VerificationToken`, and `NotificationJob`.
+- Auth sessions and verification tokens now have MongoDB TTL expiry support at the model layer.
+- Notification jobs now have indexed outbox storage for future provider-backed email delivery processing.
+- `.\node_modules\.bin\tsc.cmd` passes after adding the post-Phase 11 hardening foundations.
+- `/auth/session` now authenticates against persistent operator accounts instead of in-memory env credentials at request time.
+- Operator passwords now verify through native Node Argon2 hashing, and raw session tokens are stored only as SHA-256 hashes in MongoDB.
+- Startup now bootstraps missing operator accounts from env credentials, but runtime session state is no longer in-memory only.
+- Customer authentication now uses persisted magic-link verification tokens and customer sessions.
+- Customer booking self-service routes now require authenticated customer sessions instead of matching an email string in the request body.
+- Notification jobs now process through a worker with template rendering, retries, and provider-backed email delivery support.
+- Magic-link notification payloads are scrubbed after successful send so raw customer login tokens do not remain in completed jobs.
+
+## Post-Phase 10 Risk Mitigation Snapshot
+- Privileged status routes now require env-backed operator login through `/auth/session` and bearer sessions.
+- Operator credentials are currently loaded from `SLOTWISE_OWNER_*`, `SLOTWISE_ADMIN_*`, and `SLOTWISE_STAFF_*` environment variables.
+- Focused middleware, controller, route, and auth-service tests passed after the auth/session hardening.
+- Legacy bookings with empty `statusHistory` now receive a synthetic system-authored baseline entry in API responses.
+- Future status changes for older bookings now persist a backfilled legacy baseline entry before appending the real transition.
+- Booking list text filters now query normalized indexed fields instead of broad unanchored regex against primary user-facing fields.
+- The dedicated booking metadata backfill command exists, but running it is currently blocked by the configured MongoDB host refusing the connection from this machine.
+- After adding DNS override support, the backfill diagnosis improved from resolver refusal to `ENOTFOUND`, confirming the active MongoDB SRV hostname itself is invalid.
+- Phase 11 business-flexibility features are now implemented for multiple booking use cases.
+- Phase 12 is now complete: smart suggestions, conflict-risk indicators, booking timeline feed, no-show insights, business templates, widget config, public booking-page customization, and analytics dashboard backend surfaces are implemented.
+- Phase 13 planning is now complete through `UI_UX_DESIGN_BRIEF.md`, covering brand direction, admin/customer structure, responsive layout expectations, design-system guidance, and accessibility requirements.
+- The Phase 13 brief now also gives Phase 14 a more opinionated target for screen composition, interaction patterns, hosted public surfaces, analytics presentation, and content tone.
+- The Phase 13 brief now also includes localization and internationalization planning so frontend implementation does not treat translation and RTL support as late-stage retrofits.
+- The Phase 13 brief now also defines operational UX standards for loading, empty states, errors, privacy, feedback, form resilience, and perceived performance.
 - Phase 14 defers frontend implementation until auth, APIs, and design direction are ready.
+- Phase 14 now has a frontend implementation roadmap and selection artifact; actual app scaffolding, package adoption, token-storage decisions, deployment topology, SSR, and widget style isolation remain approval-gated future work.
+- The next frontend fix step is explicit: approve the architecture/package plan first, then scaffold `frontend/` only after the approval checklist is complete.
+- Phase 14 planning risks are now resolved into approved baselines; remaining risks are implementation-time checks for package advisories/version health, API DTO drift, static-hosting/CORS configuration, and memory-token re-authentication tradeoffs.
+- Frontend scaffold work is now allowed to proceed under the isolated `frontend/` folder using the reviewed package set.
+- Frontend implementation risk remaining after scaffold: visual browser QA still needs to run once the in-app browser runtime is available; API integration remains mocked/static until the next frontend implementation slice.
 - Phase 15 plans npm runtime repair, dependency inventory, security audit, safe fixes, outdated checks, compatible updates, major migrations, obsolete package removal, and modern package evaluation.
+
+## Phase 12 Snapshot
+- Phase 12.1 smart booking suggestions are complete.
+- Added `POST /bookings/suggestions`, which reuses the current availability and business-rule checks to return ranked nearby alternatives.
+- Phase 12.2 conflict-risk indicators are complete as the first creative differentiator slice.
+- Booking mutations now persist `conflictRisk` snapshots, and `GET /bookings` can filter by `conflictRiskLevel`.
+- Conflict-risk scoring now uses `starts_soon`, `approval_stale`, `repeat_reschedule`, `large_party`, `tight_turnaround`, and `heavy_day_load` signals.
+- Phase 12.3 booking timeline view is complete as a backend feed.
+- Added `GET /bookings/timeline`, which groups matching bookings by start-date day, sorts each day by start time, and exposes per-day summary counts plus duration/reschedule metadata for each booking entry.
+- Phase 12.4 no-show and cancellation insights are complete, including an explicit `no_show` lifecycle transition and `GET /bookings/insights/cancellation-no-show`.
+- Insights now expose cancellation/no-show rates, service-delivery rate, top recorded reasons, and weekday trend counts from booking lifecycle history.
+- Phase 12.5 flexible business templates are complete.
+- Business profiles can now opt into template-backed defaults through `templateKey`, and managers can inspect available presets through `GET /businesses/templates` and `GET /businesses/templates/:templateKey`.
+- Template presets currently include business rules, working hours, notification defaults, widget defaults, and suggested resource blueprints; automatic resource creation from those blueprints is still deferred.
+- Phase 12.6 embeddable booking widget foundation is complete.
+- Added persisted `widgetSettings` on business profiles plus a public `GET /businesses/public/:slug/widget` endpoint that returns branding copy, active resource previews, and booking endpoint hints for active businesses by slug.
+- The current widget slice is backend-only: there is not yet a dedicated hosted embed frontend, admin visualization, or host-aware public booking app.
+- Phase 12.7 public booking page customization is complete.
+- Added persisted `publicPageSettings` on business profiles plus a public `GET /businesses/public/:slug/booking-page` endpoint that returns page copy, visibility toggles, optional contact/work-hours data, active resource previews, and booking endpoint hints for active businesses by slug.
+- The current public-page slice is also backend-only: there is not yet a dedicated hosted public booking frontend that consumes these settings.
+- Phase 12.8 analytics dashboard is complete as a backend feed.
+- Added `GET /bookings/insights/dashboard`, which summarizes lifecycle funnel counts, approval/completion/conversion rates, utilization minutes, average party size, busiest weekdays, busiest booking hours, and per-resource utilization slices.
+- No new dependency or auth surface was introduced for the current Phase 12 work.
+- `.\node_modules\.bin\tsc.cmd` and `node --test tests\*.test.js` both pass after the current Phase 12 implementation, with 92 passing tests in the current suite.
