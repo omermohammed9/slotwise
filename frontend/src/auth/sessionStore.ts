@@ -1,11 +1,15 @@
 import { useSyncExternalStore } from 'react';
+import type { SessionDto } from '../api/types';
 
 type SessionSnapshot = {
   token: string | null;
+  session: SessionDto | null;
+  clearSession: () => void;
+  setSession: (session: SessionDto | null) => void;
   setToken: (token: string | null) => void;
 };
 
-let memoryToken: string | null = null;
+let memorySession: SessionDto | null = null;
 const listeners = new Set<() => void>();
 
 function emitChange() {
@@ -17,20 +21,45 @@ function subscribe(listener: () => void) {
   return () => listeners.delete(listener);
 }
 
-function getTokenSnapshot(): string | null {
-  return memoryToken;
+function getSessionSnapshot(): SessionDto | null {
+  return memorySession;
 }
 
-function setToken(token: string | null) {
-  memoryToken = token;
+function setSession(session: SessionDto | null) {
+  memorySession = session;
   emitChange();
 }
 
+function setToken(token: string | null) {
+  setSession(
+    token
+      ? {
+          actorId: 'demo-operator',
+          role: 'owner',
+          token,
+        }
+      : null,
+  );
+}
+
+function clearSession() {
+  setSession(null);
+}
+
 export function useSessionStore(): SessionSnapshot {
-  const token = useSyncExternalStore(subscribe, getTokenSnapshot, getTokenSnapshot);
+  const session = useSyncExternalStore(subscribe, getSessionSnapshot, getSessionSnapshot);
 
   return {
-    token,
+    clearSession,
+    session,
+    setSession,
     setToken,
+    token: session?.token ?? null,
   };
 }
+
+export const sessionStore = {
+  clearSession,
+  getSnapshot: getSessionSnapshot,
+  setSession,
+};
