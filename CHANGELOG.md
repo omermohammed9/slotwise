@@ -111,3 +111,20 @@
 - Added the Phase 16 frontend-backend coverage matrix, covering admin/operator, customer portal, public booking page, and iframe-first widget feature targets.
 - Added the Phase 16.2 frontend route map and app shell routing with React Router routes for admin dashboard, bookings, timeline, customers, resources, settings, customer portal, public booking page, and widget surfaces.
 - Added responsive route placeholders and navigation tests for the new frontend route shell.
+- Added Phase 16.3 shared frontend API DTOs and endpoint modules for auth, bookings, businesses, service/resources, customers, public booking-page config, and widget config.
+- Improved the frontend API client with query serialization, JSON body support, bearer-token headers, and no-content response handling.
+- Added Phase 16.4 operator login UI, protected admin routes, in-memory session metadata, and shell logout behavior while keeping tokens out of persistent browser storage.
+- Added Phase 16.5 `/admin/bookings` list coverage with TanStack Query-backed records, customer search, status/risk filters, sorting, pagination controls, and loading/error/empty states.
+- Added Phase 16.6 read-only booking detail drawer coverage backed by `GET /bookings/:id`, including contact details, schedule, notes, conflict-risk signals, operational IDs, and status history.
+- Added Phase 16.7 role-aware booking lifecycle controls for approve, reject, cancel, complete, and no-show actions in the booking detail drawer, with confirmations, mutation states, and query refresh.
+- Added Phase 16.8 operator reschedule and nearby slot suggestion flows in the booking detail drawer, using existing reschedule/suggestions routes with confirmation, pending/error states, and query refresh.
+- Added Phase 16.9 `/admin/timeline` coverage with a query-backed backend timeline feed, date/status/resource filters, summary metrics, day-grouped entries, conflict-risk markers, status chips, and reschedule badges.
+- Added Phase 16.10 `/admin` dashboard analytics coverage with query-backed KPI cards, lifecycle funnel bars, weekday/resource utilization, peak-time panels, filters, and loading/error/empty states.
+- Added Phase 16.11 cancellation/no-show insight coverage to `/admin`, including summary cards, weekday trend bars, reason summaries, loading/error states, and typed DTOs for the existing insights route.
+- Added Phase 16.12 `/admin/settings` business profile coverage with query-backed business selection, editable profile basics, save mutation states, and operating-readiness summaries.
+- Added Phase 16.13 `/admin/resources` service/resource management coverage with query-backed filters, list/empty/error states, a create form, and active/inactive toggle mutations.
+- Added Phase 16.14 `/admin/customers` customer management coverage with query-backed search filters, a customer directory, profile summary/details, and booking-history entry points through existing booking list filters.
+- Added Phase 16.15 `/admin/settings` business template gallery and read-only template preview using existing `/businesses/templates` client routes without backend changes or automatic resource seeding.
+- Added Phase 16.16 `/book/:slug` public booking page flow using existing public booking-page config, booking suggestion, and booking creation APIs, including resource/service selection, date/time and customer detail inputs, party-size/notes support, suggestion feedback, submit success/error states, empty states, and responsive public styling.
+- Added Phase 16.19 shared admin loading and inline success/error state helpers and applied them to the touched customer/settings admin screens.
+- Added Phase 16.20 responsive and accessibility QA polish across existing admin screens, including stronger focus states, live state messaging, selected/pressed states, dialog semantics, long-text wrapping, mobile grid fixes, and consistent admin loading/error/success handling.

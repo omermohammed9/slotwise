@@ -24,7 +24,7 @@ Current workspace folder: `Booking System`. Target workspace folder: `Slotwise`;
 - The frontend roadmap now also requires approval of the architecture/package adoption plan before scaffolding `frontend/`, with token/session storage, deployment, SSR/pre-rendering, and widget style isolation handled in that pre-scaffold checklist.
 - The Phase 14 pre-scaffold decisions are approved for planning: memory-only token storage for the first slice, static SPA deployment, deferred SSR/pre-rendering, and iframe isolation for third-party widget embeds.
 - The first isolated frontend scaffold now exists under `frontend/` with Vite, React, TypeScript, TanStack Query, Tailwind CSS, an admin dashboard shell, API/session foundations, and smoke tests.
-- Phase 16 is now the active frontend/backend alignment phase. Its first coverage matrix and route-map slice are complete; the scaffold still needs API DTO modules, query-backed workflows, customer portal screens, public booking page flow, and iframe-first widget UI.
+- Phase 16 is now the active frontend/backend alignment phase. Its first coverage matrix, route-map slice, shared API DTO/client slice, operator auth screen slice, query-backed bookings list, booking detail drawer, role-aware lifecycle actions, operator reschedule/suggestion flows, timeline view, dashboard analytics, cancellation/no-show insights, customer management, business settings with template preview, resources screens, public booking page flow, shared admin states, and responsive/accessibility QA pass are complete; the scaffold still needs customer portal screens and iframe-first widget UI.
 - The active roadmap now plans Repository Pattern, platform features, and future admin/customer UI/UX.
 
 ## Requirements
@@ -244,15 +244,15 @@ Business management routes are mounted under `/businesses`, `/service-resources`
 - The explicit booking metadata backfill command could not be executed from this machine because the current `MONGODB_URI` host does not exist in public DNS.
 - SMS delivery remains modeled but does not yet have a concrete provider implementation; email delivery is the supported live channel.
 - Frontend/admin visualization for these insights remains deferred until the UI phase begins.
-- The hosted public booking page is currently a backend bootstrap surface only; a dedicated public frontend experience is still deferred.
+- The hosted public booking page now has a dedicated `/book/:slug` frontend flow backed by existing public config, suggestion, and booking creation APIs.
 - The embeddable widget is currently a backend bootstrap surface only; a dedicated hosted/embed frontend experience is still deferred.
 - Automatic service/resource creation from business template blueprints is still deferred; template discovery is available now, but seeding remains a later task.
 - Source folders/files now use professional dot-case naming for booking routes, controller, service, model, and interface files.
-- Frontend implementation is deferred until the UI/UX brief, auth model, and API roadmap are approved.
+- Frontend implementation is active under Phase 16 and remains governed by the UI/UX brief, auth model, and API roadmap.
 - The current frontend planning source of truth is `UI_UX_DESIGN_BRIEF.md`.
 - The current frontend implementation planning source of truth is `FRONTEND_IMPLEMENTATION_ROADMAP.md`.
 - The next frontend implementation step is to connect the frontend API client and route structure to live Slotwise backend flows.
-- The current frontend implementation phase is Phase 16; route-map/app-shell routing is complete, and shared API DTO/client modules come before auth-sensitive screens.
+- The current frontend implementation phase is Phase 16; route-map/app-shell routing, shared API DTO/client modules, operator auth/memory-session flow, the query-backed `/admin/bookings` list, the booking detail drawer, role-aware lifecycle actions, operator reschedule/suggestion flows, the query-backed `/admin/timeline` view, dashboard analytics, cancellation/no-show insights, customer management, business settings with read-only template preview, resources management, the public `/book/:slug` booking flow, shared admin states, and responsive/accessibility QA pass are complete.
 - Browser visual QA for the first scaffold still needs to run once the in-app browser runtime is available in this Windows sandbox.
 - The remaining repository-folder rename is tracked in the implementation plan and should be handled only after workspace path risk is accepted.
 

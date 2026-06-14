@@ -56,9 +56,24 @@ This selection keeps the frontend independent from the Express backend, allows s
 ## Phase 16 Alignment Snapshot
 - The frontend/backend alignment phase is now Phase 16 because Phase 15 is already used for completed dependency modernization.
 - The Phase 16 coverage matrix lives in `IMPLEMENTATION_PLAN.md`.
-- Current scaffold coverage is intentionally narrow: app shell, static admin dashboard examples, API envelope foundation, memory-only session store, and smoke tests.
+- Current admin coverage now includes the app shell, memory-only operator session, query-backed dashboard analytics, cancellation/no-show insights, bookings, timeline, customers, settings, resources, and settings template-preview screens over existing backend APIs.
 - Route-map/app-shell routing is complete with central route metadata, shell links, admin route placeholders, public-surface routes, responsive styling, and route navigation tests.
-- The next implementation slice is shared API DTO/client modules before auth-sensitive screens.
+- Shared API DTO/client modules are complete with typed wrappers for auth, bookings, businesses, service/resources, customers, public booking-page config, and widget config.
+- Operator auth screens and memory-session flow are complete with `/login`, protected admin routes, memory-only session metadata, and logout UI.
+- The bookings list slice is complete with a query-backed `/admin/bookings` screen, customer search, status/risk filters, sorting, pagination controls, and responsive record rendering.
+- The booking detail slice is complete with a drawer backed by `GET /bookings/:id`, covering contact, schedule, notes, conflict risk, operational IDs, status history, role-aware lifecycle actions, operator rescheduling, and nearby suggestions.
+- The booking lifecycle actions slice is complete with approve, reject, cancel, complete, and no-show mutations gated by operator role and confirmation prompts.
+- The booking reschedule and suggestion slice is complete for operator-managed pending/approved bookings without customer magic-link/session storage changes.
+- The timeline/calendar slice is complete with a query-backed `/admin/timeline` view, filters, summary metrics, day groups, risk markers, and reschedule badges.
+- The dashboard analytics slice is complete with query-backed KPI, lifecycle funnel, utilization, and peak-time panels.
+- Cancellation/no-show insights now appear on `/admin` with summary cards, weekday trend bars, and reason summaries using the existing dashboard filters.
+- Business settings now have query-backed profile selection, editable profile basics, save mutation states, operating-readiness summaries, and read-only business template gallery/preview coverage on `/admin/settings`.
+- Service/resource management now has query-backed filters, resource list states, create form, and active/inactive toggles on `/admin/resources`.
+- Customer management now has query-backed filters, a customer directory, profile details, and booking-history entry points on `/admin/customers`.
+- Public booking page flow is complete on `/book/:slug` with backend-config branding, service/resource selection, date/time and customer detail inputs, party-size/notes support, suggestion feedback, submit states, success/error/empty states, and responsive public layout.
+- Shared admin loading and inline success/error state helpers now support the touched Phase 16 admin surfaces.
+- Responsive and accessibility QA is complete for existing Phase 16 admin screens, covering mobile/tablet layout resilience, focus states, live state messaging, selected/pressed states, dialog semantics, and long-text overflow.
+- The next implementation slice is customer magic-link/customer portal UI, widget UI foundation, or another separately approved admin/public-surface hardening slice.
 - All Phase 16 UI work must stay reusable, responsive, minimal, and aligned with `UI_UX_DESIGN_BRIEF.md`; auth/session and lifecycle-action screens remain high-reasoning approval gates.
 
 ## Selected Initial Folder Strategy

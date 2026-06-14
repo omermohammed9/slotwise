@@ -119,8 +119,14 @@ Client / Future Frontend
 - Frontend route map: `frontend/src/app/routeMap.tsx`
 - Frontend app shell layout: `frontend/src/app/AppShell.tsx`
 - Frontend dashboard page: `frontend/src/features/admin/DashboardPage.tsx`
+- Frontend customer management page: `frontend/src/features/admin/CustomersPage.tsx`
+- Frontend public booking page: `frontend/src/features/public/PublicBookingPage.tsx`
 - Frontend API client foundation: `frontend/src/api/client.ts`
+- Frontend API DTOs: `frontend/src/api/types.ts`
+- Frontend API endpoint modules: `frontend/src/api/auth.ts`, `frontend/src/api/bookings.ts`, `frontend/src/api/businesses.ts`, `frontend/src/api/resources.ts`, `frontend/src/api/customers.ts`, and `frontend/src/api/publicSurfaces.ts`
 - Frontend session store: `frontend/src/auth/sessionStore.ts`
+- Frontend operator login page: `frontend/src/auth/LoginPage.tsx`
+- Frontend protected admin layout: `frontend/src/auth/ProtectedAdminLayout.tsx`
 
 ## Routes
 - Auth routes:
@@ -252,3 +258,19 @@ Codex-specific governance should live in `.codex/`. If `.agents/` exists, treat 
 - Dependency modernization is planned as Phase 15, including npm repair, vulnerability fixes, package updates, obsolete package removal, and carefully justified modern package additions.
 - Phase 16 now owns frontend/backend feature alignment, including route coverage, API DTO modules, admin/operator screens, customer portal, public booking page, and iframe-first widget UI foundation.
 - Phase 16.2 added route coverage for `/admin`, `/admin/bookings`, `/admin/timeline`, `/admin/customers`, `/admin/resources`, `/admin/settings`, `/portal`, `/book/:slug`, and `/widget/:slug` without changing backend APIs or auth behavior.
+- Phase 16.3 added typed frontend API modules over the existing backend routes without changing backend APIs, auth behavior, package dependencies, or token storage.
+- Phase 16.4 added operator login and protected admin route behavior on top of the existing backend `/auth/session` route while preserving memory-only token storage.
+- Phase 16.5 replaced the `/admin/bookings` placeholder with a TanStack Query-backed booking list that consumes `GET /bookings` filters, sorting, pagination metadata, and bearer-session headers.
+- Phase 16.6 added a read-only booking detail drawer on `/admin/bookings` that consumes `GET /bookings/:id` for customer contact, schedule, notes, conflict-risk signals, operational IDs, and status history.
+- Phase 16.7 added role-aware approve, reject, cancel, complete, and no-show controls to the `/admin/bookings` detail drawer using existing lifecycle routes, confirmation prompts, mutation states, and query refresh.
+- Phase 16.8 added operator-only reschedule and nearby suggestion controls to the `/admin/bookings` detail drawer using existing `PATCH /bookings/:id/reschedule` and `POST /bookings/suggestions` routes, with confirmation prompts, mutation states, and query refresh.
+- Phase 16.9 replaced the `/admin/timeline` placeholder with a query-backed view over `GET /bookings/timeline`, including filters, summary metrics, day-grouped booking entries, status chips, conflict-risk markers, and reschedule badges.
+- Phase 16.10 replaced static `/admin` dashboard examples with query-backed analytics from `GET /bookings/insights/dashboard`, including KPI cards, lifecycle funnel bars, weekday/resource utilization, peak-time panels, and dashboard filters.
+- Phase 16.11 added `/admin` cancellation/no-show insight coverage over `GET /bookings/insights/cancellation-no-show`, including summary cards, weekday trends, and reason summaries.
+- Phase 16.12 replaced the `/admin/settings` placeholder with query-backed business profile selection, editable profile basics, save states, and operating-readiness summaries over `/businesses`.
+- Phase 16.13 replaced the `/admin/resources` placeholder with query-backed service/resource filters, list states, create form, and active/inactive toggle mutations over `/service-resources`.
+- Phase 16.14 replaced the `/admin/customers` placeholder with query-backed customer filters, a customer directory, profile summary/details, and booking-history entry points over `/customers` and existing booking list filters.
+- Phase 16.15 folded business template selection into `/admin/settings` with a read-only gallery and preview over `/businesses/templates`, without automatic service/resource seeding.
+- Phase 16.16 replaced the `/book/:slug` placeholder with a customer-facing public booking page flow over `GET /businesses/public/:slug/booking-page`, `POST /bookings/suggestions`, and `POST /bookings`, without backend API changes, new packages, customer portal work, widget foundation, persistent token storage, or automatic template resource seeding.
+- Phase 16.19 added small shared frontend loading and inline success/error state helpers for the touched admin surfaces.
+- Phase 16.20 polished existing admin screens for responsive and accessibility QA, including focus-visible states, live state messaging, selected/pressed states, dialog semantics, mobile/tablet grid behavior, and long-text overflow handling.

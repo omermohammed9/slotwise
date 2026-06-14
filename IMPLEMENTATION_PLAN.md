@@ -776,44 +776,44 @@ Progress:
 |---|---|---:|---|---|---|
 | 16.1 Create frontend-backend coverage matrix | Documentation / Audit | Done | Low | User approved Phase 16 renumber | Manual matrix review |
 | 16.2 Add frontend route map and app shell routing | UX/UI | Done | Medium | User switched to 5.5 medium | Frontend build/tests |
-| 16.3 Add shared API client modules and DTOs | Architecture | Planned | Medium | Ask before implementation | Typecheck/tests |
-| 16.4 Add operator auth screens and memory-session flow | Security / UX/UI | Planned | High | Yes | Auth tests/build |
-| 16.5 Add bookings list with filters, sorting, pagination | Feature / UX/UI | Planned | Medium | Ask | Component/API tests |
-| 16.6 Add booking detail drawer/page | Feature / UX/UI | Planned | Medium | Ask | Component tests |
-| 16.7 Add booking lifecycle actions | Security / UX/UI | Planned | High | Yes | Action tests |
-| 16.8 Add booking reschedule and suggestion flows | Feature / UX/UI | Planned | Medium/High | Ask | Flow tests |
-| 16.9 Add timeline/calendar frontend view | UX/UI | Planned | Medium | Ask | Build/tests |
-| 16.10 Add dashboard analytics views | UX/UI | Planned | Medium | Ask | Chart/data tests |
-| 16.11 Add cancellation/no-show insights views | UX/UI | Planned | Medium | Ask | Component tests |
-| 16.12 Add business profile/settings screens | Feature / UX/UI | Planned | Medium | Ask | Form tests |
-| 16.13 Add service/resource management screens | Feature / UX/UI | Planned | Medium | Ask | Form/list tests |
-| 16.14 Add customer management screens | Feature / UX/UI | Planned | Medium | Ask | Form/list tests |
-| 16.15 Add business template selection UI | UX/UI | Planned | Medium | Ask | Component tests |
-| 16.16 Add public booking page flow | UX/UI | Planned | Medium/High | Ask | Public flow tests |
+| 16.3 Add shared API client modules and DTOs | Architecture | Done | Medium | User approved proceed on 5.5 medium | Typecheck/tests |
+| 16.4 Add operator auth screens and memory-session flow | Security / UX/UI | Done | High | User approved high reasoning | Auth tests/build |
+| 16.5 Add bookings list with filters, sorting, pagination | Feature / UX/UI | Done | Medium | User approved proceed | Frontend tests/build |
+| 16.6 Add booking detail drawer/page | Feature / UX/UI | Done | Medium | User approved moving on | Frontend tests/build |
+| 16.7 Add booking lifecycle actions | Security / UX/UI | Done | High | User approved high reasoning | Frontend tests/typecheck/build/HTTP smoke |
+| 16.8 Add booking reschedule and suggestion flows | Feature / UX/UI | Done | Medium/High | User approved implementation | Frontend tests/typecheck/build/HTTP smoke |
+| 16.9 Add timeline/calendar frontend view | UX/UI | Done | Medium | User approved implementation | Frontend tests/typecheck/build/HTTP smoke |
+| 16.10 Add dashboard analytics views | UX/UI | Done | Medium | User approved implementation | Frontend tests/typecheck/build/HTTP smoke |
+| 16.11 Add cancellation/no-show insights views | UX/UI | Done | Medium | User approved implementation | Frontend tests/typecheck/build/HTTP smoke |
+| 16.12 Add business profile/settings screens | Feature / UX/UI | Done | Medium | User approved implementation | Frontend tests/typecheck/build/HTTP smoke |
+| 16.13 Add service/resource management screens | Feature / UX/UI | Done | Medium | User approved implementation | Frontend tests/typecheck/build/HTTP smoke |
+| 16.14 Add customer management screens | Feature / UX/UI | Done | Medium | User approved implementation | Frontend tests/typecheck/build/HTTP smoke |
+| 16.15 Add business template selection UI | UX/UI | Done | Medium | User approved implementation | Frontend tests/typecheck/build/HTTP smoke |
+| 16.16 Add public booking page flow | UX/UI | Done | Medium/High | User approved medium/high | Frontend tests/typecheck/build/HTTP smoke/browser QA attempt |
 | 16.17 Add customer magic-link and booking management flow | Security / UX/UI | Planned | High | Yes | Auth flow tests |
 | 16.18 Add embeddable widget frontend foundation | UX/UI | Planned | Medium/High | Ask | iframe/widget smoke |
-| 16.19 Add global loading, empty, error, success states | UX/UI | Planned | Medium | Ask | Component tests |
-| 16.20 Add responsive and accessibility QA pass | Test / UX/UI | Planned | Medium | Ask | Build/tests/browser QA |
+| 16.19 Add global loading, empty, error, success states | UX/UI | Done | Medium | User approved implementation | Frontend tests/typecheck/build/HTTP smoke |
+| 16.20 Add responsive and accessibility QA pass | Test / UX/UI | Done | Medium | User approved implementation | Frontend tests/typecheck/build/HTTP smoke/browser QA attempt |
 
 Frontend-backend coverage matrix:
 | Backend capability | Route/API surface | Current frontend coverage | Phase 16 target |
 |---|---|---|---|
-| Operator session auth | `POST /auth/session`, `GET /auth/session`, `DELETE /auth/session` | Memory-session store only; no login route or guard | Login, session status, logout, guarded admin shell |
-| Customer magic-link auth | `POST /auth/customer/magic-link`, `POST /auth/customer/verify` | Not covered | Customer sign-in, verification, session-aware management |
-| Booking list and search | `GET /bookings` with filters, pagination, sorting | `/admin/bookings` route placeholder plus static dashboard queue | Query-backed list, filters, sorting, pagination, responsive table/list |
-| Booking detail | `GET /bookings/:id` | Not covered | Detail drawer/page with customer, time, notes, status history, risk |
-| Booking lifecycle | approve, reject, cancel, complete, no-show routes | Not covered | Role-aware action controls, confirmations, mutation states |
-| Booking reschedule | `PATCH /bookings/:id/reschedule` | Not covered | Operator reschedule form with validation and feedback |
-| Booking suggestions | `POST /bookings/suggestions` | Not covered | Nearby slot suggestions integrated with reschedule/create flows |
-| Timeline feed | `GET /bookings/timeline` | `/admin/timeline` route placeholder plus static dashboard timeline | Query-backed day/week/resource timeline |
-| Dashboard analytics | `GET /bookings/insights/dashboard` | `/admin` route with static metric cards | KPI, funnel, utilization, peak-time analytics |
-| Cancellation/no-show insights | `GET /bookings/insights/cancellation-no-show` | Admin route map exists; no dedicated insights component | Insight cards, trends, reason summaries |
-| Business profiles | `/businesses` | `/admin/settings` route placeholder | Profile/settings screens, working hours, blackout dates, public/widget settings |
-| Business templates | `GET /businesses/templates`, `GET /businesses/templates/:templateKey` | `/admin/settings` route placeholder mentions templates | Template gallery/selection flow |
-| Service/resources | `/service-resources` | `/admin/resources` route placeholder | Resource list, create/edit forms, active/inactive states |
-| Customers | `/customers` | `/admin/customers` route placeholder | Customer list/profile, booking history entry points |
-| Public booking page config | `GET /businesses/public/:slug/booking-page` | `/book/:slug` route placeholder and surface nav link | Branded public flow consuming backend config |
-| Widget config | `GET /businesses/public/:slug/widget` | `/widget/:slug` route placeholder and surface nav link | Compact iframe-ready widget foundation |
+| Operator session auth | `POST /auth/session`, `GET /auth/session`, `DELETE /auth/session` | `/login`, memory-only session store, protected admin shell, and logout UI | Future hardening can add current-session revalidation and cookie-based persistence after approval |
+| Customer magic-link auth | `POST /auth/customer/magic-link`, `POST /auth/customer/verify` | Typed auth API module; no customer screens | Customer sign-in, verification, session-aware management |
+| Booking list and search | `GET /bookings` with filters, pagination, sorting | `/admin/bookings` now renders a TanStack Query-backed bookings list with customer search, status/risk filters, sorting, pagination controls, loading/error/empty states, and responsive table/list layout | Future hardening can move filter state into URL search params and saved views |
+| Booking detail | `GET /bookings/:id` | `/admin/bookings` opens a detail drawer backed by `GET /bookings/:id`, showing customer contact, schedule, metadata IDs, notes, conflict-risk summary/signals, status history, lifecycle controls, and operator rescheduling | Future hardening can add deeper audit reason capture after approval |
+| Booking lifecycle | approve, reject, cancel, complete, no-show routes | Detail drawer exposes role-aware approve/reject/cancel/complete/no-show actions with confirmation prompts, mutation states, and query invalidation | Future lifecycle work stays limited to separately approved reschedule/customer flows |
+| Booking reschedule | `PATCH /bookings/:id/reschedule` | Detail drawer exposes an operator-only pending/approved reschedule form with datetime fields, optional reason, confirmation, mutation states, and query refresh | Future customer reschedule flow remains separate and high-gated |
+| Booking suggestions | `POST /bookings/suggestions` | Detail drawer can request nearby slot suggestions from the reschedule form and apply a suggested slot to the draft schedule | Future create-flow suggestion integration remains deferred |
+| Timeline feed | `GET /bookings/timeline` | `/admin/timeline` now renders a query-backed timeline with date/status/resource filters, summary metrics, day-grouped entries, risk markers, status chips, and reschedule badges | Future hardening can add richer calendar lane interactions |
+| Dashboard analytics | `GET /bookings/insights/dashboard` | `/admin` now renders query-backed KPI cards, lifecycle funnel bars, weekday/resource utilization, peak-time panels, and dashboard filters | Future hardening can add richer chart interactions |
+| Cancellation/no-show insights | `GET /bookings/insights/cancellation-no-show` | `/admin` now renders cancellation/no-show summary cards, weekday trend bars, and reason summaries with the existing dashboard filters | Future hardening can add richer drilldowns after approval |
+| Business profiles | `/businesses` | `/admin/settings` now renders query-backed business selection, editable profile basics, save mutation states, operating-readiness summaries, and a read-only template preview area | Future hardening can add working-hour/blackout editors after approval |
+| Business templates | `GET /businesses/templates`, `GET /businesses/templates/:templateKey` | `/admin/settings` now renders a template gallery and read-only template preview using existing template routes without seeding resources | Future hardening can add explicit template-apply flows after approval |
+| Service/resources | `/service-resources` | `/admin/resources` now renders query-backed filters, a resource list, create form, and active/inactive toggle mutations | Future hardening can add full edit drawers and availability override editors after approval |
+| Customers | `/customers` | `/admin/customers` now renders query-backed customer filters, directory rows, profile summary/details, and booking-history entry points via existing booking filters | Future hardening can add edit/create flows after approval |
+| Public booking page config | `GET /businesses/public/:slug/booking-page`, `POST /bookings/suggestions`, `POST /bookings` | `/book/:slug` now renders a branded public booking flow with resource/service selection, date/time inputs, customer details, party-size/notes support, suggestions, submit, success/error/loading/empty states, and responsive public layout | Future hardening can add customer portal handoff, widget reuse, or richer validation only after separate approval |
+| Widget config | `GET /businesses/public/:slug/widget` | `/widget/:slug` route placeholder plus typed public-surface API module | Compact iframe-ready widget foundation |
 
 Design and engineering guardrails:
 - Keep frontend implementation inside `frontend/`.
@@ -830,6 +830,24 @@ Completed notes:
 3. Confirmed low reasoning is sufficient only for Phase 16 documentation/audit work; implementation tasks require medium, and auth/security tasks require high approval.
 4. Added a central frontend route map, real React Router shell routing, admin navigation links, public-surface links, and responsive route placeholders for admin, customer portal, public booking page, and widget surfaces.
 5. Kept Phase 16.2 free of auth guards, token-storage changes, backend API behavior changes, and new packages.
+6. Added shared frontend DTOs and endpoint modules for auth, bookings, businesses, service/resources, customers, public booking page config, and public widget config.
+7. Improved the shared API client with query serialization, JSON body handling, bearer-token headers, and `204` no-content handling while preserving the backend response envelope contract.
+8. Added operator login UI at `/login`, protected admin routing, memory-only session metadata, and shell logout behavior without adding persistent token storage.
+9. Kept public booking, widget, and customer portal routes outside the operator guard.
+10. Added the Phase 16.16 customer-facing `/book/:slug` flow using existing public booking-page config, booking suggestion, and booking creation API clients/routes only.
+11. Kept Phase 16.16 free of backend API changes, package additions, customer magic-link/customer portal flow, widget foundation, persistent token storage, and automatic template resource seeding.
+10. Added a query-backed `/admin/bookings` screen with customer search, status/risk filters, sort controls, pagination controls, loading/error/empty states, and responsive booking records.
+11. Added a read-only booking detail drawer backed by `GET /bookings/:id` with customer contact, schedule, notes, conflict-risk signals, operational IDs, and status history.
+12. Added role-aware lifecycle controls in the booking detail drawer for approve, reject, cancel, complete, and no-show transitions, with confirmation prompts, mutation pending/error handling, and booking query refresh.
+13. Added operator reschedule and nearby suggestion flows to the booking detail drawer for pending/approved bookings, using existing reschedule and suggestions routes with confirmation, pending/error states, and query refresh.
+14. Added a query-backed `/admin/timeline` view using `GET /bookings/timeline`, with date/status/resource filters, summary metrics, day-grouped entries, conflict-risk markers, status chips, reschedule badges, and loading/error/empty states.
+15. Replaced the static `/admin` dashboard examples with query-backed dashboard analytics using `GET /bookings/insights/dashboard`, including KPI cards, lifecycle funnel bars, weekday/resource utilization, peak-time panels, filters, and loading/error/empty states.
+16. Added cancellation/no-show insight coverage to `/admin` using `GET /bookings/insights/cancellation-no-show`, with summary cards, weekday trend bars, reason summaries, dashboard filters, loading/error states, and typed DTO coverage.
+17. Replaced the `/admin/settings` placeholder with a query-backed business settings screen over `/businesses`, including business selection, editable profile basics, save mutation states, and an operating-readiness summary for template, rules, working hours, widget, and public-page posture.
+18. Replaced the `/admin/resources` placeholder with a query-backed service/resource management screen over `/service-resources`, including business/type/active filters, resource list states, create form, and active/inactive toggle mutation states.
+19. Added shared loading and inline success/error state helpers for touched admin screens.
+20. Completed a responsive and accessibility QA pass across `/admin`, `/admin/bookings`, `/admin/timeline`, `/admin/customers`, `/admin/resources`, and `/admin/settings`, tightening keyboard focus states, live loading/error/success messaging, selected/pressed states, dialog semantics, long-text wrapping, mobile grids, filter controls, and row/card overflow without adding packages, backend API changes, or new product flows.
+21. Kept customer magic-link flows, customer self-service booking management, saved views, URL-persistent filters, persistent token storage, backend API changes, new packages, public booking flow, widget foundation, and automatic template resource seeding deferred to later approved slices.
 
 Verification:
 - Manual documentation review for the Phase 16 matrix and numbering.
@@ -838,6 +856,63 @@ Verification:
 - `.\node_modules\.bin\vite.cmd build` in `frontend/` passed.
 - Local HTTP smoke check returned `200` for `http://127.0.0.1:5173/admin` when Vite stayed up.
 - In-app browser QA remains blocked by the Windows sandbox browser runtime error `CreateProcessAsUserW failed: 5`.
+- Phase 16.3 verification: `.\node_modules\.bin\vitest.cmd run` in `frontend/` passed with 9 tests.
+- Phase 16.3 verification: `.\node_modules\.bin\tsc.cmd -b` in `frontend/` passed.
+- Phase 16.3 verification: `.\node_modules\.bin\vite.cmd build` in `frontend/` passed.
+- Phase 16.4 verification: `.\node_modules\.bin\vitest.cmd run` in `frontend/` passed with 11 tests.
+- Phase 16.4 verification: `.\node_modules\.bin\tsc.cmd -b` in `frontend/` passed.
+- Phase 16.4 verification: `.\node_modules\.bin\vite.cmd build` in `frontend/` passed.
+- Phase 16.5 verification: `.\node_modules\.bin\vitest.cmd run` in `frontend/` passed with 12 tests.
+- Phase 16.5 verification: `.\node_modules\.bin\tsc.cmd -b` in `frontend/` passed.
+- Phase 16.5 verification: `.\node_modules\.bin\vite.cmd build` in `frontend/` passed.
+- Phase 16.5 verification: same-shell Vite HTTP smoke check returned `200` for `http://127.0.0.1:5173/admin/bookings`.
+- Phase 16.5 browser QA was attempted but remains blocked by the Windows sandbox browser runtime error `CreateProcessAsUserW failed: 5`.
+- Phase 16.6 verification: `.\node_modules\.bin\vitest.cmd run` in `frontend/` passed with 13 tests.
+- Phase 16.6 verification: `.\node_modules\.bin\tsc.cmd -b` in `frontend/` passed.
+- Phase 16.6 verification: `.\node_modules\.bin\vite.cmd build` in `frontend/` passed.
+- Phase 16.6 verification: same-shell Vite HTTP smoke check returned `200` for `http://127.0.0.1:5173/admin/bookings`.
+- Phase 16.6 browser QA was attempted but remains blocked by the Windows sandbox browser runtime error `CreateProcessAsUserW failed: 5`.
+- Phase 16.7 verification: `.\node_modules\.bin\vitest.cmd run` in `frontend/` passed with 15 tests.
+- Phase 16.7 verification: `.\node_modules\.bin\tsc.cmd -b` in `frontend/` passed.
+- Phase 16.7 verification: `.\node_modules\.bin\vite.cmd build` in `frontend/` passed.
+- Phase 16.7 verification: same-shell Vite HTTP smoke check returned `200` for `http://127.0.0.1:5173/admin/bookings`.
+- Phase 16.7 browser QA was attempted but remains blocked by the Windows sandbox browser runtime error `CreateProcessAsUserW failed: 5`.
+- Phase 16.8 verification: `.\node_modules\.bin\vitest.cmd run` in `frontend/` passed with 16 tests.
+- Phase 16.8 verification: `.\node_modules\.bin\tsc.cmd -b` in `frontend/` passed.
+- Phase 16.8 verification: `.\node_modules\.bin\vite.cmd build` in `frontend/` passed.
+- Phase 16.8 verification: same-shell Vite HTTP smoke check returned `200` for `http://127.0.0.1:5173/admin/bookings`.
+- Phase 16.8 browser QA was attempted but remains blocked by the Windows sandbox browser runtime error `CreateProcessAsUserW failed: 5`.
+- Phase 16.9 verification: `.\node_modules\.bin\vitest.cmd run` in `frontend/` passed with 17 tests.
+- Phase 16.9 verification: `.\node_modules\.bin\tsc.cmd -b` in `frontend/` passed.
+- Phase 16.9 verification: `.\node_modules\.bin\vite.cmd build` in `frontend/` passed.
+- Phase 16.9 verification: same-shell Vite HTTP smoke check returned `200` for `http://127.0.0.1:5173/admin/timeline`.
+- Phase 16.9 browser QA was attempted but remains blocked by the Windows sandbox browser runtime error `CreateProcessAsUserW failed: 5`.
+- Phase 16.10 verification: `.\node_modules\.bin\vitest.cmd run` in `frontend/` passed with 17 tests.
+- Phase 16.10 verification: `.\node_modules\.bin\tsc.cmd -b` in `frontend/` passed.
+- Phase 16.10 verification: `.\node_modules\.bin\vite.cmd build` in `frontend/` passed.
+- Phase 16.10 verification: same-shell Vite HTTP smoke check returned `200` for `http://127.0.0.1:5173/admin`.
+- Phase 16.10 browser QA was attempted but remains blocked by the Windows sandbox browser runtime error `CreateProcessAsUserW failed: 5`.
+- Phase 16.11-16.13 verification: `.\node_modules\.bin\vitest.cmd run` in `frontend/` passed with 19 tests.
+- Phase 16.11-16.13 verification: `.\node_modules\.bin\tsc.cmd -b` in `frontend/` passed.
+- Phase 16.11-16.13 verification: `.\node_modules\.bin\vite.cmd build` in `frontend/` passed.
+- Phase 16.11-16.13 verification: same-shell Vite HTTP smoke checks returned `200` for `http://127.0.0.1:5173/admin`, `http://127.0.0.1:5173/admin/settings`, and `http://127.0.0.1:5173/admin/resources`.
+- Phase 16.11-16.13 browser QA was attempted but remains blocked by the Windows sandbox browser runtime error `CreateProcessAsUserW failed: 5`.
+- Phase 16.14-16.15 and 16.19 verification: `.\node_modules\.bin\vitest.cmd run` in `frontend/` passed with 20 tests.
+- Phase 16.14-16.15 and 16.19 verification: `.\node_modules\.bin\tsc.cmd -b` in `frontend/` passed.
+- Phase 16.14-16.15 and 16.19 verification: `.\node_modules\.bin\vite.cmd build` in `frontend/` passed.
+- Phase 16.14-16.15 and 16.19 verification: same-shell Vite HTTP smoke checks returned `200` for `http://127.0.0.1:5173/admin/customers`, `http://127.0.0.1:5173/admin/settings`, and `http://127.0.0.1:5173/admin/bookings`.
+- Phase 16.14-16.15 and 16.19 browser QA was attempted but remains blocked by the Windows sandbox browser runtime error `CreateProcessAsUserW failed: 5`.
+- Phase 16.20 verification: global `npm run test:run` is blocked because the active npm shim points to missing `C:\Users\omarz\AppData\Roaming\npm\node_modules\npm\bin\npm-cli.js` under Node `v26.3.0`; local project binaries were used instead.
+- Phase 16.20 verification: `.\node_modules\.bin\vitest.cmd run` in `frontend/` passed with 20 tests.
+- Phase 16.20 verification: `.\node_modules\.bin\tsc.cmd -b` in `frontend/` passed.
+- Phase 16.20 verification: `.\node_modules\.bin\vite.cmd build` in `frontend/` passed.
+- Phase 16.20 verification: same-shell Vite HTTP smoke checks returned `200` for `http://127.0.0.1:5173/admin`, `http://127.0.0.1:5173/admin/bookings`, `http://127.0.0.1:5173/admin/timeline`, `http://127.0.0.1:5173/admin/customers`, `http://127.0.0.1:5173/admin/resources`, and `http://127.0.0.1:5173/admin/settings`.
+- Phase 16.20 browser QA was attempted but remains blocked by the Windows sandbox browser runtime error `CreateProcessAsUserW failed: 5`.
+- Phase 16.16 verification: `.\node_modules\.bin\vitest.cmd run` in `frontend/` passed with 22 tests.
+- Phase 16.16 verification: `.\node_modules\.bin\tsc.cmd -b` in `frontend/` passed.
+- Phase 16.16 verification: `.\node_modules\.bin\vite.cmd build` in `frontend/` passed.
+- Phase 16.16 verification: same-shell Vite HTTP smoke check returned `200` for `http://127.0.0.1:5175/book/demo-business`.
+- Phase 16.16 browser QA was attempted but remains blocked by the Windows sandbox browser runtime error `CreateProcessAsUserW failed: 5`.
 
 ## Completion Criteria
 - Required docs are current after every phase.

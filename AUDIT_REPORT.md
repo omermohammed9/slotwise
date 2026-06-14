@@ -88,6 +88,14 @@ No existing project documentation was found, so there is no implementation-vs-do
 - Phase 16 now tracks frontend/backend feature alignment and full frontend component coverage, with dependency modernization preserved as the completed Phase 15.
 - The first Phase 16 coverage matrix shows that the current frontend scaffold covers only a static admin shell, static queue/timeline examples, API envelope basics, and memory-session storage; live routes, DTOs, forms, customer portal, public booking page, and widget UI remain to be implemented.
 - Phase 16.2 route coverage is now improved: the frontend has a central route map, real React Router navigation, admin route placeholders, and public-surface routes, but the routes are not yet query-backed and do not yet include forms or auth guards.
+- Phase 16.3 API contract coverage is now improved: typed frontend DTOs and endpoint modules exist for the implemented backend surfaces, but most screens are not yet wired to TanStack Query or live mutation states.
+- Phase 16.4 operator auth coverage is now improved: admin routes redirect to `/login`, successful operator login stores the returned session in memory only, and the shell exposes operator session context plus logout.
+- Phase 16.5 booking-list coverage is now improved: `/admin/bookings` consumes `GET /bookings` through TanStack Query with customer search, status/risk filters, sorting, pagination metadata, and loading/error/empty states.
+- Phase 16.6 booking-detail coverage is now improved: `/admin/bookings` can open a read-only detail drawer backed by `GET /bookings/:id`, including contact details, schedule, notes, conflict-risk signals, operational IDs, and status history.
+- Phase 16.7 booking-lifecycle coverage is now improved: the booking detail drawer exposes role-aware approve, reject, cancel, complete, and no-show actions using existing backend lifecycle routes, confirmation prompts, mutation states, and query refresh.
+- Phase 16.8 booking-reschedule coverage is now improved: the booking detail drawer exposes operator-only reschedule and nearby suggestion flows using existing backend routes, confirmation prompts, mutation states, and query refresh.
+- Phase 16.9 timeline coverage is now improved: `/admin/timeline` consumes `GET /bookings/timeline` with filters, summary metrics, day-grouped entries, status chips, conflict-risk markers, and reschedule badges.
+- Phase 16.10 dashboard analytics coverage is now improved: `/admin` consumes `GET /bookings/insights/dashboard` with KPI cards, lifecycle funnel bars, weekday/resource utilization, peak-time panels, dashboard filters, and loading/error/empty states.
 
 ## Implementation Risks To Carry Forward
 - Configuration fixes may intentionally fail startup earlier when required env vars are missing.
@@ -99,9 +107,10 @@ No existing project documentation was found, so there is no implementation-vs-do
 - Dependency upgrades can break runtime behavior, TypeScript types, tests, or external integration behavior; Phase 15 requires small updates, compile/tests after each change, and explicit major-upgrade migration notes.
 - New packages can increase security and maintenance burden; Phase 15 requires a purpose, maintenance check, security check, and documentation update before adoption.
 - Machine-level npm repair is still desirable, but it is no longer a blocker for read-only Phase 15 audit commands because the bundled CLI fallback works.
-- Phase 16 frontend implementation can drift from backend DTOs unless shared frontend types and query-backed API modules are added early.
-- Phase 16 auth and lifecycle-action UI must stay approval-gated because token handling, customer magic-link flows, and booking status actions are security-sensitive.
-- Browser visual QA remains limited by the in-app browser runtime failure, so Phase 16.2 visual confidence currently comes from responsive CSS review, route tests, Vite build, and a local HTTP smoke check.
+- Phase 16 frontend implementation can still drift from backend DTOs because the current DTOs are manually maintained; generated contracts or broader contract tests remain future hardening.
+- Phase 16 auth, customer magic-link, persistent session, and future lifecycle expansion work must stay approval-gated because token handling and booking status actions are security-sensitive.
+- Phase 16.4 intentionally does not persist sessions across refreshes; persistent login still requires a separate backend cookie-session review.
+- Browser visual QA remains limited by the in-app browser runtime failure, so Phase 16 visual confidence currently comes from responsive CSS review, route/component tests, Vite build, and local HTTP smoke checks.
 
 ## Phase 4 Security Review
 - Removed `password` from `src/interfaces/booking.interface.ts` and `src/models/booking.model.ts`.
