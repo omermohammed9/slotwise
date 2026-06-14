@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react';
+import type { BookingStatus } from '../api/types';
 
 type StatusChipProps = {
   children: ReactNode;
-  status: 'approved' | 'cancelled' | 'completed' | 'pending' | 'rejected' | 'reschedule';
+  status: BookingStatus | 'reschedule';
 };
 
 export function StatusChip({ children, status }: StatusChipProps) {

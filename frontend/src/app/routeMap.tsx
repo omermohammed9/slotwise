@@ -12,7 +12,13 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import type { ReactElement } from 'react';
 import { RoutePlaceholder } from '../components/RoutePlaceholder';
+import { BookingsPage } from '../features/admin/BookingsPage';
+import { CustomersPage } from '../features/admin/CustomersPage';
 import { DashboardPage } from '../features/admin/DashboardPage';
+import { ResourcesPage } from '../features/admin/ResourcesPage';
+import { SettingsPage } from '../features/admin/SettingsPage';
+import { TimelinePage } from '../features/admin/TimelinePage';
+import { PublicBookingPage } from '../features/public/PublicBookingPage';
 
 export type AppRoute = {
   path: string;
@@ -37,75 +43,35 @@ export const appRoutes: readonly AppRoute[] = [
     label: 'Bookings',
     icon: CalendarDays,
     nav: 'admin',
-    element: (
-      <RoutePlaceholder
-        eyebrow="Admin workspace"
-        title="Bookings"
-        summary="Booking records, saved views, filters, and detail review share one operational route."
-        icon={CalendarDays}
-        checkpoints={['Filters and sorting', 'Responsive booking list', 'Detail drawer entry']}
-      />
-    ),
+    element: <BookingsPage />,
   },
   {
     path: '/admin/timeline',
     label: 'Timeline',
     icon: Clock3,
     nav: 'admin',
-    element: (
-      <RoutePlaceholder
-        eyebrow="Schedule"
-        title="Timeline"
-        summary="Day and resource views will use the backend timeline feed as the source of truth."
-        icon={Clock3}
-        checkpoints={['Day and week modes', 'Resource lanes', 'Conflict-risk markers']}
-      />
-    ),
+    element: <TimelinePage />,
   },
   {
     path: '/admin/customers',
     label: 'Customers',
     icon: UsersRound,
     nav: 'admin',
-    element: (
-      <RoutePlaceholder
-        eyebrow="Relationships"
-        title="Customers"
-        summary="Customer records and booking history stay scoped to the operator view."
-        icon={UsersRound}
-        checkpoints={['Customer list', 'Profile summary', 'Booking history']}
-      />
-    ),
+    element: <CustomersPage />,
   },
   {
     path: '/admin/resources',
     label: 'Resources',
     icon: Wrench,
     nav: 'admin',
-    element: (
-      <RoutePlaceholder
-        eyebrow="Inventory"
-        title="Resources"
-        summary="Services, staff, rooms, equipment, and bookable inventory use a shared management route."
-        icon={Wrench}
-        checkpoints={['Resource list', 'Create and edit forms', 'Capacity and availability']}
-      />
-    ),
+    element: <ResourcesPage />,
   },
   {
     path: '/admin/settings',
     label: 'Settings',
     icon: Settings,
     nav: 'admin',
-    element: (
-      <RoutePlaceholder
-        eyebrow="Business setup"
-        title="Settings"
-        summary="Business profile, working hours, templates, public page, and widget settings live together."
-        icon={Settings}
-        checkpoints={['Business profile', 'Template selection', 'Widget and public page settings']}
-      />
-    ),
+    element: <SettingsPage />,
   },
   {
     path: '/portal',
@@ -127,15 +93,7 @@ export const appRoutes: readonly AppRoute[] = [
     label: 'Public page',
     icon: Sparkles,
     nav: 'surface',
-    element: (
-      <RoutePlaceholder
-        eyebrow="Public booking"
-        title="Book a time"
-        summary="Hosted booking pages consume business branding, resources, and booking-page settings by slug."
-        icon={Sparkles}
-        checkpoints={['Business branding', 'Resource choice', 'Availability and details']}
-      />
-    ),
+    element: <PublicBookingPage />,
   },
   {
     path: '/widget/:slug',
@@ -156,3 +114,5 @@ export const appRoutes: readonly AppRoute[] = [
 
 export const adminNavItems = appRoutes.filter((route) => route.nav === 'admin');
 export const surfaceNavItems = appRoutes.filter((route) => route.nav === 'surface');
+export const adminRoutes = appRoutes.filter((route) => route.nav === 'admin');
+export const surfaceRoutes = appRoutes.filter((route) => route.nav === 'surface');

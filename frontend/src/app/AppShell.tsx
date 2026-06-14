@@ -1,5 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
-import { NavLink, Outlet } from 'react-router';
+import { NavLink, Outlet, useNavigate } from 'react-router';
+import { deleteSession } from '../api/auth';
+import { useSessionStore } from '../auth/sessionStore';
 
 type NavItem = {
   label: string;
@@ -14,6 +16,20 @@ type AppShellProps = {
 };
 
 export function AppShell({ navItems, surfaceItems }: AppShellProps) {
+  const { clearSession, session, token } = useSessionStore();
+  const navigate = useNavigate();
+
+  async function handleSignOut() {
+    try {
+      if (token) {
+        await deleteSession(token);
+      }
+    } finally {
+      clearSession();
+      navigate('/login', { replace: true });
+    }
+  }
+
   return (
     <div className="app-shell">
       <aside className="sidebar" aria-label="Primary">
@@ -61,6 +77,16 @@ export function AppShell({ navItems, surfaceItems }: AppShellProps) {
             );
           })}
         </nav>
+
+        <div className="account-panel" aria-label="Operator session">
+          <div>
+            <p className="eyebrow">{session?.role ?? 'Operator'}</p>
+            <p className="account-id">{session?.actorId ?? 'Not signed in'}</p>
+          </div>
+          <button className="text-button" type="button" onClick={handleSignOut}>
+            Sign out
+          </button>
+        </div>
       </aside>
 
       <main className="main-surface">

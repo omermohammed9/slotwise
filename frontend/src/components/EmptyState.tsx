@@ -8,7 +8,7 @@ type EmptyStateProps = {
 
 export function EmptyState({ icon: Icon, title, description }: EmptyStateProps) {
   return (
-    <div className="panel empty-state">
+    <div className="panel empty-state" role="status" aria-live="polite">
       <Icon size={24} aria-hidden="true" />
       <h2>{title}</h2>
       <p>{description}</p>
