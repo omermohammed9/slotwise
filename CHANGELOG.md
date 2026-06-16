@@ -1,6 +1,24 @@
 # Changelog
 
 ## Unreleased
+- Completed the Phase 15 machine/runtime closure pass by documenting the exact normal-shell versus Codex sandbox npm behavior, correcting current machine Node to `v26.3.0`, recording Node `v24.16.0` as the LTS target, and keeping the administrator-only installer step as the remaining Node blocker.
+- Applied an approved non-force `npm audit fix` that updated the vulnerable `form-data` path to `4.0.6`; follow-up audit reports 0 vulnerabilities, so a distinct `npm audit fix --force` pass is not needed.
+- Scoped the backend `tsconfig.json` to `src/**/*.ts` so root backend build/test no longer sweeps in the isolated `frontend/` workspace.
+- Reconfirmed lint/format/CI remain deferred because there is no agreed repository/CI baseline yet, not because normal unsandboxed npm is generally broken.
+- Kept Phase 15.10 deferred because no concrete backend package gap was proven during the closure pass.
+- Prepared the remaining dependency/runtime closure batch in project docs by grouping machine/runtime closure work together, leaving `15.5` isolated as approval-sensitive, and keeping `15.10` blocked on a proven backend need.
+- Cleaned up stale Phase 15/14 documentation by retiring the old deferred frontend-packages note and clarifying that unsandboxed npm works while the Codex sandbox shim can still fail.
+- Added Phase 16.28 `/admin/customers` create and edit coverage using the existing customer create/update routes, including business-aware create flow, profile editing, notes and preferred-notification fields, and preserved booking-history context without backend API changes.
+- Added Phase 16.27 `/admin/resources` edit drawers and availability-override editing using the existing service-resource detail and update routes, including business-aware edit forms, working-hour/blackout override controls, and resource policy fields; explicit clearing of already persisted nested override keys remains a backend contract gap.
+- Added Phase 16.26 `/admin/settings` working-hours and blackout-date editors using the existing business profile update route, including reusable schedule editors, validation, and blackout serialization without backend API changes.
+- Added Phase 16.25 session hardening for operator and customer flows using the existing `GET /auth/session` route only, including current-session revalidation on entry/focus, refreshed in-memory session metadata, and fail-closed expiry notices without persistent token storage or backend API changes.
+- Added Phase 16.24 lightweight active-filter chips and a clear-all action for `/admin/bookings`, so operators can remove individual customer/status/risk/sort/page state directly from the existing URL-backed workspace and reset back to the default clean URL without backend changes.
+- Added Phase 16.23 browser-local saved views for `/admin/bookings`, so operators can save, reapply, and remove the current customer/status/risk/sort/page workspace state without backend changes or persistent token storage.
+- Added Phase 16.22 `/admin/bookings` URL-state persistence so customer search, status/risk filters, sorting, and pagination now hydrate from and write back to URL search params with clean default omission and reload/share-safe behavior.
+- Added Phase 16.21 public-surface hardening across `/book/:slug`, `/widget/:slug`, and `/portal`, including explicit client-side validation, no-native-validation inline messaging, safer single-resource and party-size defaults, cleaner mutation/reset behavior, booking-reference handoffs, and compact/mobile polish without backend changes.
+- Added Phase 16.18 `/widget/:slug` embeddable widget coverage using the existing public widget config, booking suggestion, and booking creation routes, including compact iframe-first layout, isolated widget styling, loading/error/empty/success states, responsive resource and request flows, and lightweight handoff links to the hosted booking page and customer portal.
+- Added Phase 16.17 `/portal` customer magic-link and booking-management coverage using the existing customer auth and booking action routes, including separate memory-only customer session state, token entry/auto-verify support, booking lookup/filtering, status/history display, customer cancel/reschedule flows, and responsive portal styling.
+- Added small public booking-page handoff links into `/portal` so existing customers can request or use a management magic link without changing backend APIs or introducing persistent token storage.
 - Added baseline project governance documentation.
 - Added Codex-first instruction guidance through `.codex/project-governor.md`.
 - Added `.codex/rough-request.prompt.md` as the project-local rough request template.
@@ -90,19 +108,19 @@
 - Added focused tests for booking timeline route registration, controller response metadata, and service-level grouping/sorting behavior.
 - Added focused tests for dashboard route registration, controller response wiring, and service-level analytics aggregation behavior.
 - Added focused tests for role middleware, admin status controllers, admin route registration, injected service repositories, and time-aware availability.
-- Reconfirmed Phase 15 is blocked at `npm --version` because the active npm shim points to a missing roaming npm installation path.
+- Reconfirmed the historical Phase 15 sandbox blocker at bare `npm --version`: the Codex PowerShell shim selects `C:\Users\omarz\AppData\Roaming\npm\node_modules\npm\bin\npm-cli.js`, while normal unsandboxed npm now works at `11.16.0`.
 - Captured a manifest-based direct dependency inventory as a temporary Phase 15 fallback while npm remains unavailable.
 - Verified the bundled npm CLI as a working fallback for `npm ls --depth=0`, `npm audit`, and `npm outdated`.
 - Documented the current direct dependency inventory, a 17-vulnerability audit result, and the current outdated-package matrix for Phase 15.
-- Applied approved safe dependency maintenance with `npm audit fix` and `npm update`, reducing the audit result to 0 vulnerabilities.
+- Applied approved safe dependency maintenance with `npm audit fix` and `npm update`, and later repaired the remaining `form-data` advisory with approved non-force `npm audit fix`, reducing the audit result to 0 vulnerabilities.
 - Fixed a post-update Mongoose typing regression by making `IBooking._id` required.
 - Removed deprecated `@types/mongoose` and verified compile/tests still pass.
 - Upgraded `dotenv` to `17.4.2` and restored quiet env-loading behavior for tests and local startup.
 - Upgraded `express` to `5.2.1` with `@types/express` `5.0.6` and tightened controller route-param typing for compatibility.
 - Upgraded `mongoose` to `9.7.0` and aligned validator/document typing with the new type surface.
 - Aligned `package.json` and the lockfile root metadata to the final audited dependency versions.
-- Repaired the normal unsandboxed npm workflow by updating user-level npm to `11.16.0` and re-verifying `npm run build` and `npm test`.
-- Documented that the remaining Node 24 LTS upgrade is blocked by a Windows Installer administrator requirement.
+- Repaired the normal unsandboxed npm workflow by updating user-level npm to `11.16.0` and re-verifying `npm run build` and `npm test`; June 16, 2026 verification still passes.
+- Documented that the current machine Node is `v26.3.0` Current, the official LTS target is `v24.16.0`, and moving to LTS remains blocked by the prior Windows Installer administrator requirement.
 - Standardized Phase 8 documentation around the `Slotwise` product identity while keeping legacy workspace and package identifiers tracked for approved rename tasks.
 - Renamed package metadata from `booking-system` to `slotwise-api`.
 - Renamed booking source folders/files to dot-case conventions and updated imports/tests while preserving `/bookings` route compatibility.

@@ -97,7 +97,7 @@ Steps:
 5. Avoid printing secret values.
 
 Verification:
-- `npm run build` attempted; blocked by broken global npm path.
+- Historical note: `npm run build` was blocked by the old npm shim state at the time of Phase 2; current npm status is documented in Phase 15.
 - `.\node_modules\.bin\tsc.cmd` passed.
 - Manual startup check still depends on valid MongoDB and Hunter credentials.
 
@@ -126,7 +126,7 @@ Steps:
 5. Ensure service errors do not hide useful non-secret context.
 
 Verification:
-- `npm run build` attempted; blocked by broken global npm path.
+- Historical note: `npm run build` was blocked by the old npm shim state at the time of Phase 3; current npm status is documented in Phase 15.
 - `.\node_modules\.bin\tsc.cmd` passed.
 - Manual API smoke test still depends on valid MongoDB and Hunter credentials.
 - Add tests in Phase 5 because no test harness exists yet.
@@ -169,7 +169,7 @@ Files likely touched:
 - `CHANGELOG.md`
 
 Verification:
-- `npm run build` attempted; blocked by broken global npm path.
+- Historical note: `npm run build` was blocked by the old npm shim state at the time of Phase 4; current npm status is documented in Phase 15.
 - `.\node_modules\.bin\tsc.cmd` passed.
 - `rg "password|PasswordValidator" src` shows only the intentional serialization guard.
 - Security-focused tests should be added after test framework exists.
@@ -202,8 +202,7 @@ Minimal test targets:
 Verification:
 - `.\node_modules\.bin\tsc.cmd` passed.
 - `node --test tests\*.test.js` passed with 10 tests.
-- `npm run build` remains blocked by the broken global npm install on this machine.
-- `npm test` is configured, but cannot be exercised through npm until the global npm path issue is repaired.
+- Historical note: npm build/test were blocked by the old npm shim state at the time of Phase 5; current npm status is documented in Phase 15.
 
 Risks:
 - Adding a test framework changes dependencies.
@@ -234,7 +233,7 @@ Steps:
 Verification:
 - `.\node_modules\.bin\tsc.cmd` passed.
 - `node --test tests\*.test.js` passed with 12 tests.
-- `npm run build` remains blocked by the broken global npm install on this machine.
+- Historical note: npm build was blocked by the old npm shim state at the time of Phase 6; current npm status is documented in Phase 15.
 
 Risks:
 - Route renaming can break clients.
@@ -257,7 +256,7 @@ Steps:
 1. Documented build output, dependency, and secret file policy.
 2. Added `.gitignore` and `.editorconfig` as lightweight maintenance guardrails.
 3. Treated `node_modules/` as local-only dependency cache and `dist/` as disposable build output.
-4. Deferred CI because no Git provider/repository is present and npm execution is still unhealthy on this machine.
+4. Deferred CI because no Git provider/repository and concrete team workflow are agreed yet.
 
 Verification:
 - Verified `.gitignore`, `.editorconfig`, and maintenance policy documentation exist.
@@ -683,17 +682,17 @@ Purpose: Keep Slotwise secure, current, and professionally maintained by auditin
 Progress:
 | Task | Type | Status | Model | Approval | Verification |
 |---|---|---:|---|---|---|
-| 15.1 Repair npm runtime if still broken | DevOps | Done | Medium | Yes | Global shim still broken, but bundled CLI fallback works: `node C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js` |
-| 15.2 Run dependency inventory | Audit | Done | Medium | Yes | Manifest fallback used because `npm ls --depth=0` is blocked by broken npm |
-| 15.3 Run security audit | Security | Done | Medium | Yes | `npm audit` run through bundled CLI fallback |
-| 15.4 Run safe audit fix | Security | Done | Medium | Yes | `npm audit fix` cleared vulnerabilities to 0 |
-| 15.5 Review force fixes separately | Security | Planned | High | Yes | Manual migration review before `npm audit fix --force` |
-| 15.6 Check outdated packages | Audit | Done | Medium | Yes | `npm outdated` run through bundled CLI fallback |
+| 15.1 Repair npm runtime if still broken | DevOps | Done | Medium | Yes | Normal unsandboxed npm works at `11.16.0`; the remaining failure is the Codex PowerShell/sandbox shim selecting the roaming npm prefix. |
+| 15.2 Run dependency inventory | Audit | Done | Medium | Yes | `npm ls --depth=0` succeeds through `C:\Program Files\nodejs\npm.cmd`; direct packages match the manifest. |
+| 15.3 Run security audit | Security | Done | Medium | Yes | `npm audit --audit-level=moderate` succeeds through normal unsandboxed npm. |
+| 15.4 Run safe audit fix | Security | Done | Medium | Yes | Approved non-force `npm audit fix` updated `form-data` to `4.0.6` and cleared vulnerabilities to 0. |
+| 15.5 Review force fixes separately | Security | Done | High | Yes | No distinct `npm audit fix --force` pass is needed after the June 16, 2026 non-force audit repair. |
+| 15.6 Check outdated packages | Audit | Done | Medium | Yes | `npm outdated` currently reports only compatible `axios` `1.17.0` -> `1.18.0`; no force audit action is indicated. |
 | 15.7 Update compatible packages | DevOps | Done | Medium | Yes | `npm update`, compile, tests |
 | 15.8 Upgrade major versions with migration notes | Refactor | Done | High | Yes | `dotenv` 17, `express` 5, and `mongoose` 9 applied with targeted compatibility fixes |
 | 15.9 Remove obsolete packages | DevOps | Done | Medium | Yes | Deprecated `@types/mongoose` removed; compile/tests passed |
-| 15.10 Add required modern backend packages | Feature | Planned | Medium/High | Yes | Compile, tests, docs |
-| 15.11 Add frontend packages only when frontend phase starts | UX/UI | Deferred | High | Yes | Frontend build/tests |
+| 15.10 Add required modern backend packages | Feature | Deferred | Medium/High | Yes | No concrete backend package gap was proven in this closure pass. |
+| 15.11 Retire stale deferred frontend-packages note after scaffold | Documentation | Done | Low | No | Frontend roadmap/docs synced to the existing `frontend/` workspace |
 | 15.12 Document dependency decisions | Documentation | Done | Low | No | README, SYSTEM_MAP, CHANGELOG, audit docs updated |
 
 Required commands:
@@ -738,14 +737,21 @@ Risks:
 - Dependency upgrades can introduce breaking API, typing, or runtime behavior changes.
 - Security fixes may require major-version upgrades.
 - Adding new packages can increase maintenance, bundle size, attack surface, and migration burden.
-- npm remains known-unhealthy on this machine, so Phase 15 starts by repairing or verifying npm before package changes.
+- Normal unsandboxed npm is healthy on this machine; only the Codex PowerShell/sandbox path remains flaky.
+
+Prepared next cleanup batch:
+1. Machine/runtime closure docs now group the sandbox npm shim, the current Node `v26.3.0` non-LTS runtime note, and the explicitly deferred lint/format/CI baseline.
+2. `15.5` was reviewed separately on June 16, 2026; the evidence supported approved non-force `npm audit fix`, not `npm audit fix --force`.
+3. `15.10` remains deferred until a concrete backend gap proves that a new package is required.
+4. Closure success means the docs stay consistent, the operational npm shim gap is documented with exact scope, and no new backend package work is mixed into machine/runtime cleanup by accident.
 
 Current npm execution note:
-- On June 10, 2026, `npm --version` failed because the active npm shim points to missing `C:\Users\omarz\AppData\Roaming\npm\node_modules\npm\bin\npm-cli.js`.
-- A working fallback was confirmed with the bundled CLI: `node C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js`.
-- Phase 15 audit commands can proceed through the bundled CLI, but the normal `npm` shim remains broken until the machine-level prefix/install issue is repaired.
-- Current machine runtime note: Node is `v23.6.0`, which the official Node.js releases page marks as an EOL line as of June 10, 2026; the same page lists `v24.16.0` as current LTS and `v26.3.0` as current release.
-- Current bundled npm note: `npm audit` reported npm `10.9.2` in use and npm `11.16.0` available, but npm itself was not upgraded because that is a machine-level toolchain change outside this repository.
+- On June 16, 2026, the Codex sandbox sees `node --version` as `v26.3.0` from `C:\Program Files\nodejs\node.exe`.
+- On June 16, 2026, unsandboxed `npm --version` works and reports `11.16.0`; `where.exe npm` returns `C:\Program Files\nodejs\npm`, `C:\Program Files\nodejs\npm.cmd`, `C:\Users\omarz\AppData\Roaming\npm\npm`, and `C:\Users\omarz\AppData\Roaming\npm\npm.cmd`.
+- In the Codex PowerShell/sandbox path, bare `npm --version` still fails because `C:\Program Files\nodejs\npm.ps1` asks `npm-prefix.js` for the prefix, receives `C:\Users\omarz\AppData\Roaming\npm`, and then selects `C:\Users\omarz\AppData\Roaming\npm\node_modules\npm\bin\npm-cli.js`, which the sandbox cannot read/execute.
+- Safe workaround inside Codex is `C:\Program Files\nodejs\npm.cmd` or the bundled CLI `node C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js`; this is not a general unsandboxed npm failure.
+- Official Node release metadata checked on June 16, 2026 lists `v24.16.0` as Latest LTS, `v26.3.0` as Latest Release/Current, and the v23 line as EOL. The older `v23.6.0` note is no longer the current machine state.
+- Moving this machine from current `v26.3.0` to LTS `v24.16.0` remains a machine-level installer/uninstall task; the previous official MSI attempt failed with Windows Installer error `1730` because administrator rights were required to remove the existing machine-wide Node installation.
 
 Current manifest-based inventory:
 - Final runtime: `axios@1.17.0`, `dotenv@17.4.2`, `express@5.2.1`, `libphonenumber-js@1.13.6`, `mongoose@9.7.0`, `validator@13.15.35`
@@ -756,7 +762,7 @@ Audit findings snapshot:
 - Initial `npm audit` reported 17 vulnerabilities: 4 low, 3 moderate, 8 high, 2 critical.
 - Direct dependency vulnerabilities affect `axios`, `express`, `mongoose`, and `validator`.
 - Transitive vulnerability clusters include `body-parser`, `cookie`, `path-to-regexp`, `qs`, `send`, `serve-static`, `follow-redirects`, `form-data`, `brace-expansion`, `braces`, `diff`, `minimatch`, and `picomatch`.
-- The approved `npm audit fix` completed successfully and a follow-up audit reported 0 vulnerabilities.
+- The approved June 16, 2026 non-force `npm audit fix` updated the vulnerable `form-data` path to `4.0.6`; a follow-up audit reported 0 vulnerabilities.
 
 Outdated snapshot:
 - Compatible updates were applied through `npm update`.
@@ -764,7 +770,7 @@ Outdated snapshot:
 - `dotenv` was upgraded to `17.4.2`; `src/config/env.ts` now sets `DOTENV_CONFIG_QUIET` and passes `quiet: true` to preserve quiet startup/test behavior.
 - `express` was upgraded to `5.2.1` with `@types/express` `5.0.6`; `src/controllers/booking.controller.ts` now uses typed route params for Express 5 compatibility.
 - `mongoose` was upgraded to `9.7.0`; `src/utils/validators.ts` now uses a minimal local cast inside `endDateValidator`, and `src/interfaces/booking.interface.ts` keeps `_id` as a required `mongoose.Types.ObjectId` for current Mongoose typing.
-- Final project dependency state: `npm outdated` returned no remaining direct package updates for this repository after modernization.
+- Final project dependency state: `npm outdated` reports a compatible `axios` update from `1.17.0` to `1.18.0`; this is not an audit-force blocker and can be handled in a normal compatible-update pass.
 
 ## Phase 16: Frontend/Backend Feature Alignment
 Status: In progress
@@ -790,30 +796,38 @@ Progress:
 | 16.14 Add customer management screens | Feature / UX/UI | Done | Medium | User approved implementation | Frontend tests/typecheck/build/HTTP smoke |
 | 16.15 Add business template selection UI | UX/UI | Done | Medium | User approved implementation | Frontend tests/typecheck/build/HTTP smoke |
 | 16.16 Add public booking page flow | UX/UI | Done | Medium/High | User approved medium/high | Frontend tests/typecheck/build/HTTP smoke/browser QA attempt |
-| 16.17 Add customer magic-link and booking management flow | Security / UX/UI | Planned | High | Yes | Auth flow tests |
-| 16.18 Add embeddable widget frontend foundation | UX/UI | Planned | Medium/High | Ask | iframe/widget smoke |
+| 16.17 Add customer magic-link and booking management flow | Security / UX/UI | Done | High | User approved high reasoning | Frontend tests/typecheck/build/HTTP smoke/browser QA attempt |
+| 16.18 Add embeddable widget frontend foundation | UX/UI | Done | Medium/High | User approved implementation | Frontend tests/typecheck/build/HTTP smoke/browser QA attempt |
 | 16.19 Add global loading, empty, error, success states | UX/UI | Done | Medium | User approved implementation | Frontend tests/typecheck/build/HTTP smoke |
 | 16.20 Add responsive and accessibility QA pass | Test / UX/UI | Done | Medium | User approved implementation | Frontend tests/typecheck/build/HTTP smoke/browser QA attempt |
+| 16.21 Public-surface hardening pass | UX/UI / Hardening | Done | Medium/High | User confirmed separate approval | Frontend tests/typecheck/build/HTTP smoke |
+| 16.22 Persist bookings list state in URL search params | UX/UI / Hardening | Done | Medium | User approved | Frontend tests/typecheck/build/HTTP smoke |
+| 16.23 Add browser-local saved views for `/admin/bookings` | UX/UI / Hardening | Done | Medium | User approved | Frontend tests/typecheck/build/HTTP smoke |
+| 16.24 Add removable active filter chips and clear-all for `/admin/bookings` | UX/UI / Hardening | Done | Medium | User approved | Frontend tests/typecheck/build/HTTP smoke |
+| 16.25 Session hardening and current-session revalidation for operator/customer flows | Security / Hardening | Done | High | User approved narrow scope | Frontend tests/typecheck/build/HTTP smoke |
+| 16.26 Add working-hours and blackout editors in `/admin/settings` | Feature / UX/UI | Done | Medium | User approved grouped admin-management slice | Frontend tests/typecheck/build/backend tests/build attempted/HTTP smoke attempted |
+| 16.27 Add resource edit drawers and availability overrides in `/admin/resources` | Feature / UX/UI | Done | Medium | User approved grouped admin-management slice | Frontend tests/typecheck/build/backend tests/build attempted/HTTP smoke attempted |
+| 16.28 Add customer create and edit flows in `/admin/customers` | Feature / UX/UI | Done | Medium | User approved grouped admin-management slice | Frontend tests/typecheck/build/backend tests/build attempted/HTTP smoke attempted |
 
 Frontend-backend coverage matrix:
 | Backend capability | Route/API surface | Current frontend coverage | Phase 16 target |
 |---|---|---|---|
-| Operator session auth | `POST /auth/session`, `GET /auth/session`, `DELETE /auth/session` | `/login`, memory-only session store, protected admin shell, and logout UI | Future hardening can add current-session revalidation and cookie-based persistence after approval |
-| Customer magic-link auth | `POST /auth/customer/magic-link`, `POST /auth/customer/verify` | Typed auth API module; no customer screens | Customer sign-in, verification, session-aware management |
-| Booking list and search | `GET /bookings` with filters, pagination, sorting | `/admin/bookings` now renders a TanStack Query-backed bookings list with customer search, status/risk filters, sorting, pagination controls, loading/error/empty states, and responsive table/list layout | Future hardening can move filter state into URL search params and saved views |
+| Operator session auth | `POST /auth/session`, `GET /auth/session`, `DELETE /auth/session` | `/login` plus protected admin routes now keep tokens memory-only, revalidate real current sessions on entry/focus, refresh in-memory session metadata from the backend, and fail closed with an expiry notice when the server rejects the token | Future hardening can add cookie-based persistence only after separate approval |
+| Customer magic-link auth | `POST /auth/customer/magic-link`, `POST /auth/customer/verify` | `/portal` now renders customer magic-link request, token entry/auto-verify, isolated memory-only customer session state, and current-session revalidation with expiry messaging on entry/focus without persistent storage | Future hardening can add cookie-backed persistence only after separate approval |
+| Booking list and search | `GET /bookings` with filters, pagination, sorting | `/admin/bookings` now renders a TanStack Query-backed bookings list with customer search, status/risk filters, sorting, pagination controls, responsive table/list layout, URL-persistent search params, browser-local saved views, and lightweight removable active-filter chips with clear-all reset for quick workspace cleanup on the same device | Future hardening can add cross-device saved-view sync only after approval |
 | Booking detail | `GET /bookings/:id` | `/admin/bookings` opens a detail drawer backed by `GET /bookings/:id`, showing customer contact, schedule, metadata IDs, notes, conflict-risk summary/signals, status history, lifecycle controls, and operator rescheduling | Future hardening can add deeper audit reason capture after approval |
-| Booking lifecycle | approve, reject, cancel, complete, no-show routes | Detail drawer exposes role-aware approve/reject/cancel/complete/no-show actions with confirmation prompts, mutation states, and query invalidation | Future lifecycle work stays limited to separately approved reschedule/customer flows |
-| Booking reschedule | `PATCH /bookings/:id/reschedule` | Detail drawer exposes an operator-only pending/approved reschedule form with datetime fields, optional reason, confirmation, mutation states, and query refresh | Future customer reschedule flow remains separate and high-gated |
+| Booking lifecycle | approve, reject, cancel, complete, no-show routes | Detail drawer exposes role-aware approve/reject/cancel/complete/no-show actions with confirmation prompts, mutation states, and query invalidation, while `/portal` now exposes customer cancellation over the existing authenticated customer route | Future lifecycle work can add deeper reason capture or audit drilldowns after approval |
+| Booking reschedule | `PATCH /bookings/:id/reschedule` | Detail drawer exposes an operator-only pending/approved reschedule form with datetime fields, optional reason, confirmation, mutation states, and query refresh, while `/portal` now exposes customer reschedule requests over the existing authenticated customer route | Future hardening can add suggestion-assisted customer reschedule help or stricter slot validation polish after approval |
 | Booking suggestions | `POST /bookings/suggestions` | Detail drawer can request nearby slot suggestions from the reschedule form and apply a suggested slot to the draft schedule | Future create-flow suggestion integration remains deferred |
 | Timeline feed | `GET /bookings/timeline` | `/admin/timeline` now renders a query-backed timeline with date/status/resource filters, summary metrics, day-grouped entries, risk markers, status chips, and reschedule badges | Future hardening can add richer calendar lane interactions |
 | Dashboard analytics | `GET /bookings/insights/dashboard` | `/admin` now renders query-backed KPI cards, lifecycle funnel bars, weekday/resource utilization, peak-time panels, and dashboard filters | Future hardening can add richer chart interactions |
 | Cancellation/no-show insights | `GET /bookings/insights/cancellation-no-show` | `/admin` now renders cancellation/no-show summary cards, weekday trend bars, and reason summaries with the existing dashboard filters | Future hardening can add richer drilldowns after approval |
-| Business profiles | `/businesses` | `/admin/settings` now renders query-backed business selection, editable profile basics, save mutation states, operating-readiness summaries, and a read-only template preview area | Future hardening can add working-hour/blackout editors after approval |
+| Business profiles | `/businesses` | `/admin/settings` now renders query-backed business selection, editable profile basics, working-hour and blackout-date editors, save mutation states, operating-readiness summaries, and a read-only template preview area | Future hardening can add notification/widget/public-page editors after approval |
 | Business templates | `GET /businesses/templates`, `GET /businesses/templates/:templateKey` | `/admin/settings` now renders a template gallery and read-only template preview using existing template routes without seeding resources | Future hardening can add explicit template-apply flows after approval |
-| Service/resources | `/service-resources` | `/admin/resources` now renders query-backed filters, a resource list, create form, and active/inactive toggle mutations | Future hardening can add full edit drawers and availability override editors after approval |
-| Customers | `/customers` | `/admin/customers` now renders query-backed customer filters, directory rows, profile summary/details, and booking-history entry points via existing booking filters | Future hardening can add edit/create flows after approval |
-| Public booking page config | `GET /businesses/public/:slug/booking-page`, `POST /bookings/suggestions`, `POST /bookings` | `/book/:slug` now renders a branded public booking flow with resource/service selection, date/time inputs, customer details, party-size/notes support, suggestions, submit, success/error/loading/empty states, and responsive public layout | Future hardening can add customer portal handoff, widget reuse, or richer validation only after separate approval |
-| Widget config | `GET /businesses/public/:slug/widget` | `/widget/:slug` route placeholder plus typed public-surface API module | Compact iframe-ready widget foundation |
+| Service/resources | `/service-resources` | `/admin/resources` now renders query-backed filters, a resource list, create form, active/inactive toggle mutations, edit drawers, and availability override editing over the existing resource PATCH contract | Future hardening can add explicit nested-override clearing once the backend PATCH contract supports it |
+| Customers | `/customers` | `/admin/customers` now renders query-backed customer filters, directory rows, booking-history entry points, and create/edit forms over existing customer create/update APIs | Future hardening can add richer relationship/history drilldowns after approval |
+| Public booking page config | `GET /businesses/public/:slug/booking-page`, `POST /bookings/suggestions`, `POST /bookings` | `/book/:slug` now renders a branded public booking flow with resource/service selection, date/time inputs, customer details, party-size/notes support, suggestions, submit, success/error/loading/empty states, responsive public layout, explicit client-side validation, safer single-resource defaults, and portal handoff links that carry booking context | Future hardening can add deeper review/slot guidance or broader public-surface feature expansion only after separate approval |
+| Widget config | `GET /businesses/public/:slug/widget` | `/widget/:slug` now renders a compact iframe-first booking flow with isolated styling, widget-config branding, service/resource selection, date/time and customer inputs, nearby suggestions, submit feedback, loading/error/empty/success states, stronger validation polish, compact/mobile layout cleanup, and richer `/book/:slug` plus `/portal` handoff links with preserved booking context | Future hardening can add richer embed sizing guidance or trusted first-party variants only after separate approval |
 
 Design and engineering guardrails:
 - Keep frontend implementation inside `frontend/`.
@@ -836,18 +850,35 @@ Completed notes:
 9. Kept public booking, widget, and customer portal routes outside the operator guard.
 10. Added the Phase 16.16 customer-facing `/book/:slug` flow using existing public booking-page config, booking suggestion, and booking creation API clients/routes only.
 11. Kept Phase 16.16 free of backend API changes, package additions, customer magic-link/customer portal flow, widget foundation, persistent token storage, and automatic template resource seeding.
-10. Added a query-backed `/admin/bookings` screen with customer search, status/risk filters, sort controls, pagination controls, loading/error/empty states, and responsive booking records.
-11. Added a read-only booking detail drawer backed by `GET /bookings/:id` with customer contact, schedule, notes, conflict-risk signals, operational IDs, and status history.
-12. Added role-aware lifecycle controls in the booking detail drawer for approve, reject, cancel, complete, and no-show transitions, with confirmation prompts, mutation pending/error handling, and booking query refresh.
-13. Added operator reschedule and nearby suggestion flows to the booking detail drawer for pending/approved bookings, using existing reschedule and suggestions routes with confirmation, pending/error states, and query refresh.
-14. Added a query-backed `/admin/timeline` view using `GET /bookings/timeline`, with date/status/resource filters, summary metrics, day-grouped entries, conflict-risk markers, status chips, reschedule badges, and loading/error/empty states.
-15. Replaced the static `/admin` dashboard examples with query-backed dashboard analytics using `GET /bookings/insights/dashboard`, including KPI cards, lifecycle funnel bars, weekday/resource utilization, peak-time panels, filters, and loading/error/empty states.
-16. Added cancellation/no-show insight coverage to `/admin` using `GET /bookings/insights/cancellation-no-show`, with summary cards, weekday trend bars, reason summaries, dashboard filters, loading/error states, and typed DTO coverage.
-17. Replaced the `/admin/settings` placeholder with a query-backed business settings screen over `/businesses`, including business selection, editable profile basics, save mutation states, and an operating-readiness summary for template, rules, working hours, widget, and public-page posture.
-18. Replaced the `/admin/resources` placeholder with a query-backed service/resource management screen over `/service-resources`, including business/type/active filters, resource list states, create form, and active/inactive toggle mutation states.
-19. Added shared loading and inline success/error state helpers for touched admin screens.
-20. Completed a responsive and accessibility QA pass across `/admin`, `/admin/bookings`, `/admin/timeline`, `/admin/customers`, `/admin/resources`, and `/admin/settings`, tightening keyboard focus states, live loading/error/success messaging, selected/pressed states, dialog semantics, long-text wrapping, mobile grids, filter controls, and row/card overflow without adding packages, backend API changes, or new product flows.
-21. Kept customer magic-link flows, customer self-service booking management, saved views, URL-persistent filters, persistent token storage, backend API changes, new packages, public booking flow, widget foundation, and automatic template resource seeding deferred to later approved slices.
+12. Added a query-backed `/admin/bookings` screen with customer search, status/risk filters, sort controls, pagination controls, loading/error/empty states, and responsive booking records.
+13. Added a read-only booking detail drawer backed by `GET /bookings/:id` with customer contact, schedule, notes, conflict-risk signals, operational IDs, and status history.
+14. Added role-aware lifecycle controls in the booking detail drawer for approve, reject, cancel, complete, and no-show transitions, with confirmation prompts, mutation pending/error handling, and booking query refresh.
+15. Added operator reschedule and nearby suggestion flows to the booking detail drawer for pending/approved bookings, using existing reschedule and suggestions routes with confirmation, pending/error states, and query refresh.
+16. Added a query-backed `/admin/timeline` view using `GET /bookings/timeline`, with date/status/resource filters, summary metrics, day-grouped entries, conflict-risk markers, status chips, reschedule badges, and loading/error/empty states.
+17. Replaced the static `/admin` dashboard examples with query-backed dashboard analytics using `GET /bookings/insights/dashboard`, including KPI cards, lifecycle funnel bars, weekday/resource utilization, peak-time panels, filters, and loading/error/empty states.
+18. Added cancellation/no-show insight coverage to `/admin` using `GET /bookings/insights/cancellation-no-show`, with summary cards, weekday trend bars, reason summaries, dashboard filters, loading/error states, and typed DTO coverage.
+19. Replaced the `/admin/settings` placeholder with a query-backed business settings screen over `/businesses`, including business selection, editable profile basics, working-hours and blackout-date editors, save mutation states, and an operating-readiness summary for template, rules, working hours, widget, and public-page posture.
+20. Replaced the `/admin/resources` placeholder with a query-backed service/resource management screen over `/service-resources`, including business/type/active filters, resource list states, create form, active/inactive toggle mutation states, edit drawers, and availability override editing.
+21. Replaced the `/admin/customers` placeholder with a query-backed customer management screen over `/customers`, including filters, directory rows, profile details, booking-history entry points, and create/edit flows using the existing customer create/update routes.
+22. Added shared loading and inline success/error state helpers for touched admin screens.
+23. Completed a responsive and accessibility QA pass across `/admin`, `/admin/bookings`, `/admin/timeline`, `/admin/customers`, `/admin/resources`, and `/admin/settings`, tightening keyboard focus states, live loading/error/success messaging, selected/pressed states, dialog semantics, long-text wrapping, mobile grids, filter controls, and row/card overflow without adding packages, backend API changes, or new product flows.
+24. Added the Phase 16.17 customer-facing `/portal` flow using the existing customer magic-link request/verify routes plus current booking list and customer action APIs only, without backend changes, new packages, or persistent token storage.
+25. Split frontend in-memory auth state so customer portal sessions stay isolated from the existing operator/admin memory session behavior.
+26. Added lightweight `/book/:slug` to `/portal` integration links so existing customers can request or use a management magic link after or alongside public booking flows.
+27. Added the Phase 16.18 customer-facing `/widget/:slug` flow using the existing public widget config, booking suggestion, and booking creation API clients/routes only, with iframe-first isolated styling, compact responsive layout, and lightweight `/book/:slug` plus `/portal` handoff links.
+28. Updated shell surface navigation so parameterized public preview links resolve to concrete demo paths instead of literal `:slug` placeholders.
+29. Kept persistent token storage, backend API changes, new packages, and automatic template resource seeding deferred to later approved slices.
+30. Completed the approved Phase 16.21 public-surface hardening pass across `/book/:slug`, `/widget/:slug`, and `/portal` without backend API changes, new packages, persistent token storage, or product-scope expansion.
+31. Added shared client-side validation helpers for public booking, widget, and portal flows so date/time ordering, basic contact inputs, party size, and token/business-id checks fail with explicit inline messaging instead of relying on browser defaults alone.
+32. Tightened public-surface state transitions by resetting stale mutation banners when users edit their request, preserving portal reschedule success on same-booking refresh, and narrowing portal auto-verify to URL-provided tokens only.
+33. Improved safer defaults and cross-surface handoffs by auto-selecting lone public resources, clamping party size to visible capacity, carrying booking/query context from widget to booking page and portal, and surfacing booking references after public submissions.
+34. Added compact/mobile polish for portal booking rows, portal action buttons, and widget handoff links while keeping the slice limited to existing public surfaces.
+35. Completed the approved Phase 16.22 `/admin/bookings` hardening slice by hydrating customer/status/risk/sort/page state from URL search params, resetting pagination when filters change, omitting default params from clean URLs, and covering the new reload/shareable behavior with frontend tests only.
+36. Completed the approved Phase 16.23 `/admin/bookings` hardening slice by adding browser-local saved views for the existing list URL state, including lightweight save/apply/remove controls, active-view highlighting, and frontend-only persistence without backend or token-storage changes.
+37. Completed the approved Phase 16.24 `/admin/bookings` hardening slice by adding lightweight removable active-filter chips for the existing customer/status/risk/sort/page state plus a clear-all reset back to the default clean URL, while keeping saved views, existing list controls, and backend APIs unchanged.
+37. Completed the approved Phase 16.25 session-hardening slice without backend API or storage-model changes by adding current-session revalidation for real operator and customer sessions on route entry plus window focus/visibility return.
+38. Added explicit expiry handling so invalid operator sessions redirect back to `/login` with a clear notice and invalid customer portal sessions fall back to fresh magic-link access messaging instead of leaving stale in-memory state active.
+39. Preserved the existing memory-only token posture, separate operator/customer stores, and lightweight helper/demo sessions while refreshing server-backed session metadata in place when revalidation succeeds.
 
 Verification:
 - Manual documentation review for the Phase 16 matrix and numbering.
@@ -902,17 +933,56 @@ Verification:
 - Phase 16.14-16.15 and 16.19 verification: `.\node_modules\.bin\vite.cmd build` in `frontend/` passed.
 - Phase 16.14-16.15 and 16.19 verification: same-shell Vite HTTP smoke checks returned `200` for `http://127.0.0.1:5173/admin/customers`, `http://127.0.0.1:5173/admin/settings`, and `http://127.0.0.1:5173/admin/bookings`.
 - Phase 16.14-16.15 and 16.19 browser QA was attempted but remains blocked by the Windows sandbox browser runtime error `CreateProcessAsUserW failed: 5`.
-- Phase 16.20 verification: global `npm run test:run` is blocked because the active npm shim points to missing `C:\Users\omarz\AppData\Roaming\npm\node_modules\npm\bin\npm-cli.js` under Node `v26.3.0`; local project binaries were used instead.
+- Phase 16.20 verification: sandboxed bare `npm run test:run` was blocked because the PowerShell npm shim selected `C:\Users\omarz\AppData\Roaming\npm\node_modules\npm\bin\npm-cli.js` under Node `v26.3.0`; local project binaries were used instead.
 - Phase 16.20 verification: `.\node_modules\.bin\vitest.cmd run` in `frontend/` passed with 20 tests.
 - Phase 16.20 verification: `.\node_modules\.bin\tsc.cmd -b` in `frontend/` passed.
 - Phase 16.20 verification: `.\node_modules\.bin\vite.cmd build` in `frontend/` passed.
 - Phase 16.20 verification: same-shell Vite HTTP smoke checks returned `200` for `http://127.0.0.1:5173/admin`, `http://127.0.0.1:5173/admin/bookings`, `http://127.0.0.1:5173/admin/timeline`, `http://127.0.0.1:5173/admin/customers`, `http://127.0.0.1:5173/admin/resources`, and `http://127.0.0.1:5173/admin/settings`.
+- Phase 16.26-16.28 verification: `frontend/node_modules/.bin/vitest.cmd run` passed with 36 tests, `frontend/node_modules/.bin/tsc.cmd -b` passed, `frontend` production build passed via local `tsc -b` + `vite build`, and backend `node --test tests/*.test.js` passed with 92 tests. A lightweight local Vite preview HTTP smoke attempt for `/admin/settings`, `/admin/resources`, and `/admin/customers` was made but the preview server refused connections in this Windows sandbox, so browser/route smoke remains unconfirmed here. Root `tsc` still fails because the repo-level `tsconfig` includes `frontend/**` outside its configured `rootDir`, which predates this slice.
 - Phase 16.20 browser QA was attempted but remains blocked by the Windows sandbox browser runtime error `CreateProcessAsUserW failed: 5`.
 - Phase 16.16 verification: `.\node_modules\.bin\vitest.cmd run` in `frontend/` passed with 22 tests.
 - Phase 16.16 verification: `.\node_modules\.bin\tsc.cmd -b` in `frontend/` passed.
 - Phase 16.16 verification: `.\node_modules\.bin\vite.cmd build` in `frontend/` passed.
 - Phase 16.16 verification: same-shell Vite HTTP smoke check returned `200` for `http://127.0.0.1:5175/book/demo-business`.
 - Phase 16.16 browser QA was attempted but remains blocked by the Windows sandbox browser runtime error `CreateProcessAsUserW failed: 5`.
+- Phase 16.17 verification: sandboxed bare `npm` was blocked because the PowerShell npm shim selected `C:\Users\omarz\AppData\Roaming\npm\node_modules\npm\bin\npm-cli.js` under Node `v26.3.0`; local project binaries were used instead.
+- Phase 16.17 verification: `.\node_modules\.bin\vitest.cmd run` in `frontend/` passed with 24 tests.
+- Phase 16.17 verification: `.\node_modules\.bin\tsc.cmd -b` in `frontend/` passed.
+- Phase 16.17 verification: `.\node_modules\.bin\vite.cmd build` in `frontend/` passed.
+- Phase 16.17 verification: same-shell Vite HTTP smoke check returned `200` for `http://127.0.0.1:4173/portal?businessId=507f1f77bcf86cd799439011&email=maya@example.com`.
+- Phase 16.17 browser QA was attempted but remains blocked by the Windows sandbox browser runtime error `CreateProcessAsUserW failed: 5`.
+- Phase 16.18 verification: sandboxed bare `npm` remained blocked because the PowerShell npm shim selected `C:\Users\omarz\AppData\Roaming\npm\node_modules\npm\bin\npm-cli.js` under Node `v26.3.0`; local project binaries were used instead.
+- Phase 16.18 verification: `.\node_modules\.bin\vitest.cmd run` in `frontend/` passed with 25 tests.
+- Phase 16.18 verification: `.\node_modules\.bin\tsc.cmd -b` in `frontend/` passed.
+- Phase 16.18 verification: `.\node_modules\.bin\vite.cmd build` in `frontend/` passed.
+- Phase 16.18 verification: same-shell Vite preview HTTP smoke check returned `200` for `http://127.0.0.1:4176/widget/demo-widget`.
+- Phase 16.18 browser QA was not retried because the known Windows sandbox browser runtime blocker `CreateProcessAsUserW failed: 5` remains unresolved at the environment level.
+- Phase 16.21 verification: sandboxed bare `npm` remained blocked because the PowerShell npm shim selected `C:\Users\omarz\AppData\Roaming\npm\node_modules\npm\bin\npm-cli.js` under Node `v26.3.0`; local project binaries were used instead.
+- Phase 16.21 verification: `.\node_modules\.bin\vitest.cmd run` in `frontend/` passed with 27 tests.
+- Phase 16.21 verification: `.\node_modules\.bin\tsc.cmd -b` in `frontend/` passed.
+- Phase 16.21 verification: `.\node_modules\.bin\vite.cmd build` in `frontend/` passed.
+- Phase 16.21 verification: same-shell Vite preview HTTP smoke checks returned `200` for `http://127.0.0.1:4176/book/demo-business`, `http://127.0.0.1:4176/widget/demo-widget`, and `http://127.0.0.1:4176/portal`.
+- Phase 16.21 browser/in-app smoke was not retried because the known Codex Windows sandbox/runtime blocker `CreateProcessAsUserW failed: 5` remains unresolved at the environment level.
+- Phase 16.22 verification: `.\node_modules\.bin\vitest.cmd run` in `frontend/` passed with 29 tests.
+- Phase 16.22 verification: `.\node_modules\.bin\tsc.cmd -b` in `frontend/` passed.
+- Phase 16.22 verification: `.\node_modules\.bin\vite.cmd build` in `frontend/` passed.
+- Phase 16.22 verification: same-shell Vite preview HTTP smoke check returned `200` for `http://127.0.0.1:4173/admin/bookings?status=pending&page=2`.
+- Phase 16.23 verification: `frontend/src/app/App.test.tsx` passed with 25 tests, including saved-view save/apply/remove coverage and a local `localStorage` shim for the Vitest environment.
+- Phase 16.23 verification: `frontend/` typecheck passed with `tsc -b`.
+- Phase 16.23 verification: `frontend/` build passed with `vite build`.
+- Phase 16.23 verification: same-shell Vite preview HTTP smoke check returned `200` for `http://127.0.0.1:4173/admin/bookings?customerName=Ari%20Park&status=approved`.
+- Phase 16.24 verification: `frontend/src/app/App.test.tsx` passed with 33 tests, including active-filter chip removal and clear-all coverage for `/admin/bookings`.
+- Phase 16.24 verification: `frontend/` typecheck passed with `tsc -b`.
+- Phase 16.24 verification: `frontend/` build passed with `vite build`.
+- Phase 16.24 verification: same-shell Vite preview HTTP smoke checks returned `200` for `http://127.0.0.1:4173/admin/bookings` and `http://127.0.0.1:4173/admin/bookings?customerName=Ari%20Park&status=approved&risk=high&page=2&sortBy=startDate&sortOrder=asc`.
+- Phase 16.24 verification: in-app browser smoke remains blocked by the known Codex Windows sandbox/runtime issue `CreateProcessAsUserW failed: 5`; no re-investigation was done in this slice.
+- Phase 16.25 verification: `frontend/` Vitest suite passed with 36 tests using the local `frontend/node_modules/.bin/vitest.cmd` runner because the sandboxed bare npm shim issue remained unresolved.
+- Phase 16.25 verification: `frontend/` typecheck passed with `frontend/node_modules/.bin/tsc.cmd -b`.
+- Phase 16.25 verification: `frontend/` build passed with `frontend/node_modules/.bin/vite.cmd build`.
+- Phase 16.25 verification: same-shell Vite preview HTTP smoke checks returned `200` for `http://127.0.0.1:4173/admin` and `http://127.0.0.1:4173/portal`.
+- Phase 16.25 verification: in-app browser smoke remains blocked by the known Codex Windows sandbox/runtime issue `CreateProcessAsUserW failed: 5`; no re-investigation was done in this slice.
+- Browser/in-app smoke remains blocked by the known Codex Windows sandbox/runtime error `CreateProcessAsUserW failed: 5`; no re-investigation was done in this slice.
+- Phase 16.22 browser/in-app smoke was not retried because the known Codex Windows sandbox/runtime blocker `CreateProcessAsUserW failed: 5` remains unresolved at the environment level.
 
 ## Completion Criteria
 - Required docs are current after every phase.

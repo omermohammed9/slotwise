@@ -7,13 +7,13 @@ Initial audit found a compact Express/Mongoose booking API with missing project 
 
 ### High
 - Legacy identity remains only in the current workspace folder name `Booking System`; package metadata now uses `slotwise-api` and source files now use dot-case naming.
-- Environment/toolchain risk remains outside the repo: current Node is `v23.6.0`, which the official Node.js releases page marks as EOL as of June 11, 2026, and the Node 24 LTS installer fails with Windows Installer error `1730` because removing the current machine-wide Node install requires administrator rights.
+- Environment/toolchain risk remains outside the repo: current Node is `v26.3.0` as of June 16, 2026, which official Node.js release metadata lists as Current/Latest Release rather than LTS. The official LTS target is `v24.16.0`; moving this machine to that LTS line remains blocked by the prior administrator-only Windows installer/uninstall step unless an admin performs it.
 
 ### Medium
 - Operator authentication now exists for privileged booking actions, but it is still env-backed and uses in-memory sessions rather than a persistent user/session store.
 - MongoDB SRV resolution can now be overridden with `SLOTWISE_DNS_SERVERS`, but the active `MONGODB_URI` hostname still returns `ENOTFOUND` against public DNS.
-- The machine-level `npm` issue is no longer a normal-shell blocker: outside the sandbox, `npm` now works at `11.16.0`, and `npm run build` plus `npm test` both pass through the standard npm workflow.
-- The Codex sandbox can still make `npm` appear broken because the shim resolves through `C:\Users\omarz\AppData\Roaming\npm\...`, but that is now understood as a sandbox-path limitation rather than the main machine state.
+- The machine-level `npm` issue is not a normal-shell blocker: outside the sandbox, `npm` works at `11.16.0`, and `npm run build` plus `npm test` both pass through the standard npm workflow on June 16, 2026.
+- The Codex PowerShell/sandbox path can still make bare `npm` fail because `C:\Program Files\nodejs\npm.ps1` selects `C:\Users\omarz\AppData\Roaming\npm\node_modules\npm\bin\npm-cli.js`, which the sandbox cannot read/execute. `C:\Program Files\nodejs\npm.cmd` and the bundled CLI path work as the Codex workaround.
 - Dependency updates exposed one TypeScript compatibility issue in `src/interfaces/booking.interface.ts`; it was fixed by making `_id` required to match the updated Mongoose `Document` typing.
 - `dotenv` 17 changed runtime logging behavior; `src/config/env.ts` now sets `DOTENV_CONFIG_QUIET` and passes `quiet: true` so tests and startup stay quiet.
 - Express 5 tightened route-param typing; `src/controllers/booking.controller.ts` now uses `Request<{ id: string }>` for the `:id` handlers.
@@ -68,7 +68,7 @@ Initial audit found a compact Express/Mongoose booking API with missing project 
 - Added `statusHistory` audit entries to booking documents for status changes.
 - Added operator login and bearer-session authentication for privileged booking status actions.
 - Replaced lazy booking-metadata backfill with an explicit maintenance script.
-- `npm run build` is blocked by a broken global npm install, but local TypeScript compilation passes with `.\node_modules\.bin\tsc.cmd`.
+- Historical Phase 15 npm shim notes are superseded by the June 16, 2026 closure check: normal unsandboxed npm works, while bare sandboxed `npm` can still fail through the roaming npm PowerShell shim path.
 - On June 10, 2026, a fresh Phase 15 check reconfirmed that `npm --version` fails because the active npm shim points to a missing roaming npm installation path.
 - On June 10, 2026, the bundled npm CLI at `C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js` was verified as a working fallback for `npm ls --depth=0`, `npm audit`, and `npm outdated`.
 
@@ -134,21 +134,21 @@ No existing project documentation was found, so there is no implementation-vs-do
 ## Phase 7 DevOps Policy
 - Added `.gitignore` to exclude dependencies, build output, IDE files, logs, and env files.
 - Added `.editorconfig` to standardize line endings, indentation, and trailing whitespace policy.
-- Chose documentation-first maintenance policy instead of installing ESLint/Prettier because npm is not healthy enough on this machine and there is no confirmed repository/CI host yet.
-- CI remains intentionally deferred until the workspace is attached to a real Git provider and npm execution is reliable.
+- Chose documentation-first maintenance policy instead of installing ESLint/Prettier because there is no agreed repository/CI baseline yet.
+- CI remains intentionally deferred until the workspace is attached to a real Git provider/repository and a concrete team workflow is chosen.
 
 ## Phase 15 Inventory Snapshot
 - Final runtime dependencies confirmed from manifest, lockfile, and `npm ls --depth=0`: `axios@1.17.0`, `dotenv@17.4.2`, `express@5.2.1`, `libphonenumber-js@1.13.6`, `mongoose@9.7.0`, `validator@13.15.35`.
 - Final development dependencies confirmed from manifest, lockfile, and `npm ls --depth=0`: `@types/express@5.0.6`, `@types/validator@13.15.10`, `nodemon@3.1.14`, `ts-node@10.9.2`.
 - Obsolete dependency removed: `@types/mongoose`.
-- `npm ls --depth=0` succeeded through the bundled npm CLI fallback and matched the final manifest inventory.
+- `npm ls --depth=0` succeeded through `C:\Program Files\nodejs\npm.cmd` and matched the final manifest inventory.
 
 ## Phase 15 Audit Snapshot
 - Initial `npm audit` reported 17 vulnerabilities: 4 low, 3 moderate, 8 high, and 2 critical.
 - Direct dependency findings include `axios`, `express`, `mongoose`, and `validator`.
 - Transitive findings include `body-parser`, `cookie`, `path-to-regexp`, `qs`, `send`, `serve-static`, `follow-redirects`, `form-data`, `brace-expansion`, `braces`, `diff`, `minimatch`, and `picomatch`.
-- The approved non-force `npm audit fix` completed successfully.
-- Follow-up audit state is now 0 vulnerabilities.
+- The approved June 16, 2026 non-force `npm audit fix` updated the vulnerable `form-data` path to `4.0.6`.
+- Follow-up audit state is now 0 vulnerabilities, so no `npm audit fix --force` pass is needed.
 
 ## Phase 15 Outdated Snapshot
 - Compatible updates were applied with `npm update`.
@@ -156,12 +156,13 @@ No existing project documentation was found, so there is no implementation-vs-do
 - `express` has been upgraded to `5.2.1` with `@types/express` `5.0.6`.
 - `mongoose` has been upgraded to `9.7.0`.
 - Deprecated `@types/mongoose` has now been removed.
-- Final `npm outdated` state returned no remaining direct package updates for this repository.
+- Final `npm outdated` state reports a compatible `axios` update from `1.17.0` to `1.18.0`; this is not an audit-force requirement.
 
 ## Phase 15 Verification Snapshot
-- `.\node_modules\.bin\tsc.cmd` passes after updating `src/interfaces/booking.interface.ts` so `_id` is a required `mongoose.Types.ObjectId`.
-- `node --test tests\*.test.js` passes with 12 tests.
-- Final `npm audit --cache C:\tmp\npm-cache` passes with 0 vulnerabilities.
+- `npm run build` passes through normal unsandboxed npm on June 16, 2026.
+- `npm test` passes through normal unsandboxed npm on June 16, 2026 with 92 tests.
+- `node --test tests\*.test.js` passes directly with 92 tests.
+- Final `npm audit --audit-level=moderate` passes with 0 vulnerabilities.
 
 ## Phase 9 Verification Snapshot
 - `.\node_modules\.bin\tsc.cmd` passes after repository extraction.
@@ -177,10 +178,11 @@ No existing project documentation was found, so there is no implementation-vs-do
 - Added coverage for role middleware, admin approval/rejection controller behavior, admin route registration, repository-injected service tests, and time-aware availability forwarding.
 
 ## Toolchain Follow-up
-- Machine Node is `v23.6.0`; the official Node.js releases page lists that release line as EOL, and lists `v24.16.0` as latest LTS and `v26.3.0` as latest Current on June 10, 2026.
-- User-level npm was upgraded successfully to `11.16.0` on June 11, 2026.
-- `npm run build` and `npm test` were both re-verified successfully through the normal npm command path on June 11, 2026.
-- Attempting to install Node `v24.16.0` LTS from the official MSI failed with Windows Installer error `1730`: an administrator is required to remove the current machine-wide Node installation.
+- Machine Node is `v26.3.0` from `C:\Program Files\nodejs\node.exe` on June 16, 2026.
+- Official Node.js release metadata checked on June 16, 2026 lists `v24.16.0` as Latest LTS, `v26.3.0` as Latest Release/Current, and the v23 line as EOL.
+- User-level npm is `11.16.0`; normal unsandboxed `npm --version`, `npm run build`, and `npm test` work on June 16, 2026.
+- Bare sandboxed `npm --version` still fails in PowerShell because `npm.ps1` selects the roaming CLI path `C:\Users\omarz\AppData\Roaming\npm\node_modules\npm\bin\npm-cli.js`; use `C:\Program Files\nodejs\npm.cmd` or `node C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js` inside Codex.
+- Moving from Node `v26.3.0` Current to Node `v24.16.0` LTS remains a machine-level installer/uninstall task; the previous official MSI attempt failed with Windows Installer error `1730` because administrator rights were required to remove the existing machine-wide Node installation.
 
 ## Slotwise Expansion Audit
 - Phase 8 standardized product-facing documentation around `Slotwise` and completed package/source renaming without breaking `/bookings` API compatibility.
@@ -243,12 +245,13 @@ No existing project documentation was found, so there is no implementation-vs-do
 - The Phase 13 brief now also includes localization and internationalization planning so frontend implementation does not treat translation and RTL support as late-stage retrofits.
 - The Phase 13 brief now also defines operational UX standards for loading, empty states, errors, privacy, feedback, form resilience, and perceived performance.
 - Phase 14 defers frontend implementation until auth, APIs, and design direction are ready.
-- Phase 14 now has a frontend implementation roadmap and selection artifact; actual app scaffolding, package adoption, token-storage decisions, deployment topology, SSR, and widget style isolation remain approval-gated future work.
-- The next frontend fix step is explicit: approve the architecture/package plan first, then scaffold `frontend/` only after the approval checklist is complete.
+- Phase 14 now has a frontend implementation roadmap and selection artifact, and its approved package/security review plus pre-scaffold decisions have already led to the isolated `frontend/` workspace.
+- The remaining frontend gating is no longer "create `frontend/`"; it is approval for future hardening, auth/storage changes, deployment/runtime shifts, or new package adoption beyond the current scaffold.
 - Phase 14 planning risks are now resolved into approved baselines; remaining risks are implementation-time checks for package advisories/version health, API DTO drift, static-hosting/CORS configuration, and memory-token re-authentication tradeoffs.
 - Frontend scaffold work is now allowed to proceed under the isolated `frontend/` folder using the reviewed package set.
 - Frontend implementation risk remaining after scaffold: visual browser QA still needs to run once the in-app browser runtime is available; API integration remains mocked/static until the next frontend implementation slice.
-- Phase 15 plans npm runtime repair, dependency inventory, security audit, safe fixes, outdated checks, compatible updates, major migrations, obsolete package removal, and modern package evaluation.
+- Phase 15 covered npm-runtime triage, dependency inventory, security audit, safe fixes, outdated checks, compatible updates, major migrations, obsolete package removal, and guarded modern-package evaluation; the remaining open items are separate follow-up decisions rather than unfinished repository modernization work.
+- The Phase 15 closure batch is complete: the sandbox npm shim scope is documented, current Node is corrected to `v26.3.0` Current with `v24.16.0` as the LTS target, lint/format/CI remain deferred for lack of an agreed repository/CI baseline, `npm audit fix --force` is not needed, and no new backend packages were justified.
 
 ## Phase 12 Snapshot
 - Phase 12.1 smart booking suggestions are complete.

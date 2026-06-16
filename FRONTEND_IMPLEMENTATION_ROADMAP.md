@@ -1,9 +1,9 @@
 # Slotwise Frontend Implementation Roadmap
 
 ## Purpose
-This document is the Phase 14 planning and selection artifact for the future Slotwise frontend. It selects an implementation direction and lists the components, screens, API contracts, and verification expectations needed before any frontend packages or source app are added.
+This document is the Phase 14 planning and selection artifact for the Slotwise frontend. It records the original implementation direction plus the approved first-scaffold decisions that led to the current `frontend/` app.
 
-No frontend source code, package installation, package update, deployment configuration, or auth/security implementation is part of this phase.
+Phase 14 itself stayed planning-only. The later `frontend/` scaffold and Phase 16 implementation slices are recorded here only so the original planning decisions and the current frontend baseline stay in one place.
 
 ## Selection Summary
 - App model: a separate TypeScript single-page frontend app that consumes the existing Slotwise API.
@@ -60,20 +60,22 @@ This selection keeps the frontend independent from the Express backend, allows s
 - Route-map/app-shell routing is complete with central route metadata, shell links, admin route placeholders, public-surface routes, responsive styling, and route navigation tests.
 - Shared API DTO/client modules are complete with typed wrappers for auth, bookings, businesses, service/resources, customers, public booking-page config, and widget config.
 - Operator auth screens and memory-session flow are complete with `/login`, protected admin routes, memory-only session metadata, and logout UI.
-- The bookings list slice is complete with a query-backed `/admin/bookings` screen, customer search, status/risk filters, sorting, pagination controls, and responsive record rendering.
+- The bookings list slice is complete with a query-backed `/admin/bookings` screen, customer search, status/risk filters, sorting, pagination controls, responsive record rendering, URL-persistent list state for reload/share-safe admin views, and browser-local saved views for lightweight operator workspace recall.
 - The booking detail slice is complete with a drawer backed by `GET /bookings/:id`, covering contact, schedule, notes, conflict risk, operational IDs, status history, role-aware lifecycle actions, operator rescheduling, and nearby suggestions.
 - The booking lifecycle actions slice is complete with approve, reject, cancel, complete, and no-show mutations gated by operator role and confirmation prompts.
 - The booking reschedule and suggestion slice is complete for operator-managed pending/approved bookings without customer magic-link/session storage changes.
 - The timeline/calendar slice is complete with a query-backed `/admin/timeline` view, filters, summary metrics, day groups, risk markers, and reschedule badges.
 - The dashboard analytics slice is complete with query-backed KPI, lifecycle funnel, utilization, and peak-time panels.
 - Cancellation/no-show insights now appear on `/admin` with summary cards, weekday trend bars, and reason summaries using the existing dashboard filters.
-- Business settings now have query-backed profile selection, editable profile basics, save mutation states, operating-readiness summaries, and read-only business template gallery/preview coverage on `/admin/settings`.
-- Service/resource management now has query-backed filters, resource list states, create form, and active/inactive toggles on `/admin/resources`.
-- Customer management now has query-backed filters, a customer directory, profile details, and booking-history entry points on `/admin/customers`.
+- Business settings now have query-backed profile selection, editable profile basics, working-hours and blackout-date editors, save mutation states, operating-readiness summaries, and read-only business template gallery/preview coverage on `/admin/settings`.
+- Service/resource management now has query-backed filters, resource list states, create form, active/inactive toggles, edit drawers, and availability override editing on `/admin/resources`.
+- Customer management now has query-backed filters, a customer directory, create/edit flows, profile details, and booking-history entry points on `/admin/customers`.
 - Public booking page flow is complete on `/book/:slug` with backend-config branding, service/resource selection, date/time and customer detail inputs, party-size/notes support, suggestion feedback, submit states, success/error/empty states, and responsive public layout.
+- Customer portal flow is complete on `/portal` with request/verify token states, isolated memory-only customer sessions, booking lookup/filtering, status/history views, customer cancel/reschedule actions, and lightweight public-page handoff links over the existing backend routes only.
+- The approved 16.25 session-hardening slice is now complete for `/login`, protected admin routes, and `/portal`, adding current-session revalidation for real backend-issued sessions on entry/focus, refreshed memory-only session metadata, and explicit expiry messaging without persistent storage.
 - Shared admin loading and inline success/error state helpers now support the touched Phase 16 admin surfaces.
 - Responsive and accessibility QA is complete for existing Phase 16 admin screens, covering mobile/tablet layout resilience, focus states, live state messaging, selected/pressed states, dialog semantics, and long-text overflow.
-- The next implementation slice is customer magic-link/customer portal UI, widget UI foundation, or another separately approved admin/public-surface hardening slice.
+- The approved 16.21 admin/public-surface hardening slice is now complete for `/book/:slug`, `/widget/:slug`, and `/portal`, the approved 16.22 admin hardening slice is now complete for `/admin/bookings` URL-state persistence, the approved 16.23 admin hardening slice is now complete for browser-local `/admin/bookings` saved views, and the approved 16.24 admin hardening slice is now complete for lightweight removable filter chips plus a clear-all reset on `/admin/bookings`; the next implementation slice remains another separately approved frontend hardening or session-work slice.
 - All Phase 16 UI work must stay reusable, responsive, minimal, and aligned with `UI_UX_DESIGN_BRIEF.md`; auth/session and lifecycle-action screens remain high-reasoning approval gates.
 
 ## Selected Initial Folder Strategy
@@ -98,7 +100,7 @@ frontend/
     utils/
 ```
 
-This is a plan only. Creating the folder, adding package metadata, and installing dependencies remain future approval-gated tasks.
+This folder strategy is now partially realized through the existing `frontend/` scaffold. Future structure changes should still stay approval-gated when they add new packages, auth/storage behavior, or deployment/runtime risk.
 
 ## Screens To Implement Later
 
@@ -114,19 +116,16 @@ This is a plan only. Creating the folder, adding package metadata, and installin
 - Activity/notification center for recent booking changes and outbox-related feedback.
 
 ### Customer Portal And Public Booking Page
-- Business-branded public booking page using `GET /businesses/public/:slug/booking-page`.
-- Service/resource chooser.
-- Availability picker with timezone and duration context.
-- Customer details form with inline validation and review step.
-- Confirmation screen with booking summary and next steps.
-- Customer magic-link entry and verification flow.
-- Booking management view for status, reschedule, and cancellation.
+- `/book/:slug` is now implemented with business-branded public booking config, service/resource selection, availability inputs, customer details, suggestions, submit feedback, and portal handoff links.
+- `/portal` is now implemented with customer magic-link request, token verification, isolated memory-only customer session state, booking lookup/filtering, status/history visibility, and customer cancel/reschedule actions.
+- Phase 16.21 now adds explicit client-side validation, safer request defaults, booking-context handoffs, and clearer mutation-state resets on `/portal`.
+- Future hardening can add a richer review step or broader portal/public feature expansion only after separate approval.
 
 ### Embeddable Widget
-- Compact booking entry point using `GET /businesses/public/:slug/widget`.
-- Narrow-container layout rules.
-- Service/resource chooser, availability picker, customer details, and confirmation states.
-- Host-page isolation strategy for styles and predictable sizing.
+- `/widget/:slug` is now implemented as a compact booking entry point using `GET /businesses/public/:slug/widget`, `POST /bookings/suggestions`, and `POST /bookings`.
+- The current widget foundation includes isolated iframe-first styling, narrow-container layout rules, service/resource chooser behavior, availability inputs, customer details, loading/error/empty/success states, and lightweight handoff links to `/book/:slug` and `/portal`.
+- Phase 16.21 now adds stronger widget validation polish, richer handoff context to the hosted booking page and portal, and tighter compact/mobile behavior.
+- Future hardening can add richer host sizing guidance or first-party non-iframe variants only after separate approval.
 
 ## Component Inventory
 - App shell, sidebar navigation, top utility bar, account/session menu.
@@ -182,7 +181,7 @@ Future implementation verification, after approval:
 - Frontend type check.
 - Frontend build.
 - Frontend unit/component tests for core components and API helpers.
-- Route-level smoke checks for admin, public page, and widget paths.
+- Route-level smoke checks for admin, public page, portal, and widget paths.
 - Browser QA with desktop and mobile screenshots.
 - Accessibility smoke checks for keyboard navigation, focus visibility, labels, and color-independent status meaning.
 
@@ -199,8 +198,7 @@ The pre-scaffold planning decisions are approved. Before `frontend/` is created 
 8. Only after these checks pass, scaffold `frontend/` and add baseline scripts.
 
 ## Deferred Until Approval
-- Creating `frontend/` source files.
-- Adding React, Vite, router, query, styling, form, chart, date-picker, icon, test, or accessibility packages.
+- Adding new frontend packages beyond the approved first scaffold.
 - Changing backend authentication/session behavior for the frontend.
 - Changing deployment topology.
 - Introducing SSR, BFF routes, generated API clients, or monorepo/package-manager restructuring.

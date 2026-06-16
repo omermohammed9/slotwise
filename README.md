@@ -21,10 +21,10 @@ Current workspace folder: `Booking System`. Target workspace folder: `Slotwise`;
 - The design brief now also includes localization and internationalization guidance for translated copy, locale-aware formatting, timezone clarity, and RTL readiness.
 - The design brief now also includes operational UX standards and an explicit frontend gap checklist for screens, states, components, role differences, public surfaces, API dependencies, and design QA.
 - The frontend implementation roadmap now selects a future React + Vite + React Router + TanStack Query direction and lists the needed screens, components, API contracts, state rules, and verification expectations before implementation begins.
-- The frontend roadmap now also requires approval of the architecture/package adoption plan before scaffolding `frontend/`, with token/session storage, deployment, SSR/pre-rendering, and widget style isolation handled in that pre-scaffold checklist.
+- The frontend roadmap records the approved architecture/package adoption plan that led to the current `frontend/` scaffold, with token/session storage, deployment, SSR/pre-rendering, and widget style isolation still treated as explicit decision checkpoints for future expansion.
 - The Phase 14 pre-scaffold decisions are approved for planning: memory-only token storage for the first slice, static SPA deployment, deferred SSR/pre-rendering, and iframe isolation for third-party widget embeds.
 - The first isolated frontend scaffold now exists under `frontend/` with Vite, React, TypeScript, TanStack Query, Tailwind CSS, an admin dashboard shell, API/session foundations, and smoke tests.
-- Phase 16 is now the active frontend/backend alignment phase. Its first coverage matrix, route-map slice, shared API DTO/client slice, operator auth screen slice, query-backed bookings list, booking detail drawer, role-aware lifecycle actions, operator reschedule/suggestion flows, timeline view, dashboard analytics, cancellation/no-show insights, customer management, business settings with template preview, resources screens, public booking page flow, shared admin states, and responsive/accessibility QA pass are complete; the scaffold still needs customer portal screens and iframe-first widget UI.
+- Phase 16 is now the active frontend/backend alignment phase. Its coverage matrix, route-map slice, shared API DTO/client slice, operator auth screen slice, query-backed bookings list, booking detail drawer, role-aware lifecycle actions, operator reschedule/suggestion flows, timeline view, dashboard analytics, cancellation/no-show insights, customer management create/edit flows, business settings with template preview plus working-hours/blackout editors, resource screens with edit drawers and availability override editing, public booking page flow, customer portal flow, embeddable widget flow, shared admin states, responsive/accessibility QA pass, and the approved 16.25 session-revalidation hardening slice are complete.
 - The active roadmap now plans Repository Pattern, platform features, and future admin/customer UI/UX.
 
 ## Requirements
@@ -75,8 +75,10 @@ Frontend commands from `frontend/`:
 - `npm run test:run` runs frontend tests
 - `npm audit --audit-level=moderate` audits the frontend dependency tree
 
-If global `npm` is broken on the machine, use:
+If bare `npm` is broken in the Codex PowerShell/sandbox path, use:
 
+- `C:\Program Files\nodejs\npm.cmd`
+- `node "C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js"`
 - `.\node_modules\.bin\tsc.cmd`
 - `node --test tests\*.test.js`
 
@@ -87,13 +89,13 @@ If global `npm` is broken on the machine, use:
 - Root `.env` and legacy `src/.env` are runtime secrets and should not be committed.
 - Preferred verification flow is compile first, then run tests.
 - Backend layering now expects routes to compose controllers, controllers to handle HTTP mapping, services to own business rules, repositories to own persistence queries, and models to define database shape.
-- Lint and formatting tool selection is still deferred because global npm is broken on this machine and there is no stable repository/CI baseline yet.
-- CI setup is also deferred until the project is attached to a real Git remote/provider and the npm runtime issue is resolved.
-- Dependency modernization is planned as a dedicated phase: repair npm if needed, run `npm audit`, apply safe fixes, review outdated packages, update compatible packages, and handle major upgrades with migration notes.
-- The normal `npm` shim is currently broken on this machine, but the bundled CLI fallback has been verified for Phase 15 audit commands. Package-changing npm commands still require explicit approval.
-- Phase 15 dependency modernization is complete for the repository: audit vulnerabilities were reduced to 0, deprecated `@types/mongoose` was removed, `dotenv` was upgraded to `17.4.2`, `express` was upgraded to `5.2.1`, and `mongoose` was upgraded to `9.7.0`.
-- The normal unsandboxed npm workflow now works again and was re-verified with `npm run build` and `npm test` on June 11, 2026.
-- Remaining modernization work is machine-level rather than repository-level: Node `v23.6.0` is on an EOL line and upgrading to the official `v24.16.0` LTS installer is currently blocked by an administrator-only uninstall/upgrade step.
+- Lint and formatting tool selection is still deferred because there is no agreed repository/CI baseline yet, even though normal unsandboxed npm now works again on this machine.
+- CI setup is also deferred until the project is attached to a real Git remote/provider; the remaining npm issue is sandbox-specific rather than a general machine blocker.
+- Dependency modernization is tracked in Phase 15: audit, safe fixes, outdated-package review, compatible updates, major upgrades with migration notes, and justified package adoption only when a real backend need exists.
+- Normal unsandboxed npm works on this machine and was re-verified at `11.16.0` on June 16, 2026 with `npm run build` and `npm test`.
+- The remaining npm issue is Codex PowerShell/sandbox-specific: `C:\Program Files\nodejs\npm.ps1` selects `C:\Users\omarz\AppData\Roaming\npm\node_modules\npm\bin\npm-cli.js`, which the sandbox cannot read/execute. Use `C:\Program Files\nodejs\npm.cmd` or the bundled CLI path inside Codex.
+- Phase 15 dependency modernization is complete for the repository: audit vulnerabilities are 0, `form-data` was repaired to `4.0.6` through approved non-force `npm audit fix`, deprecated `@types/mongoose` was removed, `dotenv` was upgraded to `17.4.2`, `express` was upgraded to `5.2.1`, and `mongoose` was upgraded to `9.7.0`.
+- Current machine Node is `v26.3.0` as of June 16, 2026. Official Node metadata lists `v24.16.0` as Latest LTS, `v26.3.0` as Current/Latest Release, and the v23 line as EOL; moving this machine to LTS remains an administrator-level installer/uninstall task based on the prior Windows Installer `1730` blocker.
 - New packages should be introduced only when they are required for security, validation, logging, testing, API documentation, configuration safety, or future frontend implementation.
 
 ## API Base Path
@@ -245,19 +247,23 @@ Business management routes are mounted under `/businesses`, `/service-resources`
 - SMS delivery remains modeled but does not yet have a concrete provider implementation; email delivery is the supported live channel.
 - Frontend/admin visualization for these insights remains deferred until the UI phase begins.
 - The hosted public booking page now has a dedicated `/book/:slug` frontend flow backed by existing public config, suggestion, and booking creation APIs.
-- The embeddable widget is currently a backend bootstrap surface only; a dedicated hosted/embed frontend experience is still deferred.
+- The embeddable widget now has a dedicated `/widget/:slug` frontend flow backed by the existing public widget config, booking suggestion, and booking creation APIs.
 - Automatic service/resource creation from business template blueprints is still deferred; template discovery is available now, but seeding remains a later task.
 - Source folders/files now use professional dot-case naming for booking routes, controller, service, model, and interface files.
 - Frontend implementation is active under Phase 16 and remains governed by the UI/UX brief, auth model, and API roadmap.
 - The current frontend planning source of truth is `UI_UX_DESIGN_BRIEF.md`.
 - The current frontend implementation planning source of truth is `FRONTEND_IMPLEMENTATION_ROADMAP.md`.
-- The next frontend implementation step is to connect the frontend API client and route structure to live Slotwise backend flows.
-- The current frontend implementation phase is Phase 16; route-map/app-shell routing, shared API DTO/client modules, operator auth/memory-session flow, the query-backed `/admin/bookings` list, the booking detail drawer, role-aware lifecycle actions, operator reschedule/suggestion flows, the query-backed `/admin/timeline` view, dashboard analytics, cancellation/no-show insights, customer management, business settings with read-only template preview, resources management, the public `/book/:slug` booking flow, shared admin states, and responsive/accessibility QA pass are complete.
+- The approved Phase 16.22 `/admin/bookings` URL-state slice is now complete, so customer search, status/risk filters, sorting, and pagination survive reloads and share clean search-param links without backend changes.
+- The approved Phase 16.23 `/admin/bookings` saved-view slice is now complete, so the existing customer/status/risk/sort/page workspace state can be saved, reapplied, and removed from browser-local storage on the current device.
+- The approved Phase 16.24 `/admin/bookings` active-filter-chip slice is now complete, so the existing customer/status/risk/sort/page workspace state also surfaces lightweight removable chips plus a clear-all reset back to the default clean URL.
+- The approved Phase 16.25 session-hardening slice is now complete, so real operator and customer sessions revalidate against the backend on entry and tab return, refresh current-session metadata in memory, and fail closed with clear expiry messaging while keeping token storage memory-only.
+- The approved grouped admin-management slice is now complete through Phase 16.28, so `/admin/settings` now edits working hours and blackout dates, `/admin/resources` now supports edit drawers plus availability override editing, and `/admin/customers` now supports create/edit flows over existing backend APIs; explicit clearing of already persisted nested resource override keys still needs backend contract support.
+- The current frontend implementation phase is Phase 16; route-map/app-shell routing, shared API DTO/client modules, operator auth/memory-session flow, current-session revalidation for real operator/customer sessions, the query-backed `/admin/bookings` list with URL-persistent list state, browser-local saved views, and removable active-filter chips, the booking detail drawer, role-aware lifecycle actions, operator reschedule/suggestion flows, the query-backed `/admin/timeline` view, dashboard analytics, cancellation/no-show insights, customer management create/edit coverage, business settings with read-only template preview plus working-hours/blackout editors, resource management with edit drawers and availability override editing, the public `/book/:slug` booking flow, the customer `/portal` magic-link and booking-management flow, the compact `/widget/:slug` embed flow, shared admin states, the responsive/accessibility QA pass, and the approved 16.21 public-surface hardening pass are complete.
 - Browser visual QA for the first scaffold still needs to run once the in-app browser runtime is available in this Windows sandbox.
 - The remaining repository-folder rename is tracked in the implementation plan and should be handled only after workspace path risk is accepted.
 
 ## Roadmap
 
 - Business profiles, services/resources, configurable availability, customers, notifications, rescheduling, and role model.
-- Professional admin dashboard and customer booking portal after UI/UX planning is approved.
+- later public/customer/widget hardening slices after separate approval.
 - Dependency audit, vulnerability fixes, package updates, and justified modern package adoption.

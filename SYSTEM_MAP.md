@@ -194,14 +194,14 @@ Client / Future Frontend
 ## Package Maintenance Surface
 - Runtime packages: `axios`, `dotenv`, `express`, `libphonenumber-js`, `mongoose`, `validator`.
 - Development packages: `@types/express`, `@types/validator`, `nodemon`, `ts-node`.
-- Phase 15 was executed through the bundled npm CLI fallback because the normal `npm` shim is broken on this machine.
+- Phase 15 can be verified through normal unsandboxed npm or through `C:\Program Files\nodejs\npm.cmd` inside Codex; only the Codex PowerShell/sandbox `npm.ps1` path remains broken.
 - Current direct version targets declared in `package.json`: `axios@^1.17.0`, `dotenv@^17.4.2`, `express@^5.2.1`, `libphonenumber-js@^1.13.6`, `mongoose@^9.7.0`, `validator@^13.15.35`, `@types/express@^5.0.6`, `@types/validator@^13.15.10`, `nodemon@^3.1.14`, `ts-node@^10.9.2`.
 - The initial audit reported 17 vulnerabilities, and the final audit result is now 0 vulnerabilities.
 - Deprecated `@types/mongoose` has been removed.
 - `dotenv` was upgraded to `17.4.2` with an explicit quiet-mode workaround in `src/config/env.ts`.
 - `express` was upgraded to `5.2.1` with `@types/express` `5.0.6`.
 - `mongoose` was upgraded to `9.7.0`, with small type-compatibility adjustments in `src/interfaces/booking.interface.ts` and `src/utils/validators.ts`.
-- Remaining package-health issues are machine-level toolchain concerns rather than repository dependency gaps: Node `v23.6.0` is on an EOL line, normal npm now works at `11.16.0` outside the sandbox, and the Node 24 LTS installer is blocked by an administrator-only uninstall/upgrade step.
+- Remaining package-health issues are machine-level toolchain concerns rather than repository dependency gaps: Node is `v26.3.0` Current instead of LTS, normal npm works at `11.16.0` outside the sandbox, and moving to Node `v24.16.0` LTS remains blocked by the prior administrator-only installer/uninstall step.
 - Candidate future packages must be justified before adoption and documented here after approval.
 
 ## Instruction Sources
@@ -247,7 +247,7 @@ Codex-specific governance should live in `.codex/`. If `.agents/` exists, treat 
 - Booking documents no longer define a password field; schema serialization strips legacy `password` values if present.
 - Phone validation now returns explicit booleans for valid and invalid input.
 - Full identity/session authentication remains future hardening beyond the current trusted role-header boundary.
-- Lint/format tooling and CI remain deferred until npm and repository hosting are in a healthier state.
+- Lint/format tooling and CI remain deferred until the project has a real repository-hosting/CI baseline; unsandboxed npm health is no longer the main blocker.
 - Mandatory platform features are planned: full date-time availability, booking lifecycle expansion, admin flows, filtering, pagination, audit trail, request validation, and standard responses.
 - Professional business features are planned: business profiles, service/resources, working hours, customer records, notifications, rescheduling, and roles.
 - Shared Phase 11 business-domain models now exist for business profiles, service/resources, and customers; route and service wiring is still in progress.
@@ -272,5 +272,15 @@ Codex-specific governance should live in `.codex/`. If `.agents/` exists, treat 
 - Phase 16.14 replaced the `/admin/customers` placeholder with query-backed customer filters, a customer directory, profile summary/details, and booking-history entry points over `/customers` and existing booking list filters.
 - Phase 16.15 folded business template selection into `/admin/settings` with a read-only gallery and preview over `/businesses/templates`, without automatic service/resource seeding.
 - Phase 16.16 replaced the `/book/:slug` placeholder with a customer-facing public booking page flow over `GET /businesses/public/:slug/booking-page`, `POST /bookings/suggestions`, and `POST /bookings`, without backend API changes, new packages, customer portal work, widget foundation, persistent token storage, or automatic template resource seeding.
+- Phase 16.17 replaced the `/portal` placeholder with a customer-facing management flow over `POST /auth/customer/magic-link`, `POST /auth/customer/verify`, `GET /bookings`, `POST /bookings/:id/customer-cancel`, and `POST /bookings/:id/customer-reschedule`, while keeping customer tokens memory-only, isolating customer/operator frontend sessions, and limiting public-booking-page changes to lightweight portal handoff links.
+- Phase 16.18 replaced the `/widget/:slug` placeholder with a compact iframe-first booking flow over `GET /businesses/public/:slug/widget`, `POST /bookings/suggestions`, and `POST /bookings`, with isolated widget styling, loading/error/empty/success states, responsive embed layouts, and lightweight handoff links to `/book/:slug` and `/portal` only.
 - Phase 16.19 added small shared frontend loading and inline success/error state helpers for the touched admin surfaces.
 - Phase 16.20 polished existing admin screens for responsive and accessibility QA, including focus-visible states, live state messaging, selected/pressed states, dialog semantics, mobile/tablet grid behavior, and long-text overflow handling.
+- Phase 16.21 hardened the public `/book/:slug`, `/widget/:slug`, and `/portal` flows with explicit client-side validation, no-native-validation inline errors, safer default selection/clamping behavior, mutation-state cleanup on edits, booking-context handoffs between surfaces, and small compact/mobile layout polish while keeping backend APIs and token storage unchanged.
+- Phase 16.22 hardened `/admin/bookings` by persisting customer/status/risk/sort/page state in URL search params, rehydrating list state on reload/direct links, resetting pagination when filters change, and keeping default values out of clean URLs without backend changes.
+- Phase 16.23 hardened `/admin/bookings` further with browser-local saved views that save, apply, and remove the existing customer/status/risk/sort/page workspace state without backend API or token-storage changes.
+- Phase 16.24 hardened `/admin/bookings` further with lightweight removable active-filter chips and a clear-all reset for the existing customer/status/risk/sort/page workspace state, while keeping saved views, list controls, backend APIs, and token storage unchanged.
+- Phase 16.26 expanded `/admin/settings` over the existing `/businesses` contract with editable working-hours rows and blackout-date ranges while preserving business basics and read-only template preview behavior.
+- Phase 16.27 expanded `/admin/resources` over the existing `/service-resources` detail/update contract with resource edit drawers, richer field editing, and availability override controls; explicit clearing of already persisted nested override keys is still limited by the current backend PATCH contract.
+- Phase 16.28 expanded `/admin/customers` over the existing `/customers` create/update contract with business-aware create flow, customer profile editing, notes/preference fields, and preserved booking-history context.
+- Phase 16.25 hardened operator and customer session handling without backend or storage-model changes by revalidating real current sessions through `GET /auth/session` on route entry plus focus/visibility return, refreshing in-memory session metadata, and clearing rejected sessions with explicit expiry messaging.

@@ -80,9 +80,9 @@ Current Codex governance status:
 - `.env.example` now documents required configuration keys.
 - Real `.env` exists under `src`; do not print or commit secrets.
 - No Git repository was detected from the workspace root.
-- No lint or format tooling is configured.
-- Global `npm` now works in a normal unsandboxed shell on this machine and was verified at `11.16.0` on June 11, 2026.
-- In the Codex sandbox, `npm` can still fail because the shim resolves through `C:\Users\omarz\AppData\Roaming\npm\...`, but outside the sandbox the normal `npm` command works and `npm run build` and `npm test` were both re-verified successfully on June 11, 2026.
+- No lint or format tooling is configured yet.
+- Global `npm` works in a normal unsandboxed shell on this machine and was verified at `11.16.0` on June 16, 2026.
+- In the Codex PowerShell/sandbox path, bare `npm` can still fail because `C:\Program Files\nodejs\npm.ps1` selects `C:\Users\omarz\AppData\Roaming\npm\node_modules\npm\bin\npm-cli.js`, which the sandbox cannot read/execute. Outside the sandbox, normal `npm` works; inside Codex, use `C:\Program Files\nodejs\npm.cmd` or `node C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js`.
 - CI is not configured because there is no confirmed Git provider/repository attached to this workspace.
 
 ## Recent Safe Fixes
@@ -109,7 +109,7 @@ Current Codex governance status:
 - Legacy bookings with empty `statusHistory` now surface a synthetic baseline entry and persist one on the next status change.
 - Booking filter queries now rely on normalized searchable fields with index support, plus a one-time legacy backfill for older records.
 - MongoDB SRV connections can now use optional `SLOTWISE_DNS_SERVERS` overrides when local DNS resolvers refuse Atlas SRV lookups.
-- Ignore rules and editor defaults are now in place, but lint/format tooling is still intentionally deferred.
+- Ignore rules and editor defaults are now in place, but lint/format tooling is still intentionally deferred until the repository has a chosen CI/workflow baseline.
 
 ## Current Execution Plan
 - Use `IMPLEMENTATION_PLAN.md` as the active phase plan.
@@ -123,7 +123,7 @@ Current Codex governance status:
 - Phase 12 progress: smart booking suggestions, conflict-risk indicators, booking timeline feed, no-show insights, business templates, widget config, public booking-page customization, and analytics dashboard backend support are now implemented.
 - Phase 12 template progress: restaurant, clinic, salon, consulting, venue, rental, and fitness presets now exist for business-profile setup, while automatic resource seeding remains deferred.
 - Current Phase 12 progress note: no-show-history analytics now have a backend source of truth through the `no_show` lifecycle and insights endpoint.
-- Current Phase 12 widget progress note: public widget config is now available by business slug, but the dedicated hosted embed/frontend experience remains deferred.
+- Current Phase 12 widget progress note: public widget config is available by business slug, and Phase 16.18 now adds the dedicated compact `/widget/:slug` embed frontend over that existing backend surface.
 - Current Phase 12 public-page progress note: hosted booking-page configuration is available by business slug, and Phase 16.16 now adds the dedicated `/book/:slug` frontend booking flow over that existing backend surface.
 - Phase 11 foundation progress: shared business-profile, service-resource, and customer models now exist and are ready to be wired into repositories, services, routes, and booking workflows.
 - Booking workflow progress: bookings can now carry optional `businessId`, `customerId`, `serviceResourceId`, `partySize`, `notes`, notification plans, and reschedule history, with business-aware scheduling validation in the service layer.
@@ -134,8 +134,8 @@ Current Codex governance status:
 - Notification hardening progress: queued auth and booking emails now have a provider-backed outbox worker with retry handling and a safe local `noop` mode.
 - Current architecture progress: the booking repository boundary now exists, and booking service persistence calls flow through `BookingRepository`.
 - Current auth progress: status-action routes now require `/auth/session` login and bearer sessions backed by env-configured owner/admin/staff credentials; persistent user/session storage remains future work.
-- Phase 15 audit status: dependency inventory, `npm audit`, and `npm outdated` can run through the bundled CLI fallback; the repository dependency modernization work is now complete.
-- Phase 15 current status: runtime packages are modernized to current direct versions, audit status is 0 vulnerabilities, and compile/tests pass after small compatibility fixes in env loading, controller param typing, Mongoose `_id` typing, and date-validator `this` handling.
-- Phase 16 status: frontend/backend feature alignment is now the active frontend implementation phase; the coverage matrix, route-map/app-shell routing, shared API DTO/client modules, operator auth/memory-session flow, query-backed bookings list, booking detail drawer, role-aware lifecycle actions, operator reschedule/suggestion flows, timeline frontend coverage, dashboard analytics, cancellation/no-show insights, customer management, business settings with template preview, service/resource management screens, public booking page flow, shared admin states, and responsive/accessibility QA pass are complete. Customer magic-link flows, widget UI foundation, persistent token storage, and automatic template resource seeding remain separate approval gates.
-- Remaining environment-level gap: machine Node is still `v23.6.0` on an EOL line, and upgrading it to LTS `24.16.0` is blocked by a Windows Installer admin requirement.
+- Phase 15 audit status: dependency inventory, `npm audit`, and `npm outdated` can run through normal unsandboxed npm or through `C:\Program Files\nodejs\npm.cmd` inside Codex; the repository dependency modernization work is now complete.
+- Phase 15 current status: runtime packages are modernized within the approved scope, audit status is 0 vulnerabilities after approved non-force repair of `form-data` to `4.0.6`, and compile/tests pass after scoping backend TypeScript to `src/**/*.ts`.
+- Phase 16 status: frontend/backend feature alignment is now the active frontend implementation phase; the coverage matrix, route-map/app-shell routing, shared API DTO/client modules, operator auth/memory-session flow, current-session revalidation for real operator/customer sessions, query-backed bookings list with URL-persistent filter/sort/page state, browser-local saved views, and removable active-filter chips, booking detail drawer, role-aware lifecycle actions, operator reschedule/suggestion flows, timeline frontend coverage, dashboard analytics, cancellation/no-show insights, customer management create/edit flows, business settings with template preview plus working-hours/blackout editors, service/resource management screens with edit drawers and availability override editing, public booking page flow, customer portal magic-link/management flow, widget UI foundation, shared admin states, the responsive/accessibility QA pass, and the approved 16.21 public-surface hardening pass are complete. Persistent token storage, automatic template resource seeding, and explicit clearing of already persisted nested resource override keys remain separate approval or backend-contract gates.
+- Remaining environment-level gap: machine Node is `v26.3.0` Current as of June 16, 2026; official Node metadata lists `v24.16.0` as Latest LTS and the v23 line as EOL. Moving the machine to LTS remains blocked by the prior Windows Installer administrator requirement unless an admin performs the install/uninstall step.
 - Current database connectivity gap: Resolved. Active database connectivity is established to the new `slotwise-dev` MongoDB Atlas cluster in `EU_CENTRAL_1` Frankfurt.
