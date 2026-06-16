@@ -11,7 +11,7 @@ type LoginLocationState = {
 };
 
 export function LoginPage() {
-  const { session, setSession } = useSessionStore();
+  const { clearNotice, notice, session, setSession } = useSessionStore();
   const location = useLocation();
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
@@ -28,6 +28,7 @@ export function LoginPage() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    clearNotice();
     setIsSubmitting(true);
 
     const response = await createOperatorSession({
@@ -85,6 +86,11 @@ export function LoginPage() {
             />
           </label>
 
+          {notice ? (
+            <p className={`form-${notice.tone}`} role={notice.tone === 'error' ? 'alert' : 'status'}>
+              {notice.message}
+            </p>
+          ) : null}
           {error ? (
             <p className="form-error" role="alert">
               {error}

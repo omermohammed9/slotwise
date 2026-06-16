@@ -15,6 +15,11 @@ export type CustomerVerifyBody = {
   token: string;
 };
 
+export type CustomerMagicLinkResult = {
+  accepted?: boolean;
+  requested?: boolean;
+};
+
 export function createOperatorSession(body: OperatorLoginBody): Promise<ApiResponse<SessionDto>> {
   return apiRequest<SessionDto>('/auth/session', {
     method: 'POST',
@@ -36,8 +41,8 @@ export function deleteSession(token: string): Promise<ApiResponse<{ revoked: boo
   });
 }
 
-export function requestCustomerMagicLink(body: CustomerMagicLinkBody): Promise<ApiResponse<{ accepted: boolean }>> {
-  return apiRequest<{ accepted: boolean }>('/auth/customer/magic-link', {
+export function requestCustomerMagicLink(body: CustomerMagicLinkBody): Promise<ApiResponse<CustomerMagicLinkResult>> {
+  return apiRequest<CustomerMagicLinkResult>('/auth/customer/magic-link', {
     method: 'POST',
     body,
   });

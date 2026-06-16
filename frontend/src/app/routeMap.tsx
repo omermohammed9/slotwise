@@ -11,14 +11,15 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { ReactElement } from 'react';
-import { RoutePlaceholder } from '../components/RoutePlaceholder';
 import { BookingsPage } from '../features/admin/BookingsPage';
 import { CustomersPage } from '../features/admin/CustomersPage';
 import { DashboardPage } from '../features/admin/DashboardPage';
 import { ResourcesPage } from '../features/admin/ResourcesPage';
 import { SettingsPage } from '../features/admin/SettingsPage';
 import { TimelinePage } from '../features/admin/TimelinePage';
+import { CustomerPortalPage } from '../features/public/CustomerPortalPage';
 import { PublicBookingPage } from '../features/public/PublicBookingPage';
+import { WidgetPage } from '../features/public/WidgetPage';
 
 export type AppRoute = {
   path: string;
@@ -27,6 +28,7 @@ export type AppRoute = {
   element: ReactElement;
   nav: 'admin' | 'surface';
   end?: boolean;
+  navPath?: string;
 };
 
 export const appRoutes: readonly AppRoute[] = [
@@ -78,21 +80,14 @@ export const appRoutes: readonly AppRoute[] = [
     label: 'Portal',
     icon: UserRoundCheck,
     nav: 'surface',
-    element: (
-      <RoutePlaceholder
-        eyebrow="Customer portal"
-        title="Manage booking"
-        summary="Customer booking management starts from the passwordless magic-link route."
-        icon={UserRoundCheck}
-        checkpoints={['Magic-link entry', 'Booking status', 'Reschedule and cancellation']}
-      />
-    ),
+    element: <CustomerPortalPage />,
   },
   {
     path: '/book/:slug',
     label: 'Public page',
     icon: Sparkles,
     nav: 'surface',
+    navPath: '/book/demo-business',
     element: <PublicBookingPage />,
   },
   {
@@ -100,15 +95,8 @@ export const appRoutes: readonly AppRoute[] = [
     label: 'Widget',
     icon: MonitorSmartphone,
     nav: 'surface',
-    element: (
-      <RoutePlaceholder
-        eyebrow="Embedded booking"
-        title="Widget"
-        summary="The iframe-first route keeps compact booking flows isolated from host pages."
-        icon={MonitorSmartphone}
-        checkpoints={['Compact layout', 'Host-safe sizing', 'Public widget config']}
-      />
-    ),
+    navPath: '/widget/demo-widget',
+    element: <WidgetPage />,
   },
 ];
 

@@ -1,4 +1,4 @@
-import { type CSSProperties, type FormEvent, useMemo, useState } from 'react';
+import { type CSSProperties, type FormEvent, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
 import {
@@ -13,11 +13,22 @@ import {
   Sparkles,
   UsersRound,
 } from 'lucide-react';
-import { useParams } from 'react-router';
+import { Link, useParams } from 'react-router';
+import { useSearchParams } from 'react-router';
 import { createBooking, getBookingSuggestions } from '../../api/bookings';
 import { getPublicBookingPageConfig } from '../../api/publicSurfaces';
-import type { BookingSuggestionDto, PublicBookingPageConfigDto, PublicResourcePreviewDto } from '../../api/types';
+import type { BookingDto, BookingSuggestionDto, PublicBookingPageConfigDto, PublicResourcePreviewDto } from '../../api/types';
 import { EmptyState } from '../../components/EmptyState';
+import {
+  clampPartySize,
+  combineDateTime,
+  createPortalLink,
+  createPublicDraftFromSearchParams,
+  formatInputDate,
+  formatInputTime,
+  getInitialDate,
+  validatePublicBookingDraft,
+} from './publicSurfaceUtils';
 
 type BookingDraft = {
   date: string;
@@ -34,12 +45,6 @@ type BookingDraft = {
 };
 
 const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-function getInitialDate(): string {
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  return format(tomorrow, 'yyyy-MM-dd');
-}
 
 function createInitialDraft(): BookingDraft {
   return {
@@ -96,10 +101,6 @@ function getResourceLabel(resource?: PublicResourcePreviewDto): string {
   return details.length ? `${resource.name} · ${details.join(' · ')}` : resource.name;
 }
 
-function combineDateTime(date: string, time: string): string {
-  return new Date(`${date}T${time}:00`).toISOString();
-}
-
 function formatSlotDate(value: string): string {
   try {
     return format(parseISO(value), 'EEE, MMM d');
@@ -113,22 +114,6 @@ function formatSlotTime(value: string): string {
     return format(parseISO(value), 'h:mm a');
   } catch {
     return value;
-  }
-}
-
-function formatInputDate(value: string): string {
-  try {
-    return format(parseISO(value), 'yyyy-MM-dd');
-  } catch {
-    return value.slice(0, 10);
-  }
-}
-
-function formatInputTime(value: string): string {
-  try {
-    return format(parseISO(value), 'HH:mm');
-  } catch {
-    return value.slice(11, 16);
   }
 }
 
@@ -180,8 +165,14 @@ function PublicNotice({ message, tone }: { message: string; tone: 'error' | 'suc
 
 export function PublicBookingPage() {
   const { slug = '' } = useParams();
-  const [draft, setDraft] = useState<BookingDraft>(createInitialDraft);
+  const [searchParams] = useSearchParams();
+  const [draft, setDraft] = useState<BookingDraft>(() => ({
+    ...createInitialDraft(),
+    ...createPublicDraftFromSearchParams(searchParams),
+  }));
+  const [createdBooking, setCreatedBooking] = useState<BookingDto | null>(null);
   const [suggestions, setSuggestions] = useState<BookingSuggestionDto[]>([]);
+  const [validationMessage, setValidationMessage] = useState<string | null>(null);
 
   const configQuery = useQuery({
     enabled: Boolean(slug),
@@ -202,6 +193,49 @@ export function PublicBookingPage() {
   const selectedResource = resources.find((resource) => resource.id === draft.resourceId);
   const showPartySize = config ? isPartySizeRelevant(config, resources) : true;
   const themeColor = getThemeColor(config);
+  const minDate = getInitialDate();
+  const maxPartySize = selectedResource?.capacity ? Number(selectedResource.capacity) : undefined;
+
+  useEffect(() => {
+    if (!resources.length) {
+      if (draft.resourceId) {
+        setDraft((current) => ({
+          ...current,
+          resourceId: '',
+        }));
+      }
+      return;
+    }
+
+    if (resources.length === 1 && !draft.resourceId) {
+      setDraft((current) => ({
+        ...current,
+        resourceId: resources[0].id,
+      }));
+      return;
+    }
+
+    if (draft.resourceId && !resources.some((resource) => resource.id === draft.resourceId)) {
+      setDraft((current) => ({
+        ...current,
+        resourceId: '',
+      }));
+    }
+  }, [draft.resourceId, resources]);
+
+  useEffect(() => {
+    if (!showPartySize) {
+      return;
+    }
+
+    const clampedPartySize = clampPartySize(draft.partySize, maxPartySize);
+    if (clampedPartySize !== draft.partySize) {
+      setDraft((current) => ({
+        ...current,
+        partySize: clampedPartySize,
+      }));
+    }
+  }, [draft.partySize, maxPartySize, showPartySize]);
 
   const suggestionMutation = useMutation({
     mutationFn: async () => {
@@ -246,9 +280,17 @@ export function PublicBookingPage() {
 
       return response.data;
     },
+    onSuccess: (booking) => {
+      setCreatedBooking(booking);
+    },
   });
 
   function updateDraft<Key extends keyof BookingDraft>(key: Key, value: BookingDraft[Key]) {
+    setValidationMessage(null);
+    setCreatedBooking(null);
+    createMutation.reset();
+    suggestionMutation.reset();
+    setSuggestions([]);
     setDraft((current) => ({
       ...current,
       [key]: value,
@@ -257,15 +299,48 @@ export function PublicBookingPage() {
 
   function handleSuggestionSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const nextValidationMessage = validatePublicBookingDraft({
+      draft,
+      maxPartySize,
+      minDate,
+      requireResource: resources.length > 0,
+      selectedResource,
+      showPartySize,
+    });
+
+    if (nextValidationMessage) {
+      setValidationMessage(nextValidationMessage);
+      return;
+    }
+
+    setValidationMessage(null);
     suggestionMutation.mutate();
   }
 
   function handleBookingSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const nextValidationMessage = validatePublicBookingDraft({
+      draft,
+      maxPartySize,
+      minDate,
+      requireResource: resources.length > 0,
+      selectedResource,
+      showPartySize,
+    });
+
+    if (nextValidationMessage) {
+      setValidationMessage(nextValidationMessage);
+      return;
+    }
+
+    setValidationMessage(null);
     createMutation.mutate();
   }
 
   function applySuggestion(suggestion: BookingSuggestionDto) {
+    setValidationMessage(null);
+    setCreatedBooking(null);
+    createMutation.reset();
     setDraft((current) => ({
       ...current,
       date: formatInputDate(suggestion.startDate),
@@ -317,7 +392,7 @@ export function PublicBookingPage() {
         </section>
 
         <section className="public-booking-layout">
-          <form className="panel public-booking-form" onSubmit={handleBookingSubmit}>
+          <form className="panel public-booking-form" noValidate onSubmit={handleBookingSubmit}>
             <div className="panel-heading">
               <div>
                 <p className="eyebrow">Request a time</p>
@@ -354,11 +429,18 @@ export function PublicBookingPage() {
             <div className="public-form-grid">
               <label className="form-field">
                 Date
-                <input required type="date" value={draft.date} onChange={(event) => updateDraft('date', event.target.value)} />
+                <input
+                  min={minDate}
+                  required
+                  type="date"
+                  value={draft.date}
+                  onChange={(event) => updateDraft('date', event.target.value)}
+                />
               </label>
               <label className="form-field">
                 Start
                 <input
+                  aria-describedby="public-booking-time-help"
                   required
                   type="time"
                   value={draft.startTime}
@@ -367,38 +449,71 @@ export function PublicBookingPage() {
               </label>
               <label className="form-field">
                 End
-                <input required type="time" value={draft.endTime} onChange={(event) => updateDraft('endTime', event.target.value)} />
+                <input
+                  aria-describedby="public-booking-time-help"
+                  required
+                  type="time"
+                  value={draft.endTime}
+                  onChange={(event) => updateDraft('endTime', event.target.value)}
+                />
               </label>
               {showPartySize ? (
                 <label className="form-field">
                   Party size
                   <input
+                    max={maxPartySize ? String(maxPartySize) : undefined}
                     min="1"
                     required
                     type="number"
                     value={draft.partySize}
-                    onChange={(event) => updateDraft('partySize', Number(event.target.value))}
+                    onChange={(event) => updateDraft('partySize', clampPartySize(Number(event.target.value), maxPartySize))}
                   />
                 </label>
               ) : null}
             </div>
+            <p className="field-note" id="public-booking-time-help">
+              Requests stay on the same day and the end time must be after the start time.
+            </p>
 
             <div className="public-form-grid">
               <label className="form-field">
                 First name
-                <input required value={draft.fName} onChange={(event) => updateDraft('fName', event.target.value)} />
+                <input
+                  autoComplete="given-name"
+                  required
+                  value={draft.fName}
+                  onChange={(event) => updateDraft('fName', event.target.value)}
+                />
               </label>
               <label className="form-field">
                 Last name
-                <input required value={draft.lName} onChange={(event) => updateDraft('lName', event.target.value)} />
+                <input
+                  autoComplete="family-name"
+                  required
+                  value={draft.lName}
+                  onChange={(event) => updateDraft('lName', event.target.value)}
+                />
               </label>
               <label className="form-field">
                 Email
-                <input required type="email" value={draft.email} onChange={(event) => updateDraft('email', event.target.value)} />
+                <input
+                  autoComplete="email"
+                  required
+                  type="email"
+                  value={draft.email}
+                  onChange={(event) => updateDraft('email', event.target.value)}
+                />
               </label>
               <label className="form-field">
                 Phone
-                <input required value={draft.phone} onChange={(event) => updateDraft('phone', event.target.value)} />
+                <input
+                  autoComplete="tel"
+                  inputMode="tel"
+                  required
+                  type="tel"
+                  value={draft.phone}
+                  onChange={(event) => updateDraft('phone', event.target.value)}
+                />
               </label>
               <label className="form-field">
                 Gender
@@ -413,16 +528,36 @@ export function PublicBookingPage() {
 
             <label className="form-field">
               Notes
-              <textarea value={draft.notes} onChange={(event) => updateDraft('notes', event.target.value)} />
+              <textarea
+                maxLength={500}
+                placeholder="Accessibility, seating, or arrival details"
+                value={draft.notes}
+                onChange={(event) => updateDraft('notes', event.target.value)}
+              />
             </label>
 
+            {validationMessage ? <PublicNotice tone="error" message={validationMessage} /> : null}
             {createMutation.isError ? <PublicNotice tone="error" message={(createMutation.error as Error).message} /> : null}
-            {createMutation.isSuccess ? (
-              <PublicNotice tone="success" message="Booking request sent. The team will review and follow up if needed." />
+            {createdBooking ? (
+              <div className="public-success-stack">
+                <PublicNotice tone="success" message="Booking request sent. The team will review and follow up if needed." />
+                <p className="field-note">Booking reference: {createdBooking._id}</p>
+                <Link
+                  className="portal-inline-link"
+                  to={createPortalLink({
+                    booking: createdBooking,
+                    businessId: getBusinessId(config),
+                    email: draft.email.trim(),
+                    slug,
+                  })}
+                >
+                  Track or manage this booking in the portal
+                </Link>
+              </div>
             ) : null}
 
             <div className="public-action-row">
-              <button className="primary-button" disabled={createMutation.isPending} type="submit">
+              <button className="primary-button" disabled={createMutation.isPending || suggestionMutation.isPending} type="submit">
                 <CheckCircle2 size={17} aria-hidden="true" />
                 {createMutation.isPending ? 'Sending' : 'Request booking'}
               </button>
@@ -430,7 +565,7 @@ export function PublicBookingPage() {
           </form>
 
           <aside className="public-side-panel">
-            <form className="panel public-suggestion-panel" onSubmit={handleSuggestionSubmit}>
+            <form className="panel public-suggestion-panel" noValidate onSubmit={handleSuggestionSubmit}>
               <div className="panel-heading">
                 <div>
                   <p className="eyebrow">Availability</p>
@@ -441,8 +576,13 @@ export function PublicBookingPage() {
               <p className="body-copy">
                 Check nearby slots before sending the request. Suggestions use the existing booking suggestion service.
               </p>
+              {validationMessage ? <PublicNotice tone="error" message={validationMessage} /> : null}
               {suggestionMutation.isError ? <PublicNotice tone="error" message={(suggestionMutation.error as Error).message} /> : null}
-              <button className="secondary-button compact-button" disabled={suggestionMutation.isPending} type="submit">
+              <button
+                className="secondary-button compact-button"
+                disabled={suggestionMutation.isPending || createMutation.isPending}
+                type="submit"
+              >
                 <Clock3 size={17} aria-hidden="true" />
                 {suggestionMutation.isPending ? 'Checking' : 'Check availability'}
               </button>
@@ -513,6 +653,17 @@ export function PublicBookingPage() {
                   {draft.notes}
                 </p>
               ) : null}
+              <Link
+                className="portal-inline-link"
+                to={createPortalLink({
+                  booking: createdBooking,
+                  businessId: getBusinessId(config),
+                  email: draft.email.trim(),
+                  slug,
+                })}
+              >
+                Already booked? Request a portal magic link
+              </Link>
             </section>
           </aside>
         </section>

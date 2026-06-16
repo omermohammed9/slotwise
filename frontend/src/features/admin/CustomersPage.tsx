@@ -1,17 +1,60 @@
-import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
-import { AlertTriangle, CalendarDays, Mail, Phone, RefreshCw, Search, UserRound } from 'lucide-react';
+import {
+  AlertTriangle,
+  CalendarDays,
+  CheckCircle2,
+  Mail,
+  Phone,
+  Plus,
+  RefreshCw,
+  Search,
+  UserRound,
+} from 'lucide-react';
 import { listBookings } from '../../api/bookings';
-import { getCustomer, listCustomers } from '../../api/customers';
-import type { BookingDto, BookingListQuery, CustomerDto, QueryParams } from '../../api/types';
+import { listBusinesses } from '../../api/businesses';
+import { createCustomer, getCustomer, listCustomers, updateCustomer } from '../../api/customers';
+import type { BookingDto, BookingListQuery, BusinessProfileDto, CustomerDto, QueryParams } from '../../api/types';
 import { useSessionStore } from '../../auth/sessionStore';
-import { LoadingState } from '../../components/AdminState';
+import { InlineNotice, LoadingState } from '../../components/AdminState';
 import { EmptyState } from '../../components/EmptyState';
 import { StatusChip } from '../../components/StatusChip';
 
+type CustomerFormState = {
+  businessId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  notes: string;
+  phone: string;
+  preferredNotificationChannels: Array<'email' | 'sms'>;
+};
+
+const defaultCustomerFormState: CustomerFormState = {
+  businessId: '',
+  email: '',
+  firstName: '',
+  lastName: '',
+  notes: '',
+  phone: '',
+  preferredNotificationChannels: ['email'],
+};
+
+function getCustomerFirstName(customer?: CustomerDto): string {
+  return customer?.firstName ?? customer?.fName ?? '';
+}
+
+function getCustomerLastName(customer?: CustomerDto): string {
+  return customer?.lastName ?? customer?.lName ?? '';
+}
+
 function getCustomerName(customer?: CustomerDto): string {
-  return `${customer?.fName ?? ''} ${customer?.lName ?? ''}`.trim() || 'Unnamed customer';
+  return `${getCustomerFirstName(customer)} ${getCustomerLastName(customer)}`.trim() || 'Unnamed customer';
+}
+
+function getCustomerBookingCount(customer?: CustomerDto): number {
+  return Number(customer?.totalBookings ?? customer?.bookingCount ?? 0);
 }
 
 function formatDate(value?: string): string {
@@ -38,6 +81,20 @@ function formatTime(value?: string): string {
   }
 }
 
+function createCustomerFormState(customer?: CustomerDto): CustomerFormState {
+  return {
+    businessId: customer?.businessId ?? '',
+    email: customer?.email ?? '',
+    firstName: getCustomerFirstName(customer),
+    lastName: getCustomerLastName(customer),
+    notes: customer?.notes ?? '',
+    phone: customer?.phone ?? '',
+    preferredNotificationChannels: customer?.preferredNotificationChannels?.length
+      ? customer.preferredNotificationChannels
+      : ['email'],
+  };
+}
+
 function buildBookingHistoryQuery(customer?: CustomerDto): BookingListQuery | undefined {
   if (!customer) {
     return undefined;
@@ -51,6 +108,14 @@ function buildBookingHistoryQuery(customer?: CustomerDto): BookingListQuery | un
     sortBy: 'startDate',
     sortOrder: 'desc',
   };
+}
+
+function getBusinessName(businesses: BusinessProfileDto[], businessId?: string): string {
+  if (!businessId) {
+    return 'Not set';
+  }
+
+  return businesses.find((business) => business._id === businessId)?.name ?? businessId;
 }
 
 function DetailField({ label, value }: { label: string; value?: number | string }) {
@@ -87,11 +152,36 @@ function BookingHistory({ bookings }: { bookings: BookingDto[] }) {
 
 export function CustomersPage() {
   const { token } = useSessionStore();
+  const queryClient = useQueryClient();
   const [businessId, setBusinessId] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+  const [createForm, setCreateForm] = useState<CustomerFormState>(defaultCustomerFormState);
+  const [editForm, setEditForm] = useState<CustomerFormState>(defaultCustomerFormState);
+
+  const businessesQuery = useQuery({
+    enabled: Boolean(token),
+    queryFn: async () => {
+      const response = await listBusinesses(token ?? '');
+
+      if (!response.success) {
+        throw new Error(response.error.message);
+      }
+
+      return response.data;
+    },
+    queryKey: ['businesses', token],
+  });
+
+  const businesses = businessesQuery.data ?? [];
+
+  useEffect(() => {
+    if (!createForm.businessId && businessId) {
+      setCreateForm((currentForm) => ({ ...currentForm, businessId }));
+    }
+  }, [businessId, createForm.businessId]);
 
   const query: QueryParams = useMemo(
     () => ({
@@ -139,6 +229,15 @@ export function CustomersPage() {
   });
 
   const activeCustomer = customerDetailQuery.data ?? selectedCustomer;
+
+  useEffect(() => {
+    if (!activeCustomer) {
+      return;
+    }
+
+    setEditForm(createCustomerFormState(activeCustomer));
+  }, [activeCustomer]);
+
   const bookingHistoryQuery = useQuery({
     enabled: Boolean(activeCustomer),
     queryFn: async () => {
@@ -153,13 +252,96 @@ export function CustomersPage() {
     queryKey: ['customer-booking-history', activeCustomer?._id, activeCustomer?.email, activeCustomer?.phone, token],
   });
 
+  const createMutation = useMutation({
+    mutationFn: async () => {
+      if (!token) {
+        throw new Error('Sign in before creating customers.');
+      }
+
+      const response = await createCustomer(
+        {
+          businessId: createForm.businessId.trim(),
+          email: createForm.email.trim(),
+          firstName: createForm.firstName.trim(),
+          lastName: createForm.lastName.trim(),
+          ...(createForm.notes.trim() ? { notes: createForm.notes.trim() } : {}),
+          phone: createForm.phone.trim(),
+          preferredNotificationChannels: createForm.preferredNotificationChannels,
+        },
+        token,
+      );
+
+      if (!response.success) {
+        throw new Error(response.error.message);
+      }
+
+      return response.data;
+    },
+    onSuccess: (customer) => {
+      setCreateForm({
+        ...defaultCustomerFormState,
+        businessId,
+      });
+      setSelectedCustomerId(customer._id);
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.setQueryData(['customer-detail', customer._id, token], customer);
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedCustomerId || !token) {
+        throw new Error('Select a customer before saving.');
+      }
+
+      const response = await updateCustomer(
+        selectedCustomerId,
+        {
+          businessId: editForm.businessId.trim(),
+          email: editForm.email.trim(),
+          firstName: editForm.firstName.trim(),
+          lastName: editForm.lastName.trim(),
+          notes: editForm.notes.trim(),
+          phone: editForm.phone.trim(),
+          preferredNotificationChannels: editForm.preferredNotificationChannels,
+        },
+        token,
+      );
+
+      if (!response.success) {
+        throw new Error(response.error.message);
+      }
+
+      return response.data;
+    },
+    onSuccess: (customer) => {
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.setQueryData(['customer-detail', customer._id, token], customer);
+    },
+  });
+
+  function toggleNotificationChannel(channel: 'email' | 'sms', target: 'create' | 'edit') {
+    const formState = target === 'create' ? createForm : editForm;
+    const nextChannels = formState.preferredNotificationChannels.includes(channel)
+      ? formState.preferredNotificationChannels.filter((entry) => entry !== channel)
+      : [...formState.preferredNotificationChannels, channel];
+    const normalizedChannels: Array<'email' | 'sms'> = nextChannels.length ? nextChannels : ['email'];
+
+    if (target === 'create') {
+      setCreateForm({ ...formState, preferredNotificationChannels: normalizedChannels });
+      return;
+    }
+
+    setEditForm({ ...formState, preferredNotificationChannels: normalizedChannels });
+  }
+
   return (
     <>
       <section className="workspace-header" aria-labelledby="customers-title">
         <div>
           <p className="eyebrow">Relationships</p>
           <h1 id="customers-title">Customers</h1>
-          <p className="lede">Search customer records, review profile details, and inspect linked booking history.</p>
+          <p className="lede">Search customer records, create new profiles, and edit customer details with recent booking history.</p>
         </div>
         <div className="header-actions" aria-label="Customer actions">
           <button className="icon-button" type="button" aria-label="Refresh customers" onClick={() => customersQuery.refetch()}>
@@ -186,13 +368,112 @@ export function CustomersPage() {
         </label>
         <label className="form-field">
           Business
-          <input value={businessId} onChange={(event) => setBusinessId(event.target.value)} placeholder="Business ID" />
+          <select value={businessId} onChange={(event) => setBusinessId(event.target.value)}>
+            <option value="">All businesses</option>
+            {businesses.map((business) => (
+              <option key={business._id} value={business._id}>
+                {business.name}
+              </option>
+            ))}
+          </select>
         </label>
       </section>
 
       <section className="content-grid customer-grid">
         <div className="panel customer-list-panel">
           <div className="panel-heading">
+            <div>
+              <p className="eyebrow">Create</p>
+              <h2>New customer</h2>
+            </div>
+            <Plus size={20} aria-hidden="true" />
+          </div>
+          <form
+            className="management-form"
+            aria-label="Create customer form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              createMutation.mutate();
+            }}
+          >
+            <label className="form-field">
+              Business
+              <select
+                value={createForm.businessId}
+                onChange={(event) => setCreateForm({ ...createForm, businessId: event.target.value })}
+                required
+              >
+                <option value="">Select a business</option>
+                {businesses.map((business) => (
+                  <option key={business._id} value={business._id}>
+                    {business.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="form-grid">
+              <label className="form-field">
+                First name
+                <input
+                  value={createForm.firstName}
+                  onChange={(event) => setCreateForm({ ...createForm, firstName: event.target.value })}
+                  required
+                />
+              </label>
+              <label className="form-field">
+                Last name
+                <input
+                  value={createForm.lastName}
+                  onChange={(event) => setCreateForm({ ...createForm, lastName: event.target.value })}
+                  required
+                />
+              </label>
+            </div>
+            <label className="form-field">
+              Email
+              <input
+                type="email"
+                value={createForm.email}
+                onChange={(event) => setCreateForm({ ...createForm, email: event.target.value })}
+                required
+              />
+            </label>
+            <label className="form-field">
+              Phone
+              <input value={createForm.phone} onChange={(event) => setCreateForm({ ...createForm, phone: event.target.value })} required />
+            </label>
+            <label className="form-field">
+              Notes
+              <textarea value={createForm.notes} onChange={(event) => setCreateForm({ ...createForm, notes: event.target.value })} />
+            </label>
+            <fieldset className="form-field">
+              <legend>Preferred notifications</legend>
+              <div className="checkbox-grid" role="group" aria-label="Create customer preferred notifications">
+                {(['email', 'sms'] as const).map((channel) => (
+                  <label className="toggle-field" key={channel}>
+                    <input
+                      checked={createForm.preferredNotificationChannels.includes(channel)}
+                      type="checkbox"
+                      onChange={() => toggleNotificationChannel(channel, 'create')}
+                    />
+                    {channel}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            {createMutation.isError ? (
+              <InlineNotice tone="error" message={(createMutation.error as Error).message} icon={AlertTriangle} />
+            ) : null}
+            {createMutation.isSuccess ? (
+              <InlineNotice tone="success" message="Customer created." icon={CheckCircle2} />
+            ) : null}
+            <button className="primary-button compact-button" type="submit" disabled={createMutation.isPending}>
+              <Plus size={17} aria-hidden="true" />
+              {createMutation.isPending ? 'Creating' : 'Create customer'}
+            </button>
+          </form>
+
+          <div className="panel-heading customer-directory-heading">
             <div>
               <p className="eyebrow">Directory</p>
               <h2>Customer list</h2>
@@ -212,7 +493,7 @@ export function CustomersPage() {
             <EmptyState
               icon={Search}
               title="No customers found"
-              description="Adjust the current filters or try a broader customer search."
+              description="Adjust the current filters or create a customer for the selected business."
             />
           ) : (
             <div className="customer-list" aria-label="Customers">
@@ -234,7 +515,7 @@ export function CustomersPage() {
                       <strong>{getCustomerName(customer)}</strong>
                       <small>{customer.email}</small>
                     </span>
-                    <small>{customer.bookingCount ?? 0} bookings</small>
+                    <small>{getCustomerBookingCount(customer)} bookings</small>
                   </button>
                 );
               })}
@@ -280,11 +561,78 @@ export function CustomersPage() {
               </section>
 
               <div className="detail-grid">
-                <DetailField label="Business" value={activeCustomer.businessId} />
-                <DetailField label="Bookings" value={activeCustomer.bookingCount ?? 0} />
+                <DetailField label="Business" value={getBusinessName(businesses, activeCustomer.businessId)} />
+                <DetailField label="Bookings" value={getCustomerBookingCount(activeCustomer)} />
                 <DetailField label="Customer ID" value={activeCustomer._id} />
                 <DetailField label="Updated" value={formatDate(activeCustomer.updatedAt as string | undefined)} />
               </div>
+
+              <section className="detail-section" aria-label="Edit customer profile">
+                <div className="panel-heading inline-heading">
+                  <div>
+                    <p className="eyebrow">Edit</p>
+                    <h3>Customer profile</h3>
+                  </div>
+                </div>
+                <div className="form-grid">
+                  <label className="form-field">
+                    First name
+                    <input value={editForm.firstName} onChange={(event) => setEditForm({ ...editForm, firstName: event.target.value })} />
+                  </label>
+                  <label className="form-field">
+                    Last name
+                    <input value={editForm.lastName} onChange={(event) => setEditForm({ ...editForm, lastName: event.target.value })} />
+                  </label>
+                </div>
+                <label className="form-field">
+                  Business
+                  <select value={editForm.businessId} onChange={(event) => setEditForm({ ...editForm, businessId: event.target.value })}>
+                    <option value="">Select a business</option>
+                    {businesses.map((business) => (
+                      <option key={business._id} value={business._id}>
+                        {business.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="form-field">
+                  Email
+                  <input type="email" value={editForm.email} onChange={(event) => setEditForm({ ...editForm, email: event.target.value })} />
+                </label>
+                <label className="form-field">
+                  Phone
+                  <input value={editForm.phone} onChange={(event) => setEditForm({ ...editForm, phone: event.target.value })} />
+                </label>
+                <label className="form-field">
+                  Notes
+                  <textarea value={editForm.notes} onChange={(event) => setEditForm({ ...editForm, notes: event.target.value })} />
+                </label>
+                <fieldset className="form-field">
+                  <legend>Preferred notifications</legend>
+                  <div className="checkbox-grid" role="group" aria-label="Edit customer preferred notifications">
+                    {(['email', 'sms'] as const).map((channel) => (
+                      <label className="toggle-field" key={channel}>
+                        <input
+                          checked={editForm.preferredNotificationChannels.includes(channel)}
+                          type="checkbox"
+                          onChange={() => toggleNotificationChannel(channel, 'edit')}
+                        />
+                        {channel}
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+                {updateMutation.isError ? (
+                  <InlineNotice tone="error" message={(updateMutation.error as Error).message} icon={AlertTriangle} />
+                ) : null}
+                {updateMutation.isSuccess ? (
+                  <InlineNotice tone="success" message="Customer updated." icon={CheckCircle2} />
+                ) : null}
+                <button className="primary-button compact-button" type="button" disabled={updateMutation.isPending} onClick={() => updateMutation.mutate()}>
+                  <CheckCircle2 size={17} aria-hidden="true" />
+                  {updateMutation.isPending ? 'Saving' : 'Save customer'}
+                </button>
+              </section>
 
               <section className="detail-section" aria-label="Customer booking history">
                 <div className="panel-heading inline-heading">

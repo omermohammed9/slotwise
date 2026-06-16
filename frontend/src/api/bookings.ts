@@ -16,6 +16,9 @@ import type {
 
 export type CreateBookingBody = Partial<BookingDto>;
 export type UpdateBookingBody = Partial<Omit<BookingDto, '_id' | 'createdAt' | 'status' | 'updatedAt'>>;
+export type CustomerBookingActionBody = {
+  reason?: string;
+};
 
 export function listBookings(query?: BookingListQuery, token?: string): Promise<ApiResponse<BookingDto[]>> {
   return apiRequest<BookingDto[]>('/bookings', {
@@ -82,6 +85,30 @@ export function rescheduleBooking(
 ): Promise<ApiResponse<BookingDto>> {
   return apiRequest<BookingDto>(`/bookings/${id}/reschedule`, {
     method: 'PATCH',
+    body,
+    token,
+  });
+}
+
+export function customerCancelBooking(
+  id: string,
+  body: CustomerBookingActionBody,
+  token: string,
+): Promise<ApiResponse<BookingDto>> {
+  return apiRequest<BookingDto>(`/bookings/${id}/customer-cancel`, {
+    method: 'POST',
+    body,
+    token,
+  });
+}
+
+export function customerRescheduleBooking(
+  id: string,
+  body: RescheduleBookingBody,
+  token: string,
+): Promise<ApiResponse<BookingDto>> {
+  return apiRequest<BookingDto>(`/bookings/${id}/customer-reschedule`, {
+    method: 'POST',
     body,
     token,
   });

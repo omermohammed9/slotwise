@@ -1,9 +1,39 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, vi } from 'vitest';
-import { sessionStore } from '../auth/sessionStore';
+import { customerSessionStore, sessionStore } from '../auth/sessionStore';
 import { App } from './App';
+
+const localStorageMock = (() => {
+  let store = new Map<string, string>();
+
+  return {
+    clear() {
+      store = new Map<string, string>();
+    },
+    getItem(key: string) {
+      return store.has(key) ? store.get(key) ?? null : null;
+    },
+    key(index: number) {
+      return Array.from(store.keys())[index] ?? null;
+    },
+    removeItem(key: string) {
+      store.delete(key);
+    },
+    setItem(key: string, value: string) {
+      store.set(key, String(value));
+    },
+    get length() {
+      return store.size;
+    },
+  };
+})();
+
+Object.defineProperty(window, 'localStorage', {
+  configurable: true,
+  value: localStorageMock,
+});
 
 function renderApp() {
   const queryClient = new QueryClient({
@@ -22,7 +52,11 @@ function renderApp() {
 }
 
 beforeEach(() => {
+  customerSessionStore.clearNotice();
+  customerSessionStore.clearSession();
+  sessionStore.clearNotice();
   sessionStore.clearSession();
+  window.localStorage.clear();
   window.history.pushState({}, '', '/');
 });
 
@@ -194,6 +228,13 @@ test('renders and saves business settings', async () => {
             success: true,
             data: {
               _id: 'biz_101',
+              blackoutDates: [
+                {
+                  endDate: '2030-12-24T23:59:59.999Z',
+                  reason: 'Holiday closure',
+                  startDate: '2030-12-24T00:00:00.000Z',
+                },
+              ],
               businessType: 'clinic',
               contactEmail: 'frontdesk@example.com',
               contactPhone: '+15550001111',
@@ -201,6 +242,7 @@ test('renders and saves business settings', async () => {
               slug: 'north-clinic',
               status: 'active',
               timezone: 'America/New_York',
+              workingHours: [{ dayOfWeek: 1, startTime: '10:00', endTime: '18:00', closed: false }],
             },
           }),
         status: 200,
@@ -215,6 +257,7 @@ test('renders and saves business settings', async () => {
             {
               _id: 'biz_101',
               availabilityRules: { slotIntervalMinutes: 30 },
+              blackoutDates: [],
               businessType: 'clinic',
               contactEmail: 'hello@example.com',
               contactPhone: '+15550001111',
@@ -244,9 +287,16 @@ test('renders and saves business settings', async () => {
   expect(await screen.findByRole('heading', { name: /business template gallery/i })).toBeInTheDocument();
   expect(await screen.findByText(/structured appointment slots/i)).toBeInTheDocument();
   expect(screen.getByText(/consultation rooms/i)).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: /working hours/i })).toBeInTheDocument();
 
   await user.clear(screen.getByLabelText(/^email$/i));
   await user.type(screen.getByLabelText(/^email$/i), 'frontdesk@example.com');
+  await user.click(screen.getByRole('button', { name: /add blackout range/i }));
+  await user.type(screen.getByLabelText(/^reason$/i), 'Holiday closure');
+  fireEvent.change(screen.getByLabelText(/^start date$/i), { target: { value: '2030-12-24' } });
+  fireEvent.change(screen.getByLabelText(/^end date$/i), { target: { value: '2030-12-24' } });
+  fireEvent.change(screen.getAllByLabelText(/^start$/i)[1], { target: { value: '10:00' } });
+  fireEvent.change(screen.getAllByLabelText(/^end$/i)[1], { target: { value: '18:00' } });
   await user.click(screen.getByRole('button', { name: /save settings/i }));
 
   await waitFor(() => {
@@ -258,12 +308,81 @@ test('renders and saves business settings', async () => {
       }),
     );
   });
+  const updateCall = fetchMock.mock.calls.find(
+    ([url, init]) => url === 'http://localhost:3000/businesses/biz_101' && init?.method === 'PATCH',
+  );
+  const updateBody = JSON.parse(String(updateCall?.[1]?.body));
+  expect(updateBody.blackoutDates[0].reason).toBe('Holiday closure');
+  expect(updateBody.workingHours).toEqual(
+    expect.arrayContaining([{ dayOfWeek: 1, startTime: '10:00', endTime: '18:00', closed: false }]),
+  );
   expect(await screen.findByText(/settings saved/i)).toBeInTheDocument();
 });
 
-test('renders customer management with profile and booking history', async () => {
+test('renders customer management with create, edit, and booking history flows', async () => {
   const user = userEvent.setup();
-  const fetchMock = vi.fn((url: string) => {
+  const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+    if (url.endsWith('/businesses')) {
+      return Promise.resolve({
+        json: () =>
+          Promise.resolve({
+            success: true,
+            data: [
+              {
+                _id: 'biz_101',
+                businessType: 'clinic',
+                name: 'North Clinic',
+                slug: 'north-clinic',
+                timezone: 'America/New_York',
+              },
+            ],
+          }),
+        status: 200,
+      });
+    }
+
+    if (url.endsWith('/customers') && init?.method === 'POST') {
+      return Promise.resolve({
+        json: () =>
+          Promise.resolve({
+            success: true,
+            data: {
+              _id: 'cus_202',
+              businessId: 'biz_101',
+              email: 'nina@example.com',
+              firstName: 'Nina',
+              lastName: 'Cole',
+              phone: '+15550002222',
+              preferredNotificationChannels: ['email', 'sms'],
+              totalBookings: 0,
+            },
+          }),
+        status: 201,
+      });
+    }
+
+    if (url.includes('/customers/cus_101') && init?.method === 'PATCH') {
+      return Promise.resolve({
+        json: () =>
+          Promise.resolve({
+            success: true,
+            data: {
+              _id: 'cus_101',
+              businessId: 'biz_101',
+              email: 'maya@example.com',
+              firstName: 'Maya',
+              lastName: 'Stone',
+              notes: 'VIP seating',
+              phone: '+15551234567',
+              preferredNotificationChannels: ['email'],
+              totalBookings: 3,
+              updatedAt: '2030-01-01T00:00:00.000Z',
+            },
+          }),
+        status: 200,
+      });
+    }
+
     if (url.includes('/customers/cus_101')) {
       return Promise.resolve({
         json: () =>
@@ -272,11 +391,13 @@ test('renders customer management with profile and booking history', async () =>
             data: {
               _id: 'cus_101',
               businessId: 'biz_101',
-              fName: 'Maya',
-              lName: 'Carter',
+              firstName: 'Maya',
+              lastName: 'Carter',
               email: 'maya@example.com',
+              notes: 'Window seat preferred',
               phone: '+15551234567',
-              bookingCount: 3,
+              preferredNotificationChannels: ['email'],
+              totalBookings: 3,
               updatedAt: '2030-01-01T00:00:00.000Z',
             },
           }),
@@ -318,11 +439,11 @@ test('renders customer management with profile and booking history', async () =>
             {
               _id: 'cus_101',
               businessId: 'biz_101',
-              fName: 'Maya',
-              lName: 'Carter',
+              firstName: 'Maya',
+              lastName: 'Carter',
               email: 'maya@example.com',
               phone: '+15551234567',
-              bookingCount: 3,
+              totalBookings: 3,
             },
           ],
         }),
@@ -337,6 +458,26 @@ test('renders customer management with profile and booking history', async () =>
 
   expect(await screen.findByRole('heading', { name: /^customers$/i })).toBeInTheDocument();
   expect(await screen.findByText(/maya carter/i)).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: /new customer/i })).toBeInTheDocument();
+
+  await user.selectOptions(screen.getAllByLabelText(/^business$/i)[1], 'biz_101');
+  await user.type(screen.getByLabelText(/^first name$/i), 'Nina');
+  await user.type(screen.getByLabelText(/^last name$/i), 'Cole');
+  await user.type(screen.getAllByLabelText(/^email$/i)[1], 'nina@example.com');
+  await user.type(screen.getAllByLabelText(/^phone$/i)[1], '+15550002222');
+  await user.click(screen.getByRole('checkbox', { name: /^sms$/i }));
+  await user.click(screen.getByRole('button', { name: /create customer/i }));
+
+  await waitFor(() => {
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:3000/customers',
+      expect.objectContaining({
+        body: expect.stringContaining('"firstName":"Nina"'),
+        method: 'POST',
+      }),
+    );
+  });
+  expect(await screen.findByText(/customer created/i)).toBeInTheDocument();
 
   await user.type(screen.getByLabelText(/^name$/i), 'Maya');
   await waitFor(() => {
@@ -348,18 +489,53 @@ test('renders customer management with profile and booking history', async () =>
 
   await user.click(screen.getByRole('button', { name: /maya carter/i }));
 
-  expect(await screen.findByText(/biz_101/i)).toBeInTheDocument();
+  expect(within(screen.getAllByLabelText(/customer profile/i)[0]).getAllByText(/north clinic/i).length).toBeGreaterThan(0);
   expect(await screen.findByText(/room_2/i)).toBeInTheDocument();
   expect(screen.getByText(/approved/i)).toBeInTheDocument();
+  await user.clear(screen.getAllByLabelText(/^last name$/i)[1]);
+  await user.type(screen.getAllByLabelText(/^last name$/i)[1], 'Stone');
+  await user.clear(screen.getAllByLabelText(/^notes$/i)[1]);
+  await user.type(screen.getAllByLabelText(/^notes$/i)[1], 'VIP seating');
+  await user.click(screen.getByRole('button', { name: /save customer/i }));
+
+  await waitFor(() => {
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:3000/customers/cus_101',
+      expect.objectContaining({
+        body: expect.stringContaining('"lastName":"Stone"'),
+        method: 'PATCH',
+      }),
+    );
+  });
+  expect(await screen.findByText(/customer updated/i)).toBeInTheDocument();
   expect(fetchMock).toHaveBeenCalledWith(
     'http://localhost:3000/bookings?customerId=cus_101&email=maya%40example.com&phone=%2B15551234567&limit=5&sortBy=startDate&sortOrder=desc',
     expect.objectContaining({ method: 'GET' }),
   );
 });
 
-test('renders resources, creates a resource, and toggles active state', async () => {
+test('renders resources with create and edit-drawer override flows', async () => {
   const user = userEvent.setup();
   const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+    if (url.endsWith('/businesses')) {
+      return Promise.resolve({
+        json: () =>
+          Promise.resolve({
+            success: true,
+            data: [
+              {
+                _id: 'biz_101',
+                businessType: 'clinic',
+                name: 'North Clinic',
+                slug: 'north-clinic',
+                timezone: 'America/New_York',
+              },
+            ],
+          }),
+        status: 200,
+      });
+    }
+
     if (url.endsWith('/service-resources') && init?.method === 'POST') {
       return Promise.resolve({
         json: () =>
@@ -378,6 +554,32 @@ test('renders resources, creates a resource, and toggles active state', async ()
       });
     }
 
+    if (url.endsWith('/service-resources/res_101') && init?.method === 'GET') {
+      return Promise.resolve({
+        json: () =>
+          Promise.resolve({
+            success: true,
+            data: {
+              _id: 'res_101',
+              active: true,
+              availabilityOverrides: {
+                allowOverbooking: false,
+                blackoutDates: [],
+                slotIntervalMinutes: 15,
+                workingHours: [{ dayOfWeek: 2, startTime: '08:00', endTime: '12:00', closed: false }],
+              },
+              businessId: 'biz_101',
+              capacity: 4,
+              durationMinutes: 45,
+              name: 'Room A',
+              resourceType: 'room',
+              supportedRoles: ['staff'],
+            },
+          }),
+        status: 200,
+      });
+    }
+
     if (url.includes('/service-resources/res_101') && init?.method === 'PATCH') {
       return Promise.resolve({
         json: () =>
@@ -385,7 +587,19 @@ test('renders resources, creates a resource, and toggles active state', async ()
             success: true,
             data: {
               _id: 'res_101',
-              active: false,
+              active: true,
+              availabilityOverrides: {
+                allowOverbooking: true,
+                blackoutDates: [
+                  {
+                    endDate: '2030-02-10T23:59:59.999Z',
+                    reason: 'Deep clean',
+                    startDate: '2030-02-10T00:00:00.000Z',
+                  },
+                ],
+                slotIntervalMinutes: 20,
+                workingHours: [{ dayOfWeek: 2, startTime: '08:00', endTime: '12:00', closed: false }],
+              },
               businessId: 'biz_101',
               capacity: 4,
               name: 'Room A',
@@ -424,7 +638,7 @@ test('renders resources, creates a resource, and toggles active state', async ()
   expect(await screen.findByRole('heading', { name: /^resources$/i })).toBeInTheDocument();
   expect(await screen.findByText(/room a/i)).toBeInTheDocument();
 
-  await user.type(screen.getByLabelText(/^business id$/i), 'biz_101');
+  await user.selectOptions(screen.getAllByLabelText(/^business$/i)[1], 'biz_101');
   await user.type(screen.getByLabelText(/^name$/i), 'Consultation');
   await user.click(screen.getByRole('button', { name: /create resource/i }));
 
@@ -439,16 +653,33 @@ test('renders resources, creates a resource, and toggles active state', async ()
   });
   expect(await screen.findByText(/resource created/i)).toBeInTheDocument();
 
-  await user.click(screen.getByRole('button', { name: /deactivate/i }));
+  await user.click(screen.getByRole('button', { name: /^edit$/i }));
+  const resourceDialog = await screen.findByRole('dialog');
+  expect(within(resourceDialog).getByRole('heading', { name: /room a/i })).toBeInTheDocument();
+  await user.clear(within(resourceDialog).getByLabelText(/slot interval \(minutes\)/i));
+  await user.type(within(resourceDialog).getByLabelText(/slot interval \(minutes\)/i), '20');
+  await user.selectOptions(within(resourceDialog).getByLabelText(/overbooking/i), 'true');
+  await user.click(within(resourceDialog).getByRole('button', { name: /add blackout override/i }));
+  await user.type(within(resourceDialog).getByLabelText(/^reason$/i), 'Deep clean');
+  fireEvent.change(within(resourceDialog).getByLabelText(/^start date$/i), { target: { value: '2030-02-10' } });
+  fireEvent.change(within(resourceDialog).getByLabelText(/^end date$/i), { target: { value: '2030-02-10' } });
+  await user.click(within(resourceDialog).getByRole('button', { name: /save resource/i }));
   await waitFor(() => {
     expect(fetchMock).toHaveBeenCalledWith(
       'http://localhost:3000/service-resources/res_101',
       expect.objectContaining({
-        body: '{"active":false}',
         method: 'PATCH',
       }),
     );
   });
+  const updateCall = fetchMock.mock.calls.find(
+    ([url, init]) => url === 'http://localhost:3000/service-resources/res_101' && init?.method === 'PATCH',
+  );
+  const updateBody = JSON.parse(String(updateCall?.[1]?.body));
+  expect(updateBody.availabilityOverrides.slotIntervalMinutes).toBe(20);
+  expect(updateBody.availabilityOverrides.allowOverbooking).toBe(true);
+  expect(updateBody.availabilityOverrides.blackoutDates[0].reason).toBe('Deep clean');
+  expect(await screen.findByText(/resource changes saved/i)).toBeInTheDocument();
 });
 
 test('navigates through the admin route map', async () => {
@@ -639,6 +870,387 @@ test('renders backend bookings with filters and pagination controls', async () =
       expect.stringContaining('status=pending'),
       expect.objectContaining({ method: 'GET' }),
     );
+  });
+});
+
+test('hydrates bookings filters and pagination from URL search params', async () => {
+  const fetchMock = vi.fn(() =>
+    Promise.resolve({
+      json: () =>
+        Promise.resolve({
+          success: true,
+          data: [
+            {
+              _id: 'bk_211',
+              fName: 'Ari',
+              lName: 'Park',
+              email: 'ari@example.com',
+              phone: '+15551112222',
+              startDate: '2030-01-06T00:00:00.000Z',
+              endDate: '2030-01-06T00:00:00.000Z',
+              timein: '2030-01-06T13:00:00.000Z',
+              timeout: '2030-01-06T14:00:00.000Z',
+              status: 'approved',
+            },
+          ],
+          meta: {
+            pagination: { page: 2, limit: 10, total: 12, totalPages: 2 },
+          },
+        }),
+      status: 200,
+    }),
+  );
+  vi.stubGlobal('fetch', fetchMock);
+  signInForTest();
+  window.history.pushState({}, '', '/admin/bookings?customerName=Ari%20Park&status=approved&risk=high&page=2&sortBy=startDate&sortOrder=asc');
+
+  renderApp();
+
+  expect(await screen.findByDisplayValue('Ari Park')).toBeInTheDocument();
+  expect(screen.getByRole('combobox', { name: /^status$/i })).toHaveValue('approved');
+  expect(screen.getByRole('combobox', { name: /^risk$/i })).toHaveValue('high');
+  expect(screen.getByRole('combobox', { name: /^sort$/i })).toHaveValue('startDate');
+  expect(screen.getByRole('button', { name: /^ascending$/i })).toBeInTheDocument();
+  expect(fetchMock).toHaveBeenCalledWith(
+    'http://localhost:3000/bookings?customerName=Ari+Park&conflictRiskLevel=high&status=approved&limit=10&page=2&sortBy=startDate&sortOrder=asc',
+    expect.objectContaining({ method: 'GET' }),
+  );
+});
+
+test('persists bookings filters in the URL and resets page on filter changes', async () => {
+  const user = userEvent.setup();
+  const fetchMock = vi.fn(() =>
+    Promise.resolve({
+      json: () =>
+        Promise.resolve({
+          success: true,
+          data: [
+            {
+              _id: 'bk_212',
+              fName: 'Nina',
+              lName: 'Cole',
+              email: 'nina@example.com',
+              phone: '+15553334444',
+              startDate: '2030-01-08T00:00:00.000Z',
+              endDate: '2030-01-08T00:00:00.000Z',
+              timein: '2030-01-08T15:00:00.000Z',
+              timeout: '2030-01-08T16:00:00.000Z',
+              status: 'pending',
+            },
+          ],
+          meta: {
+            pagination: { page: 2, limit: 10, total: 30, totalPages: 3 },
+          },
+        }),
+      status: 200,
+    }),
+  );
+  vi.stubGlobal('fetch', fetchMock);
+  signInForTest();
+  window.history.pushState({}, '', '/admin/bookings?page=2');
+
+  renderApp();
+
+  expect(await screen.findByRole('heading', { name: /nina cole/i })).toBeInTheDocument();
+  expect(screen.getByText(/page 2 of 3/i)).toBeInTheDocument();
+
+  await user.type(screen.getByLabelText(/customer/i), 'Nina');
+  await waitFor(() => {
+    expect(window.location.search).toBe('?customerName=Nina');
+  });
+  await waitFor(() => {
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      'http://localhost:3000/bookings?customerName=Nina&limit=10&page=1&sortBy=createdAt&sortOrder=desc',
+      expect.objectContaining({ method: 'GET' }),
+    );
+  });
+
+  await user.selectOptions(screen.getByLabelText(/risk/i), 'medium');
+  await waitFor(() => {
+    expect(window.location.search).toBe('?customerName=Nina&risk=medium');
+  });
+
+  await user.selectOptions(screen.getByLabelText(/sort/i), 'status');
+  await waitFor(() => {
+    expect(window.location.search).toBe('?customerName=Nina&risk=medium&sortBy=status');
+  });
+
+  await user.click(screen.getByRole('button', { name: /^descending$/i }));
+  await waitFor(() => {
+    expect(window.location.search).toBe('?customerName=Nina&risk=medium&sortBy=status&sortOrder=asc');
+  });
+
+  await user.click(screen.getByRole('button', { name: /next page/i }));
+  await waitFor(() => {
+    expect(window.location.search).toBe('?customerName=Nina&risk=medium&sortBy=status&sortOrder=asc&page=2');
+  });
+});
+
+test('saves the current bookings view to browser storage', async () => {
+  const user = userEvent.setup();
+  const fetchMock = vi.fn(() =>
+    Promise.resolve({
+      json: () =>
+        Promise.resolve({
+          success: true,
+          data: [
+            {
+              _id: 'bk_213',
+              fName: 'Ari',
+              lName: 'Park',
+              email: 'ari@example.com',
+              phone: '+15551112222',
+              startDate: '2030-01-06T00:00:00.000Z',
+              endDate: '2030-01-06T00:00:00.000Z',
+              timein: '2030-01-06T13:00:00.000Z',
+              timeout: '2030-01-06T14:00:00.000Z',
+              status: 'approved',
+            },
+          ],
+          meta: {
+            pagination: { page: 2, limit: 10, total: 12, totalPages: 2 },
+          },
+        }),
+      status: 200,
+    }),
+  );
+  vi.stubGlobal('fetch', fetchMock);
+  signInForTest();
+  window.history.pushState({}, '', '/admin/bookings?customerName=Ari%20Park&status=approved&risk=high&page=2&sortBy=startDate&sortOrder=asc');
+
+  renderApp();
+
+  expect(await screen.findByRole('heading', { name: /ari park/i })).toBeInTheDocument();
+
+  await user.type(screen.getByLabelText(/view name/i), 'High priority approvals');
+  await user.click(screen.getByRole('button', { name: /save current view/i }));
+
+  expect(await screen.findByText(/saved view created/i)).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'High priority approvals' })).toHaveAttribute('aria-pressed', 'true');
+
+  expect(JSON.parse(window.localStorage.getItem('slotwise.admin.bookings.saved-views') ?? '[]')).toEqual([
+    expect.objectContaining({
+      name: 'High priority approvals',
+      state: {
+        customerName: 'Ari Park',
+        page: 2,
+        risk: 'high',
+        sortBy: 'startDate',
+        sortOrder: 'asc',
+        status: 'approved',
+      },
+    }),
+  ]);
+});
+
+test('applies and removes saved bookings views from browser storage', async () => {
+  const user = userEvent.setup();
+  const fetchMock = vi.fn(() =>
+    Promise.resolve({
+      json: () =>
+        Promise.resolve({
+          success: true,
+          data: [
+            {
+              _id: 'bk_214',
+              fName: 'Maya',
+              lName: 'Carter',
+              email: 'maya@example.com',
+              phone: '+15551234567',
+              startDate: '2030-01-02T00:00:00.000Z',
+              endDate: '2030-01-02T00:00:00.000Z',
+              timein: '2030-01-02T09:00:00.000Z',
+              timeout: '2030-01-02T10:00:00.000Z',
+              status: 'pending',
+            },
+          ],
+          meta: {
+            pagination: { page: 1, limit: 10, total: 11, totalPages: 2 },
+          },
+        }),
+      status: 200,
+    }),
+  );
+  vi.stubGlobal('fetch', fetchMock);
+  window.localStorage.setItem(
+    'slotwise.admin.bookings.saved-views',
+    JSON.stringify([
+      {
+        id: 'view-1',
+        name: 'High priority approvals',
+        state: {
+          customerName: 'Ari Park',
+          page: 2,
+          risk: 'high',
+          sortBy: 'startDate',
+          sortOrder: 'asc',
+          status: 'approved',
+        },
+      },
+    ]),
+  );
+  signInForTest();
+  window.history.pushState({}, '', '/admin/bookings');
+
+  renderApp();
+
+  expect(await screen.findByRole('button', { name: 'High priority approvals' })).toBeInTheDocument();
+
+  await user.click(screen.getByRole('button', { name: 'High priority approvals' }));
+  await waitFor(() => {
+    const params = new URLSearchParams(window.location.search);
+    expect(params.get('customerName')).toBe('Ari Park');
+    expect(params.get('status')).toBe('approved');
+    expect(params.get('risk')).toBe('high');
+    expect(params.get('page')).toBe('2');
+    expect(params.get('sortBy')).toBe('startDate');
+    expect(params.get('sortOrder')).toBe('asc');
+  });
+  await waitFor(() => {
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      'http://localhost:3000/bookings?customerName=Ari+Park&conflictRiskLevel=high&status=approved&limit=10&page=2&sortBy=startDate&sortOrder=asc',
+      expect.objectContaining({ method: 'GET' }),
+    );
+  });
+
+  await user.click(screen.getByRole('button', { name: /remove high priority approvals saved view/i }));
+
+  await waitFor(() => {
+    expect(screen.queryByRole('button', { name: 'High priority approvals' })).not.toBeInTheDocument();
+  });
+  expect(window.localStorage.getItem('slotwise.admin.bookings.saved-views')).toBe('[]');
+});
+
+test('shows removable active booking filter chips and updates URL state when one is cleared', async () => {
+  const user = userEvent.setup();
+  const fetchMock = vi.fn(() =>
+    Promise.resolve({
+      json: () =>
+        Promise.resolve({
+          success: true,
+          data: [
+            {
+              _id: 'bk_215',
+              fName: 'Ari',
+              lName: 'Park',
+              email: 'ari@example.com',
+              phone: '+15551112222',
+              startDate: '2030-01-06T00:00:00.000Z',
+              endDate: '2030-01-06T00:00:00.000Z',
+              timein: '2030-01-06T13:00:00.000Z',
+              timeout: '2030-01-06T14:00:00.000Z',
+              status: 'approved',
+            },
+          ],
+          meta: {
+            pagination: { page: 2, limit: 10, total: 12, totalPages: 2 },
+          },
+        }),
+      status: 200,
+    }),
+  );
+  vi.stubGlobal('fetch', fetchMock);
+  signInForTest();
+  window.history.pushState({}, '', '/admin/bookings?customerName=Ari%20Park&status=approved&risk=high&page=2&sortBy=startDate&sortOrder=asc');
+
+  renderApp();
+
+  expect(await screen.findByRole('button', { name: /remove customer: ari park/i })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /remove status: approved/i })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /remove risk: high/i })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /remove sort: start date ascending/i })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /remove page: 2/i })).toBeInTheDocument();
+
+  await user.click(screen.getByRole('button', { name: /remove status: approved/i }));
+
+  await waitFor(() => {
+    expect(window.location.search).toBe('?customerName=Ari+Park&risk=high&sortBy=startDate&sortOrder=asc');
+  });
+  await waitFor(() => {
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      'http://localhost:3000/bookings?customerName=Ari+Park&conflictRiskLevel=high&limit=10&page=1&sortBy=startDate&sortOrder=asc',
+      expect.objectContaining({ method: 'GET' }),
+    );
+  });
+  expect(screen.queryByRole('button', { name: /remove status: approved/i })).not.toBeInTheDocument();
+});
+
+test('clears all active booking filters back to the default clean URL and saved views still reapply', async () => {
+  const user = userEvent.setup();
+  const fetchMock = vi.fn(() =>
+    Promise.resolve({
+      json: () =>
+        Promise.resolve({
+          success: true,
+          data: [
+            {
+              _id: 'bk_216',
+              fName: 'Maya',
+              lName: 'Carter',
+              email: 'maya@example.com',
+              phone: '+15551234567',
+              startDate: '2030-01-02T00:00:00.000Z',
+              endDate: '2030-01-02T00:00:00.000Z',
+              timein: '2030-01-02T09:00:00.000Z',
+              timeout: '2030-01-02T10:00:00.000Z',
+              status: 'pending',
+            },
+          ],
+          meta: {
+            pagination: { page: 2, limit: 10, total: 11, totalPages: 2 },
+          },
+        }),
+      status: 200,
+    }),
+  );
+  vi.stubGlobal('fetch', fetchMock);
+  window.localStorage.setItem(
+    'slotwise.admin.bookings.saved-views',
+    JSON.stringify([
+      {
+        id: 'view-2',
+        name: 'High priority approvals',
+        state: {
+          customerName: 'Ari Park',
+          page: 2,
+          risk: 'high',
+          sortBy: 'startDate',
+          sortOrder: 'asc',
+          status: 'approved',
+        },
+      },
+    ]),
+  );
+  signInForTest();
+  window.history.pushState({}, '', '/admin/bookings?customerName=Ari%20Park&status=approved&risk=high&page=2&sortBy=startDate&sortOrder=asc');
+
+  renderApp();
+
+  expect(await screen.findByRole('button', { name: /clear all/i })).toBeInTheDocument();
+
+  await user.click(screen.getByRole('button', { name: /clear all/i }));
+
+  await waitFor(() => {
+    expect(window.location.search).toBe('');
+  });
+  await waitFor(() => {
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      'http://localhost:3000/bookings?limit=10&page=1&sortBy=createdAt&sortOrder=desc',
+      expect.objectContaining({ method: 'GET' }),
+    );
+  });
+  expect(screen.queryByRole('button', { name: /clear all/i })).not.toBeInTheDocument();
+
+  await user.click(screen.getByRole('button', { name: 'High priority approvals' }));
+
+  await waitFor(() => {
+    const params = new URLSearchParams(window.location.search);
+    expect(params.get('customerName')).toBe('Ari Park');
+    expect(params.get('status')).toBe('approved');
+    expect(params.get('risk')).toBe('high');
+    expect(params.get('page')).toBe('2');
+    expect(params.get('sortBy')).toBe('startDate');
+    expect(params.get('sortOrder')).toBe('asc');
   });
 });
 
@@ -1138,6 +1750,11 @@ test('renders public booking page, checks suggestions, and submits a booking req
     }),
   );
   expect(await screen.findByText(/booking request sent/i)).toBeInTheDocument();
+  expect(screen.getByText(/booking reference: bk_public_1/i)).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: /track or manage this booking in the portal/i })).toHaveAttribute(
+    'href',
+    '/portal?businessId=507f1f77bcf86cd799439011&email=ari%40example.com&slug=demo-business&bookingId=bk_public_1',
+  );
 });
 
 test('renders public booking empty resource state', async () => {
@@ -1170,15 +1787,522 @@ test('renders public booking empty resource state', async () => {
   expect(screen.getByText(/no public resources are listed/i)).toBeInTheDocument();
 });
 
-test('exposes public surface routes from the shell', async () => {
+test('prefills the public booking page from widget handoff query params', async () => {
+  const fetchMock = vi.fn().mockResolvedValue({
+    json: () =>
+      Promise.resolve({
+        success: true,
+        data: {
+          businessId: '507f1f77bcf86cd799439011',
+          businessType: 'restaurant',
+          name: 'Demo Bistro',
+          publicPageSettings: { enabled: true },
+          slug: 'demo-business',
+          timezone: 'America/New_York',
+          availableResources: [
+            {
+              id: '507f1f77bcf86cd799439012',
+              name: 'Patio Table',
+              resourceType: 'table',
+              capacity: 4,
+              durationMinutes: 60,
+            },
+          ],
+          bookingEndpoints: {
+            createBooking: '/bookings',
+            suggestions: '/bookings/suggestions',
+          },
+        },
+      }),
+    status: 200,
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  window.history.pushState(
+    {},
+    '',
+    '/book/demo-business?date=2030-06-07&start=12:30&end=13:30&resourceId=507f1f77bcf86cd799439012&partySize=3&fName=Ari&lName=Park&email=ari%40example.com&phone=%2B15551112222',
+  );
+
+  renderApp();
+
+  expect(await screen.findByRole('heading', { name: /demo bistro/i })).toBeInTheDocument();
+  expect(screen.getByLabelText(/^date$/i)).toHaveValue('2030-06-07');
+  expect(screen.getByLabelText(/^start$/i)).toHaveValue('12:30');
+  expect(screen.getByLabelText(/^end$/i)).toHaveValue('13:30');
+  expect(screen.getByLabelText(/^party size$/i)).toHaveValue(3);
+  expect(screen.getByLabelText(/^first name$/i)).toHaveValue('Ari');
+  expect(screen.getByLabelText(/^last name$/i)).toHaveValue('Park');
+  expect(screen.getByLabelText(/^email$/i)).toHaveValue('ari@example.com');
+  expect(screen.getByLabelText(/^phone$/i)).toHaveValue('+15551112222');
+});
+
+test('requests a customer magic link, verifies the token, and cancels a booking from the portal', async () => {
   const user = userEvent.setup();
+  const confirmMock = vi.spyOn(window, 'confirm').mockReturnValue(true);
+  let bookingStatus = 'approved';
+  const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+    if (url.endsWith('/auth/customer/magic-link') && init?.method === 'POST') {
+      return Promise.resolve({
+        json: () =>
+          Promise.resolve({
+            success: true,
+            data: { requested: true },
+          }),
+        status: 202,
+      });
+    }
+
+    if (url.endsWith('/auth/customer/verify') && init?.method === 'POST') {
+      return Promise.resolve({
+        json: () =>
+          Promise.resolve({
+            success: true,
+            data: {
+              actorId: 'cus_portal_1',
+              businessId: '507f1f77bcf86cd799439011',
+              email: 'maya@example.com',
+              expiresAt: '2030-07-01T00:00:00.000Z',
+              role: 'customer',
+              token: 'customer-token',
+            },
+          }),
+        status: 201,
+      });
+    }
+
+    if (url.includes('/bookings/bk_portal_1/customer-cancel') && init?.method === 'POST') {
+      bookingStatus = 'cancelled';
+      return Promise.resolve({
+        json: () =>
+          Promise.resolve({
+            success: true,
+            data: {
+              _id: 'bk_portal_1',
+              businessId: '507f1f77bcf86cd799439011',
+              customerId: 'cus_portal_1',
+              email: 'maya@example.com',
+              endDate: '2030-07-03T00:00:00.000Z',
+              fName: 'Maya',
+              lName: 'Carter',
+              phone: '+15551234567',
+              reason: 'Travel delay',
+              startDate: '2030-07-03T00:00:00.000Z',
+              status: bookingStatus,
+              timein: '2030-07-03T09:00:00.000Z',
+              timeout: '2030-07-03T10:00:00.000Z',
+            },
+          }),
+        status: 200,
+      });
+    }
+
+    if (url.includes('/bookings?')) {
+      return Promise.resolve({
+        json: () =>
+          Promise.resolve({
+            success: true,
+            data: [
+              {
+                _id: 'bk_portal_1',
+                businessId: '507f1f77bcf86cd799439011',
+                customerId: 'cus_portal_1',
+                email: 'maya@example.com',
+                endDate: '2030-07-03T00:00:00.000Z',
+                fName: 'Maya',
+                lName: 'Carter',
+                notes: 'Window seat preferred.',
+                partySize: 2,
+                phone: '+15551234567',
+                startDate: '2030-07-03T00:00:00.000Z',
+                status: bookingStatus,
+                statusHistory: [
+                  {
+                    changedAt: '2030-07-01T09:00:00.000Z',
+                    changedByRole: 'customer',
+                    reason: 'Travel delay',
+                    toStatus: bookingStatus,
+                  },
+                ],
+                timein: '2030-07-03T09:00:00.000Z',
+                timeout: '2030-07-03T10:00:00.000Z',
+              },
+            ],
+          }),
+        status: 200,
+      });
+    }
+
+    throw new Error(`Unexpected request: ${url}`);
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  window.history.pushState({}, '', '/portal?businessId=507f1f77bcf86cd799439011&email=maya@example.com');
+
+  renderApp();
+
+  expect(await screen.findByRole('heading', { name: /manage your booking/i })).toBeInTheDocument();
+
+  await user.click(screen.getByRole('button', { name: /send magic link/i }));
+  await waitFor(() => {
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:3000/auth/customer/magic-link',
+      expect.objectContaining({
+        body: expect.stringContaining('"businessId":"507f1f77bcf86cd799439011"'),
+        method: 'POST',
+      }),
+    );
+  });
+
+  await user.type(screen.getByLabelText(/magic-link token/i), 'portal-token-1');
+  await user.click(screen.getByRole('button', { name: /verify token/i }));
+
+  expect(await screen.findByText(/customer session verified/i)).toBeInTheDocument();
+  expect(await screen.findByText(/window seat preferred/i)).toBeInTheDocument();
+  expect(customerSessionStore.getSnapshot()?.token).toBe('customer-token');
+  expect(screen.getByRole('button', { name: /bk_portal_1/i })).toHaveClass('portal-booking-row-selected');
+
+  await user.type(screen.getAllByLabelText(/^reason$/i)[0], 'Travel delay');
+  await user.click(screen.getByRole('button', { name: /cancel booking/i }));
+
+  expect(confirmMock).toHaveBeenCalledWith('Cancel this booking?');
+  await waitFor(() => {
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:3000/bookings/bk_portal_1/customer-cancel',
+      expect.objectContaining({
+        body: expect.stringContaining('"reason":"Travel delay"'),
+        method: 'POST',
+      }),
+    );
+  });
+  expect(await screen.findByText(/already in a final state/i)).toBeInTheDocument();
+  expect(screen.getAllByText(/cancelled/i).length).toBeGreaterThan(0);
+});
+
+test('shows client-side portal validation before sending customer auth requests', async () => {
+  const user = userEvent.setup();
+  const fetchMock = vi.fn();
+  vi.stubGlobal('fetch', fetchMock);
+  window.history.pushState({}, '', '/portal');
+
+  renderApp();
+
+  expect(await screen.findByRole('heading', { name: /manage your booking/i })).toBeInTheDocument();
+
+  await user.click(screen.getByRole('button', { name: /send magic link/i }));
+  expect(await screen.findByText(/enter the business id from your booking confirmation/i)).toBeInTheDocument();
+  expect(fetchMock).not.toHaveBeenCalled();
+
+  await user.type(screen.getByLabelText(/magic-link token/i), '123');
+  await user.click(screen.getByRole('button', { name: /verify token/i }));
+  expect(await screen.findByText(/paste the full magic-link token/i)).toBeInTheDocument();
+  expect(fetchMock).not.toHaveBeenCalled();
+});
+
+test('keeps operator and customer memory sessions isolated while rescheduling from an auto-verified portal link', async () => {
+  const user = userEvent.setup();
+  const confirmMock = vi.spyOn(window, 'confirm').mockReturnValue(true);
+  signInForTest();
+
+  let bookingTime = {
+    endDate: '2030-08-04T00:00:00.000Z',
+    startDate: '2030-08-04T00:00:00.000Z',
+    timein: '2030-08-04T11:00:00.000Z',
+    timeout: '2030-08-04T12:00:00.000Z',
+  };
+
+  const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+    if (url.endsWith('/auth/customer/verify') && init?.method === 'POST') {
+      return Promise.resolve({
+        json: () =>
+          Promise.resolve({
+            success: true,
+            data: {
+              actorId: 'cus_portal_2',
+              businessId: '507f1f77bcf86cd799439099',
+              email: 'leah@example.com',
+              expiresAt: '2030-08-01T00:00:00.000Z',
+              role: 'customer',
+              token: 'portal-customer-token',
+            },
+          }),
+        status: 201,
+      });
+    }
+
+    if (url.includes('/bookings/bk_portal_2/customer-reschedule') && init?.method === 'POST') {
+      bookingTime = {
+        endDate: '2030-08-05T00:00:00.000Z',
+        startDate: '2030-08-05T00:00:00.000Z',
+        timein: '2030-08-05T13:00:00.000Z',
+        timeout: '2030-08-05T14:30:00.000Z',
+      };
+
+      return Promise.resolve({
+        json: () =>
+          Promise.resolve({
+            success: true,
+            data: {
+              _id: 'bk_portal_2',
+              businessId: '507f1f77bcf86cd799439099',
+              customerId: 'cus_portal_2',
+              email: 'leah@example.com',
+              fName: 'Leah',
+              lName: 'Stone',
+              phone: '+15558889999',
+              serviceResourceId: 'room_5',
+              status: 'pending',
+              ...bookingTime,
+            },
+          }),
+        status: 200,
+      });
+    }
+
+    if (url.includes('/bookings?')) {
+      return Promise.resolve({
+        json: () =>
+          Promise.resolve({
+            success: true,
+            data: [
+              {
+                _id: 'bk_portal_2',
+                businessId: '507f1f77bcf86cd799439099',
+                customerId: 'cus_portal_2',
+                email: 'leah@example.com',
+                fName: 'Leah',
+                lName: 'Stone',
+                phone: '+15558889999',
+                serviceResourceId: 'room_5',
+                status: 'pending',
+                ...bookingTime,
+              },
+            ],
+          }),
+        status: 200,
+      });
+    }
+
+    throw new Error(`Unexpected request: ${url}`);
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  window.history.pushState(
+    {},
+    '',
+    '/portal?token=portal-token-2&businessId=507f1f77bcf86cd799439099&email=leah@example.com',
+  );
+
+  renderApp();
+
+  expect(await screen.findByText(/customer session verified/i)).toBeInTheDocument();
+  expect(await screen.findByRole('button', { name: /bk_portal_2/i })).toBeInTheDocument();
+  expect(sessionStore.getSnapshot()?.role).toBe('owner');
+  expect(customerSessionStore.getSnapshot()?.token).toBe('portal-customer-token');
+
+  fireEvent.change(screen.getByLabelText(/^date$/i), { target: { value: '2030-08-05' } });
+  fireEvent.change(screen.getByLabelText(/^start$/i), { target: { value: '13:00' } });
+  fireEvent.change(screen.getByLabelText(/^end$/i), { target: { value: '14:30' } });
+  await user.type(screen.getAllByLabelText(/^reason$/i)[1], 'Need a later arrival');
+  await user.click(screen.getByRole('button', { name: /reschedule booking/i }));
+
+  expect(confirmMock).toHaveBeenCalledWith('Reschedule this booking?');
+  await waitFor(() => {
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:3000/bookings/bk_portal_2/customer-reschedule',
+      expect.objectContaining({
+        body: expect.stringContaining('"reason":"Need a later arrival"'),
+        method: 'POST',
+      }),
+    );
+  });
+  expect(fetchMock).toHaveBeenCalledWith(
+    'http://localhost:3000/bookings/bk_portal_2/customer-reschedule',
+    expect.objectContaining({
+      body: expect.stringContaining('"timein":"2030-08-05T10:00:00.000Z"'),
+      method: 'POST',
+    }),
+  );
+  expect(await screen.findByText(/reschedule request sent/i)).toBeInTheDocument();
+});
+
+test('renders widget config, checks nearby options, and submits a compact booking request', async () => {
+  const user = userEvent.setup();
+  const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+    if (url.endsWith('/bookings/suggestions') && init?.method === 'POST') {
+      return Promise.resolve({
+        json: () =>
+          Promise.resolve({
+            success: true,
+            data: [
+              {
+                startDate: '2030-09-11T00:00:00.000Z',
+                endDate: '2030-09-11T00:00:00.000Z',
+                timein: '2030-09-11T12:00:00.000Z',
+                timeout: '2030-09-11T13:00:00.000Z',
+                score: 92,
+                summary: 'Open one hour later.',
+              },
+            ],
+          }),
+        status: 200,
+      });
+    }
+
+    if (url.endsWith('/bookings') && init?.method === 'POST') {
+      return Promise.resolve({
+        json: () =>
+          Promise.resolve({
+            success: true,
+            data: {
+              _id: 'bk_widget_1',
+              businessId: '507f1f77bcf86cd799439021',
+              email: 'jules@example.com',
+              endDate: '2030-09-11T13:00:00.000Z',
+              fName: 'Jules',
+              lName: 'Hale',
+              phone: '+15552223333',
+              startDate: '2030-09-11T12:00:00.000Z',
+              status: 'pending',
+              timein: '2030-09-11T12:00:00.000Z',
+              timeout: '2030-09-11T13:00:00.000Z',
+            },
+          }),
+        status: 201,
+      });
+    }
+
+    if (url.endsWith('/businesses/public/demo-widget/widget')) {
+      return Promise.resolve({
+        json: () =>
+          Promise.resolve({
+            success: true,
+            data: {
+              businessId: '507f1f77bcf86cd799439021',
+              businessType: 'restaurant',
+              description: 'Quick table requests for the dining room.',
+              name: 'Widget Bistro',
+              slug: 'demo-widget',
+              timezone: 'America/New_York',
+              widgetSettings: {
+                accentColor: '#a44d24',
+                embedTitle: 'Reserve in minutes',
+                enabled: true,
+                primaryActionLabel: 'Send request',
+                showBusinessDescription: true,
+                showNotes: true,
+                showPartySize: true,
+                showServiceSelector: true,
+              },
+              availableResources: [
+                {
+                  id: '507f1f77bcf86cd799439022',
+                  name: 'Dining Table',
+                  resourceType: 'table',
+                  capacity: 4,
+                  durationMinutes: 60,
+                },
+              ],
+              bookingEndpoints: {
+                createBooking: '/bookings',
+                suggestions: '/bookings/suggestions',
+              },
+            },
+          }),
+        status: 200,
+      });
+    }
+
+    throw new Error(`Unexpected request: ${url}`);
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  window.history.pushState({}, '', '/widget/demo-widget');
+
+  renderApp();
+
+  expect(await screen.findByRole('heading', { name: /reserve in minutes/i })).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: /dining table/i }));
+  await user.clear(screen.getByLabelText(/^date$/i));
+  await user.type(screen.getByLabelText(/^date$/i), '2030-09-11');
+  await user.type(screen.getByLabelText(/^first name$/i), 'Jules');
+  await user.type(screen.getByLabelText(/^last name$/i), 'Hale');
+  await user.type(screen.getByLabelText(/^email$/i), 'jules@example.com');
+  await user.type(screen.getByLabelText(/^phone$/i), '+15552223333');
+  await user.type(screen.getByLabelText(/^notes$/i), 'Booth if possible');
+  await user.click(screen.getByRole('button', { name: /check nearby/i }));
+
+  expect(await screen.findByText(/open one hour later/i)).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: /open one hour later/i }));
+  await user.click(screen.getByRole('button', { name: /send request/i }));
+
+  await waitFor(() => {
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:3000/bookings',
+      expect.objectContaining({
+        body: expect.stringContaining('"serviceResourceId":"507f1f77bcf86cd799439022"'),
+        method: 'POST',
+      }),
+    );
+  });
+  expect(fetchMock).toHaveBeenCalledWith(
+    'http://localhost:3000/businesses/public/demo-widget/widget',
+    expect.objectContaining({ method: 'GET' }),
+  );
+  expect(fetchMock).toHaveBeenCalledWith(
+    'http://localhost:3000/bookings/suggestions',
+    expect.objectContaining({
+      body: expect.stringContaining('"maxSuggestions":3'),
+      method: 'POST',
+    }),
+  );
+  expect(await screen.findByText(/booking request sent/i)).toBeInTheDocument();
+  expect(screen.getByText(/booking reference: bk_widget_1/i)).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: /continue on the full booking page/i })).toHaveAttribute(
+    'href',
+    '/book/demo-widget?date=2030-09-11&start=15%3A00&end=16%3A00&resourceId=507f1f77bcf86cd799439022&partySize=1&fName=Jules&lName=Hale&email=jules%40example.com&phone=%2B15552223333',
+  );
+  expect(screen.getByRole('link', { name: /track or manage this booking/i })).toHaveAttribute(
+    'href',
+    '/portal?businessId=507f1f77bcf86cd799439021&email=jules%40example.com&slug=demo-widget&bookingId=bk_widget_1',
+  );
+});
+
+test('exposes the widget surface route from the shell', async () => {
+  const user = userEvent.setup();
+  const fetchMock = vi.fn((url: string) => {
+    if (url.endsWith('/businesses/public/demo-widget/widget')) {
+      return Promise.resolve({
+        json: () =>
+          Promise.resolve({
+            success: true,
+            data: {
+              businessId: '507f1f77bcf86cd799439021',
+              businessType: 'salon',
+              name: 'Demo Widget',
+              slug: 'demo-widget',
+              timezone: 'America/New_York',
+              widgetSettings: {
+                enabled: true,
+                embedTitle: 'Quick booking',
+              },
+              availableResources: [],
+              bookingEndpoints: {
+                createBooking: '/bookings',
+                suggestions: '/bookings/suggestions',
+              },
+            },
+          }),
+        status: 200,
+      });
+    }
+
+    throw new Error(`Unexpected request: ${url}`);
+  });
+  vi.stubGlobal('fetch', fetchMock);
   signInForTest();
   renderApp();
 
   await user.click(screen.getByRole('link', { name: /widget/i }));
 
-  expect(screen.getByRole('heading', { name: /^widget$/i })).toBeInTheDocument();
-  expect(screen.getByText(/iframe-first route/i)).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: /quick booking/i })).toBeInTheDocument();
+  expect(screen.getByText(/general requests/i)).toBeInTheDocument();
 });
 
 test('redirects protected admin routes to operator login', () => {
@@ -1217,4 +2341,186 @@ test('stores operator sessions in memory after login', async () => {
 
   expect(sessionStore.getSnapshot()?.token).toBe('signed-token');
   expect(sessionStore.getSnapshot()?.role).toBe('owner');
+});
+
+test('revalidates the current operator session before loading admin routes', async () => {
+  const fetchMock = vi.fn((url: string) => {
+    if (url.endsWith('/auth/session')) {
+      return Promise.resolve({
+        json: () =>
+          Promise.resolve({
+            success: true,
+            data: {
+              actorId: 'operator-1',
+              actorType: 'operator',
+              role: 'owner',
+              sessionId: 'session-1',
+              username: 'owner',
+            },
+          }),
+        status: 200,
+      });
+    }
+
+    if (url.includes('/bookings/insights/cancellation-no-show')) {
+      return Promise.resolve({
+        json: () => Promise.resolve(cancellationInsightsResponse),
+        status: 200,
+      });
+    }
+
+    if (url.includes('/bookings/insights/dashboard')) {
+      return Promise.resolve({
+        json: () => Promise.resolve(dashboardInsightsResponse),
+        status: 200,
+      });
+    }
+
+    throw new Error(`Unexpected request: ${url}`);
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  sessionStore.setSession({
+    actorId: 'operator-1',
+    actorType: 'operator',
+    role: 'owner',
+    sessionId: 'stale-session-1',
+    token: 'memory-token',
+  });
+  window.history.pushState({}, '', '/admin');
+  renderApp();
+
+  expect(await screen.findByRole('heading', { name: /today at a glance/i })).toBeInTheDocument();
+  expect(fetchMock).toHaveBeenCalledWith(
+    'http://localhost:3000/auth/session',
+    expect.objectContaining({
+      headers: expect.objectContaining({
+        authorization: 'Bearer memory-token',
+      }),
+      method: 'GET',
+    }),
+  );
+  expect(sessionStore.getSnapshot()).toMatchObject({
+    actorId: 'operator-1',
+    actorType: 'operator',
+    role: 'owner',
+    sessionId: 'session-1',
+    token: 'memory-token',
+  });
+});
+
+test('clears invalid operator sessions and redirects back to login with a notice', async () => {
+  const fetchMock = vi.fn((url: string) => {
+    if (url.endsWith('/auth/session')) {
+      return Promise.resolve({
+        json: () =>
+          Promise.resolve({
+            success: false,
+            error: {
+              message: 'Authenticated session is required',
+            },
+          }),
+        status: 401,
+      });
+    }
+
+    throw new Error(`Unexpected request: ${url}`);
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  sessionStore.setSession({
+    actorId: 'operator-1',
+    actorType: 'operator',
+    role: 'owner',
+    sessionId: 'expired-session-1',
+    token: 'memory-token',
+  });
+  window.history.pushState({}, '', '/admin');
+  renderApp();
+
+  expect(await screen.findByRole('heading', { name: /sign in to slotwise/i })).toBeInTheDocument();
+  expect(screen.getByText(/your operator session expired/i)).toBeInTheDocument();
+  expect(sessionStore.getSnapshot()).toBeNull();
+});
+
+test('revalidates portal sessions on window focus and clears them when the backend rejects the token', async () => {
+  let sessionCheckCount = 0;
+  const fetchMock = vi.fn((url: string) => {
+    if (url.endsWith('/auth/session')) {
+      sessionCheckCount += 1;
+
+      return Promise.resolve({
+        json: () =>
+          Promise.resolve(
+            sessionCheckCount === 1
+              ? {
+                  success: true,
+                  data: {
+                    actorId: 'cus_portal_1',
+                    actorType: 'customer',
+                    businessId: 'business-1',
+                    email: 'maya@example.com',
+                    role: 'customer',
+                    sessionId: 'portal-session-1',
+                  },
+                }
+              : {
+                  success: false,
+                  error: {
+                    message: 'Authenticated session is required',
+                  },
+                },
+          ),
+        status: sessionCheckCount === 1 ? 200 : 401,
+      });
+    }
+
+    if (url.includes('/bookings?')) {
+      return Promise.resolve({
+        json: () =>
+          Promise.resolve({
+            success: true,
+            data: [
+              {
+                _id: 'bk_portal_1',
+                businessId: 'business-1',
+                customerId: 'cus_portal_1',
+                email: 'maya@example.com',
+                phone: '555-0123',
+                fName: 'Maya',
+                lName: 'Stone',
+                startDate: '2030-01-01T10:00:00.000Z',
+                endDate: '2030-01-01T11:00:00.000Z',
+                timein: '2030-01-01T10:00:00.000Z',
+                timeout: '2030-01-01T11:00:00.000Z',
+                status: 'approved',
+              },
+            ],
+          }),
+        status: 200,
+      });
+    }
+
+    throw new Error(`Unexpected request: ${url}`);
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  customerSessionStore.setSession({
+    actorId: 'cus_portal_1',
+    actorType: 'customer',
+    businessId: 'business-1',
+    email: 'maya@example.com',
+    role: 'customer',
+    sessionId: 'portal-session-1',
+    token: 'portal-customer-token',
+  });
+  window.history.pushState({}, '', '/portal?businessId=business-1&email=maya@example.com');
+  renderApp();
+
+  expect(await screen.findByRole('button', { name: /bk_portal_1/i })).toBeInTheDocument();
+
+  window.dispatchEvent(new Event('focus'));
+
+  await waitFor(() => {
+    expect(customerSessionStore.getSnapshot()).toBeNull();
+  });
+  expect(screen.getByText(/your customer session expired/i)).toBeInTheDocument();
+  expect(screen.getByText(/customer sign-in required/i)).toBeInTheDocument();
 });

@@ -55,6 +55,21 @@ export type StatusHistoryDto = {
   reason?: string;
 };
 
+export type RescheduleHistoryDto = {
+  previousStartDate: string;
+  previousEndDate: string;
+  previousTimein: string;
+  previousTimeout: string;
+  newStartDate: string;
+  newEndDate: string;
+  newTimein: string;
+  newTimeout: string;
+  rescheduledAt: string;
+  rescheduledByRole: Role | 'system';
+  rescheduledBy?: string;
+  reason?: string;
+};
+
 export type BookingDto = {
   _id: string;
   businessId?: string;
@@ -75,6 +90,7 @@ export type BookingDto = {
   notes?: string;
   conflictRisk?: ConflictRiskDto;
   statusHistory?: StatusHistoryDto[];
+  rescheduleHistory?: RescheduleHistoryDto[];
   createdAt?: string;
   updatedAt?: string;
 };
@@ -259,6 +275,11 @@ export type BusinessProfileDto = {
     endTime: string;
     closed?: boolean;
   }>;
+  blackoutDates?: Array<{
+    startDate: string;
+    endDate: string;
+    reason?: string;
+  }>;
   publicPageSettings?: Record<string, unknown>;
   widgetSettings?: Record<string, unknown>;
   createdAt?: string;
@@ -286,16 +307,40 @@ export type ServiceResourceDto = {
   durationMinutes?: number;
   requiresApproval?: boolean;
   supportedRoles?: Role[];
+  availabilityOverrides?: {
+    slotIntervalMinutes?: number;
+    minAdvanceMinutes?: number;
+    maxAdvanceDays?: number;
+    bufferBeforeMinutes?: number;
+    bufferAfterMinutes?: number;
+    allowOverbooking?: boolean;
+    workingHours?: Array<{
+      dayOfWeek: number;
+      startTime: string;
+      endTime: string;
+      closed?: boolean;
+    }>;
+    blackoutDates?: Array<{
+      startDate: string;
+      endDate: string;
+      reason?: string;
+    }>;
+  };
   [key: string]: unknown;
 };
 
 export type CustomerDto = {
   _id: string;
   businessId: string;
-  fName: string;
-  lName: string;
+  firstName?: string;
+  lastName?: string;
+  fName?: string;
+  lName?: string;
   email: string;
   phone?: string;
+  notes?: string;
+  preferredNotificationChannels?: Array<'email' | 'sms'>;
+  totalBookings?: number;
   bookingCount?: number;
   [key: string]: unknown;
 };
@@ -342,9 +387,17 @@ export type PublicBookingPageConfigDto = {
 };
 
 export type PublicWidgetConfigDto = {
-  business: Pick<BusinessProfileDto, '_id' | 'businessType' | 'name' | 'slug' | 'timezone'>;
+  businessId?: string;
+  name?: string;
+  slug?: string;
+  businessType?: string;
+  timezone?: string;
+  description?: string;
   widgetSettings?: Record<string, unknown>;
-  resources: PublicResourcePreviewDto[];
-  endpoints: Record<string, string>;
+  availableResources?: PublicResourcePreviewDto[];
+  bookingEndpoints?: Record<string, string>;
+  business?: Pick<BusinessProfileDto, '_id' | 'businessType' | 'name' | 'slug' | 'timezone'>;
+  resources?: PublicResourcePreviewDto[];
+  endpoints?: Record<string, string>;
   [key: string]: unknown;
 };

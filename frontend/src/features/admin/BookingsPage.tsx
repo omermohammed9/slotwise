@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
+import { useSearchParams } from 'react-router';
 import {
   AlertTriangle,
   ArrowDownUp,
@@ -44,12 +45,34 @@ type BookingPaginationMeta = {
 
 type LifecycleStatus = Extract<BookingStatus, 'approved' | 'cancelled' | 'completed' | 'no_show' | 'rejected'>;
 type BookingSortField = NonNullable<BookingListQuery['sortBy']>;
+type BookingSearchState = {
+  customerName: string;
+  page: number;
+  risk: ConflictRiskLevel | '';
+  sortBy: BookingSortField;
+  sortOrder: SortOrder;
+  status: BookingStatus | '';
+};
 type RescheduleDraft = {
   endDate: string;
   reason: string;
   startDate: string;
   timein: string;
   timeout: string;
+};
+type SavedBookingsView = {
+  id: string;
+  name: string;
+  state: BookingSearchState;
+};
+type SavedViewFeedback = {
+  message: string;
+  tone: 'error' | 'success';
+};
+type ActiveFilterChip = {
+  id: 'customerName' | 'page' | 'risk' | 'sort' | 'status';
+  label: string;
+  onRemove: () => void;
 };
 
 type LifecycleAction = {
@@ -132,6 +155,20 @@ const lifecycleActions: LifecycleAction[] = [
   },
 ];
 
+const validStatuses = new Set<BookingStatus>(statusOptions.flatMap((option) => (option.value ? [option.value] : [])));
+const validRiskLevels = new Set<ConflictRiskLevel>(riskOptions.flatMap((option) => (option.value ? [option.value] : [])));
+const validSortFields = new Set<BookingSortField>(sortFieldOptions.map((option) => option.value));
+const validSortOrders = new Set<SortOrder>(['asc', 'desc']);
+const savedViewsStorageKey = 'slotwise.admin.bookings.saved-views';
+const defaultBookingSearchState: BookingSearchState = {
+  customerName: '',
+  page: 1,
+  risk: '',
+  sortBy: 'createdAt',
+  sortOrder: 'desc',
+  status: '',
+};
+
 function getPagination(meta?: ApiMeta): BookingPaginationMeta {
   const pagination = meta?.pagination as Partial<BookingPaginationMeta> | undefined;
 
@@ -210,6 +247,27 @@ function createRescheduleDraft(booking?: BookingDto): RescheduleDraft {
   };
 }
 
+function parsePageValue(value: string | null): number {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
+}
+
+function parseStatusValue(value: string | null): BookingStatus | '' {
+  return value && validStatuses.has(value as BookingStatus) ? (value as BookingStatus) : '';
+}
+
+function parseRiskValue(value: string | null): ConflictRiskLevel | '' {
+  return value && validRiskLevels.has(value as ConflictRiskLevel) ? (value as ConflictRiskLevel) : '';
+}
+
+function parseSortFieldValue(value: string | null): BookingSortField {
+  return value && validSortFields.has(value as BookingSortField) ? (value as BookingSortField) : 'createdAt';
+}
+
+function parseSortOrderValue(value: string | null): SortOrder {
+  return value && validSortOrders.has(value as SortOrder) ? (value as SortOrder) : 'desc';
+}
+
 function buildRescheduleBody(draft: RescheduleDraft): RescheduleBookingBody {
   return {
     endDate: toIsoDateTime(draft.endDate),
@@ -218,6 +276,99 @@ function buildRescheduleBody(draft: RescheduleDraft): RescheduleBookingBody {
     timeout: toIsoDateTime(draft.timeout),
     ...(draft.reason.trim() ? { reason: draft.reason.trim() } : {}),
   };
+}
+
+function normalizeBookingSearchState(state: Partial<BookingSearchState>): BookingSearchState {
+  return {
+    customerName: typeof state.customerName === 'string' ? state.customerName.trim() : defaultBookingSearchState.customerName,
+    page: Number.isInteger(state.page) && Number(state.page) > 0 ? Number(state.page) : defaultBookingSearchState.page,
+    risk: state.risk && validRiskLevels.has(state.risk) ? state.risk : defaultBookingSearchState.risk,
+    sortBy: state.sortBy && validSortFields.has(state.sortBy) ? state.sortBy : defaultBookingSearchState.sortBy,
+    sortOrder: state.sortOrder && validSortOrders.has(state.sortOrder) ? state.sortOrder : defaultBookingSearchState.sortOrder,
+    status: state.status && validStatuses.has(state.status) ? state.status : defaultBookingSearchState.status,
+  };
+}
+
+function areSearchStatesEqual(left: BookingSearchState, right: BookingSearchState): boolean {
+  return (
+    left.customerName === right.customerName &&
+    left.page === right.page &&
+    left.risk === right.risk &&
+    left.sortBy === right.sortBy &&
+    left.sortOrder === right.sortOrder &&
+    left.status === right.status
+  );
+}
+
+function describeSearchState(state: BookingSearchState): string {
+  const parts = [];
+
+  if (state.customerName) {
+    parts.push(state.customerName);
+  }
+
+  if (state.status) {
+    const option = statusOptions.find((entry) => entry.value === state.status);
+    parts.push(option?.label ?? formatStatusLabel(state.status));
+  }
+
+  if (state.risk) {
+    const option = riskOptions.find((entry) => entry.value === state.risk);
+    parts.push(option?.label ?? `${state.risk} risk`);
+  }
+
+  const sortField = sortFieldOptions.find((entry) => entry.value === state.sortBy);
+  parts.push(`${sortField?.label ?? state.sortBy} ${state.sortOrder === 'asc' ? 'ascending' : 'descending'}`);
+
+  if (state.page > 1) {
+    parts.push(`Page ${state.page}`);
+  }
+
+  return parts.join(' · ');
+}
+
+function readSavedViews(): SavedBookingsView[] {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
+  try {
+    const raw = window.localStorage.getItem(savedViewsStorageKey);
+
+    if (!raw) {
+      return [];
+    }
+
+    const parsed = JSON.parse(raw);
+
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed.flatMap((entry) => {
+      if (!entry || typeof entry !== 'object') {
+        return [];
+      }
+
+      const candidate = entry as Partial<SavedBookingsView>;
+      const name = typeof candidate.name === 'string' ? candidate.name.trim() : '';
+      const id = typeof candidate.id === 'string' ? candidate.id : '';
+
+      if (!id || !name) {
+        return [];
+      }
+
+      return [
+        {
+          id,
+          name,
+          state: normalizeBookingSearchState(candidate.state ?? {}),
+        },
+      ];
+    });
+  } catch {
+    return [];
+  }
 }
 
 function DetailField({ label, value }: { label: string; value?: number | string }) {
@@ -232,15 +383,88 @@ function DetailField({ label, value }: { label: string; value?: number | string 
 export function BookingsPage() {
   const queryClient = useQueryClient();
   const { session, token } = useSessionStore();
-  const [status, setStatus] = useState<BookingStatus | ''>('');
-  const [risk, setRisk] = useState<ConflictRiskLevel | ''>('');
-  const [customerName, setCustomerName] = useState('');
-  const [page, setPage] = useState(1);
-  const [sortBy, setSortBy] = useState<BookingSortField>('createdAt');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [searchParams, setSearchParams] = useSearchParams();
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
   const [rescheduleDraft, setRescheduleDraft] = useState<RescheduleDraft>(createRescheduleDraft());
   const [suggestions, setSuggestions] = useState<BookingSuggestionDto[]>([]);
+  const [savedViewName, setSavedViewName] = useState('');
+  const [savedViews, setSavedViews] = useState<SavedBookingsView[]>(() => readSavedViews());
+  const [savedViewFeedback, setSavedViewFeedback] = useState<SavedViewFeedback | null>(null);
+  const status = parseStatusValue(searchParams.get('status'));
+  const risk = parseRiskValue(searchParams.get('risk'));
+  const customerName = searchParams.get('customerName') ?? '';
+  const page = parsePageValue(searchParams.get('page'));
+  const sortBy = parseSortFieldValue(searchParams.get('sortBy'));
+  const sortOrder = parseSortOrderValue(searchParams.get('sortOrder'));
+  const currentViewState = useMemo<BookingSearchState>(
+    () => ({
+      customerName,
+      page,
+      risk,
+      sortBy,
+      sortOrder,
+      status,
+    }),
+    [customerName, page, risk, sortBy, sortOrder, status],
+  );
+  const activeSavedViewId = useMemo(
+    () => savedViews.find((view) => areSearchStatesEqual(view.state, currentViewState))?.id ?? null,
+    [currentViewState, savedViews],
+  );
+  const activeFilterChips = useMemo<ActiveFilterChip[]>(() => {
+    const chips: ActiveFilterChip[] = [];
+
+    if (customerName.trim()) {
+      chips.push({
+        id: 'customerName',
+        label: `Customer: ${customerName.trim()}`,
+        onRemove: () => updateSearchParams({ customerName: defaultBookingSearchState.customerName, page: defaultBookingSearchState.page }),
+      });
+    }
+
+    if (status) {
+      const option = statusOptions.find((entry) => entry.value === status);
+      chips.push({
+        id: 'status',
+        label: `Status: ${option?.label ?? formatStatusLabel(status)}`,
+        onRemove: () => updateSearchParams({ page: defaultBookingSearchState.page, status: defaultBookingSearchState.status }),
+      });
+    }
+
+    if (risk) {
+      const option = riskOptions.find((entry) => entry.value === risk);
+      chips.push({
+        id: 'risk',
+        label: `Risk: ${option?.label ?? `${risk} risk`}`,
+        onRemove: () => updateSearchParams({ page: defaultBookingSearchState.page, risk: defaultBookingSearchState.risk }),
+      });
+    }
+
+    if (sortBy !== defaultBookingSearchState.sortBy || sortOrder !== defaultBookingSearchState.sortOrder) {
+      const option = sortFieldOptions.find((entry) => entry.value === sortBy);
+      chips.push({
+        id: 'sort',
+        label: `Sort: ${option?.label ?? sortBy} ${sortOrder === 'asc' ? 'ascending' : 'descending'}`,
+        onRemove: () =>
+          updateSearchParams({
+            page: defaultBookingSearchState.page,
+            sortBy: defaultBookingSearchState.sortBy,
+            sortOrder: defaultBookingSearchState.sortOrder,
+          }),
+      });
+    }
+
+    if (page > defaultBookingSearchState.page) {
+      chips.push({
+        id: 'page',
+        label: `Page: ${page}`,
+        onRemove: () => updateSearchParams({ page: defaultBookingSearchState.page }),
+      });
+    }
+
+    return chips;
+  }, [customerName, page, risk, sortBy, sortOrder, status]);
+  const hasActiveFilters = activeFilterChips.length > 0;
 
   const query: BookingListQuery = useMemo(
     () => ({
@@ -254,6 +478,95 @@ export function BookingsPage() {
     }),
     [customerName, page, risk, sortBy, sortOrder, status],
   );
+
+  function updateSearchParams(
+    updates: Partial<BookingSearchState>,
+  ) {
+    const nextParams = new URLSearchParams(searchParams);
+
+    Object.entries(updates).forEach(([key, value]) => {
+      const normalizedValue = typeof value === 'string' ? value.trim() : value;
+
+      if (
+        normalizedValue === undefined ||
+        normalizedValue === null ||
+        normalizedValue === '' ||
+        (key === 'page' && normalizedValue === 1) ||
+        (key === 'sortBy' && normalizedValue === 'createdAt') ||
+        (key === 'sortOrder' && normalizedValue === 'desc')
+      ) {
+        nextParams.delete(key);
+        return;
+      }
+
+      nextParams.set(key, String(normalizedValue));
+    });
+
+    setSearchParams(nextParams, { replace: true });
+  }
+
+  function persistSavedViews(nextViews: SavedBookingsView[]) {
+    try {
+      window.localStorage.setItem(savedViewsStorageKey, JSON.stringify(nextViews));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function handleSaveView() {
+    const name = savedViewName.trim();
+
+    if (!name) {
+      setSavedViewFeedback({
+        message: 'Enter a name before saving this view.',
+        tone: 'error',
+      });
+      return;
+    }
+
+    const existingView = savedViews.find((view) => view.name.toLocaleLowerCase() === name.toLocaleLowerCase());
+    const nextViews = existingView
+      ? savedViews.map((view) => (view.id === existingView.id ? { ...view, name, state: currentViewState } : view))
+      : [
+          ...savedViews,
+          {
+            id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            name,
+            state: currentViewState,
+          },
+        ];
+
+    setSavedViews(nextViews);
+    setSavedViewName('');
+    const saved = persistSavedViews(nextViews);
+    setSavedViewFeedback({
+      message: saved
+        ? existingView
+          ? 'Saved view updated.'
+          : 'Saved view created.'
+        : 'Saved view changed here, but browser storage was unavailable.',
+      tone: saved ? 'success' : 'error',
+    });
+  }
+
+  function handleApplySavedView(view: SavedBookingsView) {
+    updateSearchParams(view.state);
+    setSavedViewFeedback({
+      message: `"${view.name}" applied.`,
+      tone: 'success',
+    });
+  }
+
+  function handleRemoveSavedView(viewId: string) {
+    const nextViews = savedViews.filter((view) => view.id !== viewId);
+    setSavedViews(nextViews);
+    const saved = persistSavedViews(nextViews);
+    setSavedViewFeedback({
+      message: saved ? 'Saved view removed.' : 'Saved view changed here, but browser storage was unavailable.',
+      tone: saved ? 'success' : 'error',
+    });
+  }
 
   const bookingsQuery = useQuery({
     queryFn: async () => {
@@ -371,10 +684,6 @@ export function BookingsPage() {
     },
   });
 
-  function resetToFirstPage() {
-    setPage(1);
-  }
-
   function handleLifecycleAction(action: LifecycleAction) {
     if (lifecycleMutation.isPending || !window.confirm(action.confirmMessage)) {
       return;
@@ -436,8 +745,10 @@ export function BookingsPage() {
             <input
               value={customerName}
               onChange={(event) => {
-                setCustomerName(event.target.value);
-                resetToFirstPage();
+                updateSearchParams({
+                  customerName: event.target.value,
+                  page: 1,
+                });
               }}
               placeholder="Search by name"
             />
@@ -449,8 +760,10 @@ export function BookingsPage() {
           <select
             value={status}
             onChange={(event) => {
-              setStatus(event.target.value as BookingStatus | '');
-              resetToFirstPage();
+              updateSearchParams({
+                page: 1,
+                status: event.target.value as BookingStatus | '',
+              });
             }}
           >
             {statusOptions.map((option) => (
@@ -466,8 +779,10 @@ export function BookingsPage() {
           <select
             value={risk}
             onChange={(event) => {
-              setRisk(event.target.value as ConflictRiskLevel | '');
-              resetToFirstPage();
+              updateSearchParams({
+                page: 1,
+                risk: event.target.value as ConflictRiskLevel | '',
+              });
             }}
           >
             {riskOptions.map((option) => (
@@ -483,8 +798,10 @@ export function BookingsPage() {
           <select
             value={sortBy}
             onChange={(event) => {
-              setSortBy(event.target.value as BookingSortField);
-              resetToFirstPage();
+              updateSearchParams({
+                page: 1,
+                sortBy: event.target.value as BookingSortField,
+              });
             }}
           >
             {sortFieldOptions.map((option) => (
@@ -499,13 +816,104 @@ export function BookingsPage() {
           className="secondary-button compact-button"
           type="button"
           onClick={() => {
-            setSortOrder((current) => (current === 'asc' ? 'desc' : 'asc'));
-            resetToFirstPage();
+            updateSearchParams({
+              page: 1,
+              sortOrder: sortOrder === 'asc' ? 'desc' : 'asc',
+            });
           }}
         >
           <ArrowDownUp size={17} aria-hidden="true" />
           {sortOrder === 'asc' ? 'Ascending' : 'Descending'}
         </button>
+      </section>
+
+      {hasActiveFilters ? (
+        <section className="panel booking-active-filters" aria-labelledby="booking-active-filters-title">
+          <div className="panel-heading booking-active-filters-heading">
+            <div>
+              <p className="eyebrow">Current workspace</p>
+              <h2 id="booking-active-filters-title">Active filters</h2>
+            </div>
+            <button
+              className="text-button"
+              type="button"
+              onClick={() => updateSearchParams(defaultBookingSearchState)}
+            >
+              Clear all
+            </button>
+          </div>
+          <div className="active-filter-chip-list" aria-label="Active booking filters">
+            {activeFilterChips.map((chip) => (
+              <button
+                key={chip.id}
+                className="active-filter-chip"
+                type="button"
+                aria-label={`Remove ${chip.label}`}
+                onClick={chip.onRemove}
+              >
+                <span>{chip.label}</span>
+                <X size={14} aria-hidden="true" />
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      <section className="panel saved-view-panel" aria-labelledby="booking-saved-views-title">
+        <div className="panel-heading">
+          <div>
+            <p className="eyebrow">Workspace memory</p>
+            <h2 id="booking-saved-views-title">Saved views</h2>
+          </div>
+          <p className="result-count">Browser only</p>
+        </div>
+        <p className="body-copy">Save the current bookings filters, sorting, and page so you can reapply them quickly on this device.</p>
+        <div className="saved-view-toolbar">
+          <label className="form-field">
+            View name
+            <input
+              value={savedViewName}
+              maxLength={60}
+              onChange={(event) => setSavedViewName(event.target.value)}
+              placeholder="Ex: High-risk approvals"
+            />
+          </label>
+          <button className="secondary-button compact-button" type="button" onClick={handleSaveView}>
+            Save current view
+          </button>
+        </div>
+        {savedViewFeedback ? <InlineNotice tone={savedViewFeedback.tone} message={savedViewFeedback.message} /> : null}
+        {savedViews.length ? (
+          <div className="saved-view-list" aria-label="Saved booking views">
+            {savedViews.map((view) => {
+              const isActive = view.id === activeSavedViewId;
+
+              return (
+                <div className={`saved-view-card${isActive ? ' saved-view-card-active' : ''}`} key={view.id}>
+                  <button
+                    aria-pressed={isActive}
+                    className="text-button saved-view-apply"
+                    type="button"
+                    onClick={() => handleApplySavedView(view)}
+                  >
+                    {view.name}
+                  </button>
+                  <p className="saved-view-summary">{describeSearchState(view.state)}</p>
+                  <button
+                    className="icon-button saved-view-remove"
+                    type="button"
+                    aria-label={`Remove ${view.name} saved view`}
+                    onClick={() => handleRemoveSavedView(view.id)}
+                  >
+                    <X size={16} aria-hidden="true" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="body-copy">No saved views yet.</p>
+        )}
       </section>
 
       <section className="panel booking-list-panel" aria-labelledby="booking-list-title">
@@ -579,7 +987,7 @@ export function BookingsPage() {
             type="button"
             aria-label="Previous page"
             disabled={pagination.page <= 1 || bookingsQuery.isFetching}
-            onClick={() => setPage((current) => Math.max(1, current - 1))}
+            onClick={() => updateSearchParams({ page: Math.max(1, page - 1) })}
           >
             <ChevronLeft size={18} aria-hidden="true" />
           </button>
@@ -591,7 +999,7 @@ export function BookingsPage() {
             type="button"
             aria-label="Next page"
             disabled={pagination.page >= pagination.totalPages || bookingsQuery.isFetching}
-            onClick={() => setPage((current) => current + 1)}
+            onClick={() => updateSearchParams({ page: page + 1 })}
           >
             <ChevronRight size={18} aria-hidden="true" />
           </button>

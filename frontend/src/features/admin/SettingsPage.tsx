@@ -1,13 +1,59 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, Building2, CheckCircle2, Eye, RefreshCw, Save, Search, Sparkles } from 'lucide-react';
+import {
+  AlertTriangle,
+  Building2,
+  CalendarRange,
+  CheckCircle2,
+  Clock3,
+  Eye,
+  Plus,
+  RefreshCw,
+  Save,
+  Search,
+  Sparkles,
+} from 'lucide-react';
 import { getBusinessTemplate, listBusinesses, listBusinessTemplates, updateBusiness } from '../../api/businesses';
 import type { BusinessProfileDto, BusinessTemplateDto } from '../../api/types';
 import { useSessionStore } from '../../auth/sessionStore';
 import { InlineNotice, LoadingState } from '../../components/AdminState';
 import { EmptyState } from '../../components/EmptyState';
+import {
+  createBlackoutDateDrafts,
+  createBusinessWorkingHourDrafts,
+  createEmptyBlackoutDateDraft,
+  getWeekdayLabel,
+  serializeBlackoutDates,
+  serializeWorkingHours,
+  validateBlackoutDates,
+  validateWorkingHours,
+  type BlackoutDateDraft,
+  type WorkingHourDraft,
+} from './scheduleEditors';
 
 const businessTypes = ['restaurant', 'clinic', 'salon', 'consulting', 'venue', 'rental', 'fitness', 'other'];
+
+type BusinessSettingsFormState = {
+  businessType: string;
+  contactEmail: string;
+  contactPhone: string;
+  description: string;
+  name: string;
+  slug: string;
+  status: 'active' | 'inactive';
+  timezone: string;
+};
+
+const defaultFormState: BusinessSettingsFormState = {
+  businessType: 'other',
+  contactEmail: '',
+  contactPhone: '',
+  description: '',
+  name: '',
+  slug: '',
+  status: 'active',
+  timezone: 'UTC',
+};
 
 function getBooleanLabel(value?: unknown): string {
   return value === false ? 'Off' : 'On';
@@ -45,16 +91,10 @@ export function SettingsPage() {
   const { token } = useSessionStore();
   const queryClient = useQueryClient();
   const [selectedBusinessId, setSelectedBusinessId] = useState('');
-  const [form, setForm] = useState({
-    businessType: 'other',
-    contactEmail: '',
-    contactPhone: '',
-    description: '',
-    name: '',
-    slug: '',
-    status: 'active',
-    timezone: 'UTC',
-  });
+  const [form, setForm] = useState<BusinessSettingsFormState>(defaultFormState);
+  const [workingHours, setWorkingHours] = useState<WorkingHourDraft[]>(createBusinessWorkingHourDrafts());
+  const [blackoutDates, setBlackoutDates] = useState<BlackoutDateDraft[]>([]);
+  const [selectedTemplateKey, setSelectedTemplateKey] = useState('');
 
   const businessesQuery = useQuery({
     enabled: Boolean(token),
@@ -90,7 +130,6 @@ export function SettingsPage() {
     () => businesses.find((business) => business._id === selectedBusinessId) ?? getFirstBusiness(businesses),
     [businesses, selectedBusinessId],
   );
-  const [selectedTemplateKey, setSelectedTemplateKey] = useState('');
 
   const selectedTemplatePreview = useQuery({
     enabled: Boolean(token && selectedTemplateKey),
@@ -122,6 +161,8 @@ export function SettingsPage() {
       status: selectedBusiness.status ?? 'active',
       timezone: selectedBusiness.timezone ?? 'UTC',
     });
+    setWorkingHours(createBusinessWorkingHourDrafts(selectedBusiness.workingHours));
+    setBlackoutDates(createBlackoutDateDrafts(selectedBusiness.blackoutDates));
     setSelectedTemplateKey(selectedBusiness.templateKey ?? '');
   }, [selectedBusiness]);
 
@@ -137,7 +178,25 @@ export function SettingsPage() {
         throw new Error('Select a business before saving settings.');
       }
 
-      const response = await updateBusiness(selectedBusiness._id, form, token);
+      const workingHoursError = validateWorkingHours(workingHours);
+      if (workingHoursError) {
+        throw new Error(workingHoursError);
+      }
+
+      const blackoutDatesError = validateBlackoutDates(blackoutDates);
+      if (blackoutDatesError) {
+        throw new Error(blackoutDatesError);
+      }
+
+      const response = await updateBusiness(
+        selectedBusiness._id,
+        {
+          ...form,
+          blackoutDates: serializeBlackoutDates(blackoutDates),
+          workingHours: serializeWorkingHours(workingHours),
+        },
+        token,
+      );
 
       if (!response.success) {
         throw new Error(response.error.message);
@@ -156,7 +215,7 @@ export function SettingsPage() {
         <div>
           <p className="eyebrow">Business setup</p>
           <h1 id="settings-title">Settings</h1>
-          <p className="lede">Manage profile basics, operating posture, and public-surface readiness.</p>
+          <p className="lede">Manage profile basics, weekly availability, blackout dates, and public-surface readiness.</p>
         </div>
         <div className="header-actions" aria-label="Settings actions">
           <button className="icon-button" type="button" aria-label="Refresh settings" onClick={() => businessesQuery.refetch()}>
@@ -229,7 +288,7 @@ export function SettingsPage() {
               </label>
               <label className="form-field">
                 Status
-                <select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}>
+                <select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value as 'active' | 'inactive' })}>
                   <option value="active">active</option>
                   <option value="inactive">inactive</option>
                 </select>
@@ -252,6 +311,156 @@ export function SettingsPage() {
               Description
               <textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} />
             </label>
+
+            <section className="detail-section" aria-labelledby="working-hours-title">
+              <div className="panel-heading inline-heading">
+                <div>
+                  <p className="eyebrow">Availability</p>
+                  <h3 id="working-hours-title">Working hours</h3>
+                </div>
+                <Clock3 size={18} aria-hidden="true" />
+              </div>
+              <div className="schedule-editor-list">
+                {workingHours.map((hour, index) => (
+                  <div className="schedule-row" key={hour.dayOfWeek}>
+                    <div className="schedule-row-heading">
+                      <strong>{getWeekdayLabel(hour.dayOfWeek)}</strong>
+                      <label className="toggle-field">
+                        <input
+                          checked={hour.closed}
+                          type="checkbox"
+                          onChange={(event) => {
+                            const nextHours = [...workingHours];
+                            nextHours[index] = {
+                              ...nextHours[index],
+                              closed: event.target.checked,
+                            };
+                            setWorkingHours(nextHours);
+                          }}
+                        />
+                        Closed
+                      </label>
+                    </div>
+                    <div className="schedule-row-fields">
+                      <label className="form-field">
+                        Start
+                        <input
+                          disabled={hour.closed}
+                          type="time"
+                          value={hour.startTime}
+                          onChange={(event) => {
+                            const nextHours = [...workingHours];
+                            nextHours[index] = {
+                              ...nextHours[index],
+                              startTime: event.target.value,
+                            };
+                            setWorkingHours(nextHours);
+                          }}
+                        />
+                      </label>
+                      <label className="form-field">
+                        End
+                        <input
+                          disabled={hour.closed}
+                          type="time"
+                          value={hour.endTime}
+                          onChange={(event) => {
+                            const nextHours = [...workingHours];
+                            nextHours[index] = {
+                              ...nextHours[index],
+                              endTime: event.target.value,
+                            };
+                            setWorkingHours(nextHours);
+                          }}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="detail-section" aria-labelledby="blackout-dates-title">
+              <div className="panel-heading inline-heading">
+                <div>
+                  <p className="eyebrow">Exceptions</p>
+                  <h3 id="blackout-dates-title">Blackout dates</h3>
+                </div>
+                <CalendarRange size={18} aria-hidden="true" />
+              </div>
+              {blackoutDates.length ? (
+                <div className="schedule-editor-list">
+                  {blackoutDates.map((range) => (
+                    <div className="schedule-row" key={range.id}>
+                      <div className="schedule-row-heading">
+                        <strong>Blocked range</strong>
+                        <button
+                          className="text-button"
+                          type="button"
+                          onClick={() => setBlackoutDates(blackoutDates.filter((entry) => entry.id !== range.id))}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      <div className="schedule-row-fields">
+                        <label className="form-field">
+                          Start date
+                          <input
+                            type="date"
+                            value={range.startDate}
+                            onChange={(event) =>
+                              setBlackoutDates(
+                                blackoutDates.map((entry) =>
+                                  entry.id === range.id ? { ...entry, startDate: event.target.value } : entry,
+                                ),
+                              )
+                            }
+                          />
+                        </label>
+                        <label className="form-field">
+                          End date
+                          <input
+                            type="date"
+                            value={range.endDate}
+                            onChange={(event) =>
+                              setBlackoutDates(
+                                blackoutDates.map((entry) =>
+                                  entry.id === range.id ? { ...entry, endDate: event.target.value } : entry,
+                                ),
+                              )
+                            }
+                          />
+                        </label>
+                      </div>
+                      <label className="form-field">
+                        Reason
+                        <input
+                          value={range.reason}
+                          onChange={(event) =>
+                            setBlackoutDates(
+                              blackoutDates.map((entry) =>
+                                entry.id === range.id ? { ...entry, reason: event.target.value } : entry,
+                              ),
+                            )
+                          }
+                          placeholder="Holiday, maintenance, private event"
+                        />
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="body-copy">No blackout dates are configured yet.</p>
+              )}
+              <button
+                className="secondary-button compact-button"
+                type="button"
+                onClick={() => setBlackoutDates([...blackoutDates, createEmptyBlackoutDateDraft()])}
+              >
+                <Plus size={17} aria-hidden="true" />
+                Add blackout range
+              </button>
+            </section>
 
             {updateMutation.isError ? (
               <InlineNotice tone="error" message={(updateMutation.error as Error).message} icon={AlertTriangle} />
@@ -284,7 +493,11 @@ export function SettingsPage() {
               </div>
               <div className="detail-field">
                 <span>Working days</span>
-                <strong>{selectedBusiness.workingHours?.filter((hour) => !hour.closed).length ?? 0}</strong>
+                <strong>{workingHours.filter((hour) => !hour.closed).length}</strong>
+              </div>
+              <div className="detail-field">
+                <span>Blackout ranges</span>
+                <strong>{blackoutDates.length}</strong>
               </div>
               <div className="detail-field">
                 <span>Widget</span>

@@ -8,6 +8,7 @@ type NavItem = {
   icon: LucideIcon;
   path: string;
   end?: boolean;
+  navPath?: string;
 };
 
 type AppShellProps = {
@@ -16,7 +17,7 @@ type AppShellProps = {
 };
 
 export function AppShell({ navItems, surfaceItems }: AppShellProps) {
-  const { clearSession, session, token } = useSessionStore();
+  const { clearNotice, clearSession, session, token } = useSessionStore();
   const navigate = useNavigate();
 
   async function handleSignOut() {
@@ -25,6 +26,7 @@ export function AppShell({ navItems, surfaceItems }: AppShellProps) {
         await deleteSession(token);
       }
     } finally {
+      clearNotice();
       clearSession();
       navigate('/login', { replace: true });
     }
@@ -52,7 +54,7 @@ export function AppShell({ navItems, surfaceItems }: AppShellProps) {
                 className={({ isActive }) => (isActive ? 'nav-item nav-item-active' : 'nav-item')}
                 end={item.end}
                 key={item.label}
-                to={item.path}
+                to={item.navPath ?? item.path}
               >
                 <Icon size={18} aria-hidden="true" />
                 <span>{item.label}</span>
@@ -69,7 +71,7 @@ export function AppShell({ navItems, surfaceItems }: AppShellProps) {
               <NavLink
                 className={({ isActive }) => (isActive ? 'surface-link surface-link-active' : 'surface-link')}
                 key={item.label}
-                to={item.path}
+                to={item.navPath ?? item.path}
               >
                 <Icon size={16} aria-hidden="true" />
                 <span>{item.label}</span>
