@@ -5,7 +5,14 @@
 Client
   -> Express app (`src/app.ts`)
   -> Env helper (`src/config/env.ts`)
+  -> CORS middleware (`src/middleware/cors.ts`)
+  -> Request observability middleware (`src/middleware/requestObservability.ts`)
+     -> Request id response header (`x-request-id`)
+     -> Structured logger (`src/utils/logger.ts`)
+  -> CSRF middleware (`src/middleware/csrf.ts`) for unsafe cookie-authenticated requests
+  -> Health router (`src/routes/health.routes.ts`)
   -> Auth router (`src/routes/auth.routes.ts`)
+     -> Rate limiter (`src/middleware/rateLimit.ts`) for login and magic-link flows
      -> AuthController (`src/controllers/auth.controller.ts`)
      -> AuthService (`src/services/auth.service.ts`)
         -> OperatorAccountRepository (`src/repositories/operator-account.repository.ts`)
@@ -13,7 +20,14 @@ Client
         -> CustomerRepository (`src/repositories/customer.repository.ts`)
         -> VerificationTokenRepository (`src/repositories/verification-token.repository.ts`)
         -> NotificationJobRepository (`src/repositories/notification-job.repository.ts`)
+        -> AuditLogService (`src/services/audit-log.service.ts`) for auth/operator audit events
         -> Argon2 auth crypto helpers (`src/utils/authCrypto.ts`)
+        -> Session cookie helpers (`src/utils/sessionCookie.ts`)
+  -> Audit-log router (`src/routes/audit-log.routes.ts`)
+     -> AuditLogController (`src/controllers/audit-log.controller.ts`)
+     -> AuditLogService (`src/services/audit-log.service.ts`)
+     -> AuditLogRepository (`src/repositories/audit-log.repository.ts`)
+     -> Mongoose AuditLog model (`src/models/audit-log.model.ts`)
   -> Business profile router (`src/routes/business-profile.routes.ts`)
      -> BusinessDomainValidation (`src/middleware/businessDomainValidation.ts`)
      -> BusinessProfileController (`src/controllers/business-profile.controller.ts`)
@@ -44,6 +58,7 @@ Client
      -> Email provider adapter (`Resend` or `noop`)
   -> Booking router (`src/routes/booking.routes.ts`)
      -> Role middleware (`src/middleware/requireRole.ts`) for privileged status actions
+     -> BusinessAuthorization (`src/middleware/businessAuthorization.ts`) for business-scoped reads/mutations
      -> Booking request validation (`src/middleware/bookingRequestValidation.ts`)
   -> BookingController (`src/controllers/booking.controller.ts`)
   -> BookingService (`src/services/booking.service.ts`)
@@ -63,6 +78,15 @@ Tests
 Maintenance
   -> `.gitignore` excludes generated output, dependencies, IDE files, and secrets
   -> `.editorconfig` defines shared editor defaults
+  -> Migration runner (`src/scripts/run-migrations.ts`)
+  -> Migration state model (`src/models/migration-state.model.ts`)
+  -> First-owner setup command (`src/scripts/setup-first-owner.ts`)
+
+Worker
+  -> Notification worker entrypoint (`src/worker.ts`)
+  -> NotificationOutboxService (`src/services/notification-outbox.service.ts`)
+  -> NotificationJobRepository (`src/repositories/notification-job.repository.ts`)
+  -> Email provider adapter (`Resend` or `noop`)
 ```
 
 ## Planned Slotwise Architecture
@@ -71,8 +95,11 @@ Client / Future Frontend
   -> `frontend/` React + Vite SPA
   -> React Router routing foundation
   -> TanStack Query server-state layer foundation
-  -> API envelope client (`frontend/src/api/client.ts`)
+  -> API envelope client with cookies, CSRF headers, and normalized error codes (`frontend/src/api/client.ts`)
   -> Memory-only session store (`frontend/src/auth/sessionStore.ts`)
+  -> Theme-only browser preference storage in the app shell
+  -> Role-aware owner/admin/staff route families (`frontend/src/app/routeMap.tsx`)
+  -> Protected layout and forbidden state (`frontend/src/auth/ProtectedAdminLayout.tsx`, `frontend/src/auth/ForbiddenPage.tsx`)
   -> Express routes
   -> Thin controllers
   -> Services for business rules
@@ -83,13 +110,21 @@ Client / Future Frontend
 
 ## Entry Points
 - HTTP server: `src/app.ts`
+- Notification worker: `src/worker.ts`
 - Environment helper: `src/config/env.ts`
+- Health/readiness routes: `src/routes/health.routes.ts`
 - Auth API base path: `/auth`
+- Audit-log API base path: `/audit-logs`
 - Business profile API base path: `/businesses`
 - Booking API base path: `/bookings`
 - Customer API base path: `/customers`
 - Service/resource API base path: `/service-resources`
 - Role middleware: `src/middleware/requireRole.ts`
+- Business authorization middleware: `src/middleware/businessAuthorization.ts`
+- CSRF middleware: `src/middleware/csrf.ts`
+- CORS middleware: `src/middleware/cors.ts`
+- Rate limiter: `src/middleware/rateLimit.ts`
+- Request observability middleware: `src/middleware/requestObservability.ts`
 - Booking request validation: `src/middleware/bookingRequestValidation.ts`
 - Business domain validation: `src/middleware/businessDomainValidation.ts`
 - Auth service: `src/services/auth.service.ts`
@@ -97,6 +132,7 @@ Client / Future Frontend
 - Auth session repository: `src/repositories/auth-session.repository.ts`
 - Verification token repository: `src/repositories/verification-token.repository.ts`
 - Notification job repository: `src/repositories/notification-job.repository.ts`
+- Audit log repository: `src/repositories/audit-log.repository.ts`
 - Database connection: `src/config/db.ts`
 - Booking repository: `src/repositories/booking.repository.ts`
 - Business profile repository: `src/repositories/business-profile.repository.ts`
@@ -109,9 +145,16 @@ Client / Future Frontend
 - Auth session model: `src/models/auth-session.model.ts`
 - Verification token model: `src/models/verification-token.model.ts`
 - Notification job model: `src/models/notification-job.model.ts`
+- Audit log model: `src/models/audit-log.model.ts`
+- Migration state model: `src/models/migration-state.model.ts`
 - Notification outbox service: `src/services/notification-outbox.service.ts`
+- Audit log service: `src/services/audit-log.service.ts`
 - Auth crypto helpers: `src/utils/authCrypto.ts`
+- Session cookie helpers: `src/utils/sessionCookie.ts`
+- Logger utility: `src/utils/logger.ts`
 - Notification template renderer: `src/utils/notificationTemplates.ts`
+- Migration runner: `src/scripts/run-migrations.ts`
+- First-owner setup script: `src/scripts/setup-first-owner.ts`
 - Test entry points: `tests/validators.test.js`, `tests/bookingService.test.js`, `tests/bookingController.test.js`
 - Route test entry point: `tests/bookingRoutes.test.js`
 - Frontend app entry point: `frontend/src/main.tsx`
@@ -119,22 +162,37 @@ Client / Future Frontend
 - Frontend route map: `frontend/src/app/routeMap.tsx`
 - Frontend app shell layout: `frontend/src/app/AppShell.tsx`
 - Frontend dashboard page: `frontend/src/features/admin/DashboardPage.tsx`
+- Frontend audit log page: `frontend/src/features/admin/AuditLogPage.tsx`
+- Frontend user administration page: `frontend/src/features/admin/UserAdminPage.tsx`
 - Frontend customer management page: `frontend/src/features/admin/CustomersPage.tsx`
 - Frontend public booking page: `frontend/src/features/public/PublicBookingPage.tsx`
 - Frontend API client foundation: `frontend/src/api/client.ts`
 - Frontend API DTOs: `frontend/src/api/types.ts`
-- Frontend API endpoint modules: `frontend/src/api/auth.ts`, `frontend/src/api/bookings.ts`, `frontend/src/api/businesses.ts`, `frontend/src/api/resources.ts`, `frontend/src/api/customers.ts`, and `frontend/src/api/publicSurfaces.ts`
+- Frontend API endpoint modules: `frontend/src/api/auth.ts`, `frontend/src/api/bookings.ts`, `frontend/src/api/businesses.ts`, `frontend/src/api/resources.ts`, `frontend/src/api/customers.ts`, `frontend/src/api/operators.ts`, `frontend/src/api/auditLogs.ts`, and `frontend/src/api/publicSurfaces.ts`
 - Frontend session store: `frontend/src/auth/sessionStore.ts`
 - Frontend operator login page: `frontend/src/auth/LoginPage.tsx`
 - Frontend protected admin layout: `frontend/src/auth/ProtectedAdminLayout.tsx`
+- Frontend forbidden page: `frontend/src/auth/ForbiddenPage.tsx`
 
 ## Routes
 - Auth routes:
   - `POST /auth/session`
+  - `GET /auth/operators`
+  - `POST /auth/operators/invitations`
+  - `POST /auth/operators/invitations/accept`
+  - `POST /auth/operators/password-reset`
+  - `POST /auth/operators/password-reset/complete`
+  - `PATCH /auth/operators/:operatorId/role`
+  - `PATCH /auth/operators/:operatorId/status`
   - `POST /auth/customer/magic-link`
   - `POST /auth/customer/verify`
   - `GET /auth/session`
   - `DELETE /auth/session`
+- Audit and operations routes:
+  - `GET /audit-logs` (paginated; owner global visibility; admin visibility scoped to the actor business)
+  - `GET /audit-logs/export` (filtered CSV export with the same role/business scoping)
+  - `GET /health`
+  - `GET /ready`
 - Preferred REST aliases:
   - `POST /bookings`
   - `GET /bookings`
@@ -157,6 +215,8 @@ Client / Future Frontend
 - Business profile routes:
   - `POST /businesses`
   - `GET /businesses`
+  - `GET /businesses/templates`
+  - `GET /businesses/templates/:templateKey`
   - `GET /businesses/public/:slug/booking-page`
   - `GET /businesses/public/:slug/widget`
   - `GET /businesses/:id`
@@ -188,7 +248,10 @@ Client / Future Frontend
 ## External Dependencies
 - MongoDB via `MONGODB_URI`
 - Hunter email verifier via `HUNTER_API_KEY`
-- Operator auth credentials via `SLOTWISE_OWNER_*`, `SLOTWISE_ADMIN_*`, `SLOTWISE_STAFF_*`, and `SLOTWISE_SESSION_TTL_MINUTES`
+- Operator session expiry via `SLOTWISE_SESSION_TTL_MINUTES`
+- Local/test-only operator bootstrap credentials via `SLOTWISE_OWNER_*`, `SLOTWISE_ADMIN_*`, and `SLOTWISE_STAFF_*`; production rejects these credentials.
+- First production owner setup via temporary `SLOTWISE_SETUP_OWNER_USERNAME` and `SLOTWISE_SETUP_OWNER_PASSWORD`.
+- Cookie, CORS, and proxy configuration via `SLOTWISE_CORS_ORIGINS`, `SLOTWISE_SESSION_COOKIE_NAME`, `SLOTWISE_CSRF_COOKIE_NAME`, `SLOTWISE_SESSION_COOKIE_SECURE`, and `SLOTWISE_TRUST_PROXY`.
 - Optional MongoDB SRV DNS override via `SLOTWISE_DNS_SERVERS`
 
 ## Package Maintenance Surface
@@ -217,12 +280,15 @@ Codex-specific governance should live in `.codex/`. If `.agents/` exists, treat 
 - A booking repository layer now isolates Mongoose access from booking service business rules.
 - Configuration now prefers root `.env` and temporarily falls back to `src/.env`.
 - Required env vars are validated before MongoDB and Hunter API usage.
+- Production runtime config rejects unsafe CORS origins, insecure session-cookie overrides, and env-backed operator bootstrap credentials.
+- API and notification worker are separate process entrypoints.
+- Migration registry and first-owner setup commands now support controlled deployment operations.
 - Booking update flow verifies email only when email is being changed.
 - Booking availability checks now use date and time overlap through the repository layer.
 - Booking get/update/delete flows return `404` when the target booking is missing.
 - Booking delete returns an empty `204` when deletion succeeds.
 - Booking approval/rejection routes are now available behind owner/admin bearer sessions.
-- Booking cancellation/completion routes are now available behind the same owner/admin bearer-session boundary.
+- Booking cancellation/completion, no-show, and reschedule routes are now available behind owner/admin/staff bearer-session access.
 - Booking list reads now support repository-backed filtering, pagination, and sorting through `GET /bookings` query parameters.
 - Booking list text filters now target normalized searchable fields with supporting indexes.
 - Booking suggestions are now exposed through `POST /bookings/suggestions` and reuse the booking service availability rules to generate ranked nearby alternatives.
@@ -239,18 +305,18 @@ Codex-specific governance should live in `.codex/`. If `.agents/` exists, treat 
 - Booking service responses now derive `conflictRisk` metadata from existing booking fields so operators can review urgency and coordination risk without a separate analytics store.
 - Booking create/update flows can now scope availability by business and service/resource, create or reuse customer records, attach notification plans, and append reschedule history metadata.
 - Staff operators can now access staff-scoped management and booking lifecycle flows through the same bearer-session auth surface.
-- Persistent-auth and notification-outbox models now exist, but runtime auth and delivery services are still being migrated onto them.
+- Persistent-auth and notification-outbox models are wired into runtime auth, customer session, and notification delivery flows.
 - Operator authentication is now backed by persistent operator accounts, Argon2 password verification, and hashed opaque sessions stored in MongoDB.
 - Customer authentication is now backed by persisted verification tokens and customer sessions rather than booking-id-plus-email self-service bodies.
 - Notification delivery is now backed by an outbox worker that processes queued transactional emails through the configured provider.
 - Booking metadata backfill is now an explicit script at `src/scripts/backfill-booking-metadata.ts`.
 - Booking documents no longer define a password field; schema serialization strips legacy `password` values if present.
 - Phone validation now returns explicit booleans for valid and invalid input.
-- Full identity/session authentication remains future hardening beyond the current trusted role-header boundary.
+- Identity/session authentication is backed by operator/customer sessions, bearer/session helpers, and role-aware route middleware.
 - Lint/format tooling and CI remain deferred until the project has a real repository-hosting/CI baseline; unsandboxed npm health is no longer the main blocker.
-- Mandatory platform features are planned: full date-time availability, booking lifecycle expansion, admin flows, filtering, pagination, audit trail, request validation, and standard responses.
-- Professional business features are planned: business profiles, service/resources, working hours, customer records, notifications, rescheduling, and roles.
-- Shared Phase 11 business-domain models now exist for business profiles, service/resources, and customers; route and service wiring is still in progress.
+- Mandatory platform features are implemented: date-time availability, booking lifecycle expansion, admin flows, filtering, pagination, audit trail, request validation, and standard responses.
+- Professional business features are implemented: business profiles, service/resources, working hours, customer records, notifications, rescheduling, and roles.
+- Shared Phase 11 business-domain models, routes, services, and repositories are wired for business profiles, service/resources, and customers.
 - Frontend planning is now split into a UI/UX design brief first, followed by a deferred implementation roadmap for admin and customer portals.
 - The UI/UX brief now defines the planned frontend brand posture, admin information architecture, customer flow structure, responsive behavior, design-system direction, accessibility guardrails, screen composition, interaction patterns, localization expectations, operational UX standards, and explicit frontend planning gaps for later Phase 14 implementation.
 - `FRONTEND_IMPLEMENTATION_ROADMAP.md` now selects the planned frontend direction: a future separate React + Vite TypeScript SPA using React Router and TanStack Query, with Slotwise-specific admin, customer, public booking-page, and widget components.

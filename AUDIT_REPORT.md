@@ -10,8 +10,8 @@ Initial audit found a compact Express/Mongoose booking API with missing project 
 - Environment/toolchain risk remains outside the repo: current Node is `v26.3.0` as of June 16, 2026, which official Node.js release metadata lists as Current/Latest Release rather than LTS. The official LTS target is `v24.16.0`; moving this machine to that LTS line remains blocked by the prior administrator-only Windows installer/uninstall step unless an admin performs it.
 
 ### Medium
-- Operator authentication now exists for privileged booking actions, but it is still env-backed and uses in-memory sessions rather than a persistent user/session store.
-- MongoDB SRV resolution can now be overridden with `SLOTWISE_DNS_SERVERS`, but the active `MONGODB_URI` hostname still returns `ENOTFOUND` against public DNS.
+- Operator authentication now uses persistent operator accounts and MongoDB-backed sessions; remaining auth risk is focused on authenticated role-specific staging QA rather than env-backed or in-memory runtime state.
+- MongoDB SRV resolution can be overridden with `SLOTWISE_DNS_SERVERS`; live Atlas migration status/dry-run has been verified outside the restricted sandbox.
 - The machine-level `npm` issue is not a normal-shell blocker: outside the sandbox, `npm` works at `11.16.0`, and `npm run build` plus `npm test` both pass through the standard npm workflow on June 16, 2026.
 - The Codex PowerShell/sandbox path can still make bare `npm` fail because `C:\Program Files\nodejs\npm.ps1` selects `C:\Users\omarz\AppData\Roaming\npm\node_modules\npm\bin\npm-cli.js`, which the sandbox cannot read/execute. `C:\Program Files\nodejs\npm.cmd` and the bundled CLI path work as the Codex workaround.
 - Dependency updates exposed one TypeScript compatibility issue in `src/interfaces/booking.interface.ts`; it was fixed by making `_id` required to match the updated Mongoose `Document` typing.
@@ -21,13 +21,13 @@ Initial audit found a compact Express/Mongoose booking API with missing project 
 
 ### Low
 - No linting or formatting tools.
-- Frontend implementation is still deferred, but the Phase 13 UI/UX planning brief now exists and covers brand, admin, customer, responsive, design-system, and accessibility direction.
-- Phase 14 frontend planning is now documented in `FRONTEND_IMPLEMENTATION_ROADMAP.md`; it selects a future React + Vite + React Router + TanStack Query direction without adding frontend packages or source code.
+- Frontend implementation is active under `frontend/`, with routed owner/admin/staff, customer portal, public booking page, and widget surfaces.
+- Phase 14 frontend planning is documented in `FRONTEND_IMPLEMENTATION_ROADMAP.md`; it selected the React + Vite + React Router + TanStack Query direction behind the current frontend.
 - The Phase 14 roadmap now includes a pre-scaffold approval/fix process so frontend architecture/package adoption, package security review, token/session storage, deployment topology, SSR/pre-rendering, and widget style isolation are resolved before implementation begins.
 - User approval resolved the Phase 14 planning decisions: candidate package adoption is approved for implementation-time review, first-slice token storage is memory-only, deployment defaults to a separate static SPA, SSR/pre-rendering is deferred, and third-party widget isolation defaults to iframe embeds.
 - Phase 14 implementation-time package review completed against npm metadata on June 13, 2026; no immediate license blocker was found for the approved first-slice frontend package set.
 - The isolated `frontend/` scaffold now exists and verification passed for install, production build, Vitest tests, npm audit, and a local Vite HTTP smoke check.
-- In-app browser QA is currently blocked by a Windows sandbox browser runtime failure: `CreateProcessAsUserW failed: 5`.
+- In-app browser QA is currently blocked by a Windows sandbox browser runtime failure: `CreateProcessAsUserW failed: 5`. A fallback local pass using installed Chrome covered route smoke and axe checks for the public/auth hardening routes.
 - Phase 13 planning is stronger than a generic high-level brief now: it also defines visual-language tokens, screen-composition expectations, admin/customer interaction patterns, hosted booking-surface direction, analytics presentation rules, and product-copy guidance.
 - Localization had been a planning gap; the Phase 13 brief now includes locale-aware copy structure, formatting, timezone clarity, layout-resilience, and RTL-readiness guidance.
 - Frontend planning gaps are now more explicit: the brief includes a checklist for screen inventory, role-based UX differences, state coverage, component inventory, public-surface constraints, API contract readiness, and design QA before implementation begins.
@@ -73,7 +73,7 @@ Initial audit found a compact Express/Mongoose booking API with missing project 
 - On June 10, 2026, the bundled npm CLI at `C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js` was verified as a working fallback for `npm ls --depth=0`, `npm audit`, and `npm outdated`.
 
 ## Documentation Drift
-No existing project documentation was found, so there is no implementation-vs-doc mismatch yet. The immediate issue is documentation absence.
+Project documentation now exists across the README, system map, workflow, task matrix, audit report, implementation plan, migration guide, and frontend planning docs. Current drift review should focus on keeping broad status files aligned with implemented route, auth, worker, migration, and frontend surfaces.
 
 ## Planning Update
 - `.codex/rough-request.prompt.md` is now the project-local rough-request template.
@@ -86,9 +86,9 @@ No existing project documentation was found, so there is no implementation-vs-do
 - Medium/high work now requires immediate model-switch approval before implementation starts.
 - Phase 15 now tracks dependency audit, vulnerability fixes, package updates, major-version migrations, and justified modern package adoption.
 - Phase 16 now tracks frontend/backend feature alignment and full frontend component coverage, with dependency modernization preserved as the completed Phase 15.
-- The first Phase 16 coverage matrix shows that the current frontend scaffold covers only a static admin shell, static queue/timeline examples, API envelope basics, and memory-session storage; live routes, DTOs, forms, customer portal, public booking page, and widget UI remain to be implemented.
-- Phase 16.2 route coverage is now improved: the frontend has a central route map, real React Router navigation, admin route placeholders, and public-surface routes, but the routes are not yet query-backed and do not yet include forms or auth guards.
-- Phase 16.3 API contract coverage is now improved: typed frontend DTOs and endpoint modules exist for the implemented backend surfaces, but most screens are not yet wired to TanStack Query or live mutation states.
+- The first Phase 16 coverage matrix began with a static admin shell and memory-session storage; later Phase 16 work completed the core routed admin/customer/public/widget surfaces.
+- Phase 16.2 route coverage introduced the central route map and React Router navigation; later Phase 16 work added query-backed screens, forms, auth guards, and public/customer flows.
+- Phase 16.3 API contract coverage introduced typed frontend DTOs and endpoint modules; later Phase 16 work wired the core screens to TanStack Query and live mutation states.
 - Phase 16.4 operator auth coverage is now improved: admin routes redirect to `/login`, successful operator login stores the returned session in memory only, and the shell exposes operator session context plus logout.
 - Phase 16.5 booking-list coverage is now improved: `/admin/bookings` consumes `GET /bookings` through TanStack Query with customer search, status/risk filters, sorting, pagination metadata, and loading/error/empty states.
 - Phase 16.6 booking-detail coverage is now improved: `/admin/bookings` can open a read-only detail drawer backed by `GET /bookings/:id`, including contact details, schedule, notes, conflict-risk signals, operational IDs, and status history.
@@ -268,11 +268,33 @@ No existing project documentation was found, so there is no implementation-vs-do
 - Template presets currently include business rules, working hours, notification defaults, widget defaults, and suggested resource blueprints; automatic resource creation from those blueprints is still deferred.
 - Phase 12.6 embeddable booking widget foundation is complete.
 - Added persisted `widgetSettings` on business profiles plus a public `GET /businesses/public/:slug/widget` endpoint that returns branding copy, active resource previews, and booking endpoint hints for active businesses by slug.
-- The current widget slice is backend-only: there is not yet a dedicated hosted embed frontend, admin visualization, or host-aware public booking app.
+- The widget slice now includes a dedicated compact `/widget/:slug` frontend over the existing public widget config, booking suggestion, and booking creation APIs; admin visualization and automatic host integration remain separate future work.
 - Phase 12.7 public booking page customization is complete.
 - Added persisted `publicPageSettings` on business profiles plus a public `GET /businesses/public/:slug/booking-page` endpoint that returns page copy, visibility toggles, optional contact/work-hours data, active resource previews, and booking endpoint hints for active businesses by slug.
-- The current public-page slice is also backend-only: there is not yet a dedicated hosted public booking frontend that consumes these settings.
+- The public-page slice now includes a dedicated `/book/:slug` frontend flow that consumes the public booking-page config, booking suggestion, and booking creation APIs.
 - Phase 12.8 analytics dashboard is complete as a backend feed.
 - Added `GET /bookings/insights/dashboard`, which summarizes lifecycle funnel counts, approval/completion/conversion rates, utilization minutes, average party size, busiest weekdays, busiest booking hours, and per-resource utilization slices.
 - No new dependency or auth surface was introduced for the current Phase 12 work.
 - `.\node_modules\.bin\tsc.cmd` and `node --test tests\*.test.js` both pass after the current Phase 12 implementation, with 92 passing tests in the current suite.
+
+## Production-Readiness Hardening Snapshot
+- Cookie-session authentication now has CSRF protection for unsafe cookie-authenticated requests through `src/middleware/csrf.ts`.
+- Session and CSRF cookie behavior is centralized in `src/utils/sessionCookie.ts`; production runtime validation rejects insecure cookie overrides.
+- CORS is now configured through explicit allowed origins, with production requiring HTTPS origins.
+- Trusted-proxy configuration and production HTTPS enforcement are wired into API startup.
+- Operator login, customer magic-link request, and customer token verification now have rate limiting.
+- Runtime environment validation now distinguishes local, staging, production, and test behavior. Production rejects `SLOTWISE_OWNER_*`, `SLOTWISE_ADMIN_*`, and `SLOTWISE_STAFF_*` bootstrap credentials.
+- Operator setup has moved to controlled first-owner setup plus owner-managed invitations. Local/test env bootstrap remains only for disposable development/test use.
+- Business-scoped authorization middleware now protects business, booking, booking insight, timeline, customer, and service-resource routes where business scope is required.
+- Operator account management now includes invitation, invitation acceptance, password reset, role update, activation/deactivation, and last-owner/self-demotion safeguards.
+- Audit-log persistence, owner/admin audit-log API access, request-id capture, and frontend audit-log visibility now exist.
+- Migration discipline now includes a migration state model, ordered migration registry, core index synchronization migration, dry-run/status/run commands, and `MIGRATIONS.md`.
+- Notification processing is now a separate worker entrypoint (`src/worker.ts`) instead of an API startup side effect.
+- Observability now includes request IDs, `x-request-id` responses, structured JSON logging, safe not-found/error middleware, `/health`, and `/ready`.
+- Frontend production-readiness work added CSRF-aware API requests, normalized security error codes, `/forbidden`, role-aware owner/admin/staff routes, owner user administration, audit-log viewing, filtered navigation, and a light/dark theme foundation.
+
+Current audit risk after this hardening:
+- Full production QA remaining is narrowed to authenticated role-specific staging browser checks and any release deployment packaging. Backend build/tests, frontend typecheck/build/tests, migration status/dry-run, unauthenticated route smoke, and public/auth accessibility checks have passed in the local hardening pass.
+- Invitation acceptance and password reset should receive end-to-end UI verification before they are treated as complete production user journeys.
+- Settings/resource/customer edit audit coverage should be verified route by route before compliance or regulated audit use.
+- The migration registry is now established; future schema or data changes must be added as new immutable migration ids.

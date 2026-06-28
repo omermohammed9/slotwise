@@ -30,10 +30,15 @@
 - Install: `npm install`
 - Development: `npm run dev`
 - Build: `npm run build`
-- Build fallback while global npm is broken: `.\node_modules\.bin\tsc.cmd`
+- Build fallback when the Codex PowerShell/sandbox npm shim is broken: `.\node_modules\.bin\tsc.cmd`
 - Start: `npm start`
+- Start API: `npm run start:api`
+- Start notification worker: `npm run start:worker`
 - Tests: `npm test`
-- Test fallback while global npm is broken: `node --test tests\*.test.js`
+- Test fallback when the Codex PowerShell/sandbox npm shim is broken: `node --test tests\*.test.js`
+- Migration status: `npm run migrate:status`
+- Migration dry run: `npm run migrate:dry-run`
+- Apply migrations: `npm run migrate`
 - Booking metadata backfill: `npm run backfill:bookings`
 - Optional MongoDB SRV DNS override for affected environments: set `SLOTWISE_DNS_SERVERS`
 - Frontend development: from `frontend/`, run `npm run dev -- --host 127.0.0.1 --port 5173`
@@ -49,8 +54,8 @@
 
 ## Verification Policy
 Run `npm run build` after TypeScript changes. Run `npm test` after behavior changes, or `node --test tests\*.test.js` if npm is still unavailable.
-If global `npm` cannot locate `npm-cli.js`, run the local TypeScript compiler directly with `.\node_modules\.bin\tsc.cmd` and document the npm blocker.
-If global `npm` cannot locate `npm-cli.js`, Phase 15 audit commands may use the bundled npm CLI fallback, but package-changing commands still require explicit approval first.
+If the Codex PowerShell/sandbox npm shim cannot locate `npm-cli.js`, run the local TypeScript compiler directly with `.\node_modules\.bin\tsc.cmd` and document the sandbox-specific npm blocker.
+If the Codex PowerShell/sandbox npm shim cannot locate `npm-cli.js`, Phase 15 audit commands may use the bundled npm CLI fallback, but package-changing commands still require explicit approval first.
 After dependency modernization, keep `package.json` and the lockfile root package metadata aligned with the installed direct dependency versions so a fresh install reproduces the audited state.
 If Codex sandbox path restrictions break `npm`, verify the same command in an unsandboxed shell before treating it as a real machine-level npm failure.
 For documentation-only Phase 13 planning work, manual brief review and cross-doc sync checks are sufficient verification; when the brief is deepened, verify the new guidance is reflected in the plan, task matrix, audit notes, changelog, and any project docs that describe the frontend planning scope, including localization expectations and newly documented frontend gaps.
@@ -83,7 +88,7 @@ For Phase 16 frontend/backend alignment work, update `IMPLEMENTATION_PLAN.md` af
 - Treat `dist/` as disposable build output.
 - Keep `.env` files out of source control.
 - Defer CI until a real Git provider/repository exists.
-- Defer lint/format tool installation until npm is healthy enough to install and run them reliably.
+- Defer lint/format tool installation until the repository has a chosen CI/workflow baseline.
 - Run dependency modernization as a dedicated task, not mixed into unrelated feature work.
 - Do not use `npm audit fix --force` without explicit approval and a migration checklist.
 - Introduce new packages only after documenting purpose, maintenance/security posture, implementation impact, and verification.

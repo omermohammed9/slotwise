@@ -146,3 +146,13 @@
 - Added Phase 16.16 `/book/:slug` public booking page flow using existing public booking-page config, booking suggestion, and booking creation APIs, including resource/service selection, date/time and customer detail inputs, party-size/notes support, suggestion feedback, submit success/error states, empty states, and responsive public styling.
 - Added Phase 16.19 shared admin loading and inline success/error state helpers and applied them to the touched customer/settings admin screens.
 - Added Phase 16.20 responsive and accessibility QA polish across existing admin screens, including stronger focus states, live state messaging, selected/pressed states, dialog semantics, long-text wrapping, mobile grid fixes, and consistent admin loading/error/success handling.
+- Added production-readiness hardening documentation for the post-Phase 16 architecture.
+- Documented cookie-session CSRF protection, strict configured CORS, production cookie/proxy/HTTPS controls, auth rate limiting, and normalized frontend auth/security error handling.
+- Documented business-scoped authorization middleware and route coverage for bookings, timeline/insights, businesses, customers, and service resources.
+- Documented operator invitation, invitation acceptance, password reset, role update, activation/deactivation, first-owner setup, and the owner-facing user administration surface.
+- Documented audit-log persistence, owner/admin audit-log API access, request-id capture, and the frontend audit-log viewer.
+- Documented the migration registry, migration state model, core index synchronization migration, dry-run/status/run commands, and `MIGRATIONS.md`.
+- Documented the split notification worker entrypoint, worker scripts, and the deployment rule that API startup does not run the outbox worker.
+- Documented request observability foundations: request IDs, `x-request-id`, structured JSON logging, safe error/not-found middleware, `/health`, and `/ready`.
+- Documented role-aware frontend portal families for `/owner`, `/admin`, and `/staff`, plus `/forbidden`, filtered navigation, user administration, and audit visibility.
+- Documented the light/dark theme foundation and clarified that browser persistence is limited to theme preference, not auth/session tokens.

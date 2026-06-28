@@ -5,6 +5,8 @@ This document is the Phase 14 planning and selection artifact for the Slotwise f
 
 Phase 14 itself stayed planning-only. The later `frontend/` scaffold and Phase 16 implementation slices are recorded here only so the original planning decisions and the current frontend baseline stay in one place.
 
+This document is now also the frontend-facing status companion for the production-readiness hardening work completed after Phase 16. The current frontend no longer represents only a first admin scaffold: it includes role-aware owner/admin/staff routes, public booking surfaces, customer portal flows, CSRF-aware API handling, audit and user administration surfaces, and a light/dark theme foundation.
+
 ## Selection Summary
 - App model: a separate TypeScript single-page frontend app that consumes the existing Slotwise API.
 - Framework direction: React with Vite.
@@ -57,7 +59,7 @@ This selection keeps the frontend independent from the Express backend, allows s
 - The frontend/backend alignment phase is now Phase 16 because Phase 15 is already used for completed dependency modernization.
 - The Phase 16 coverage matrix lives in `IMPLEMENTATION_PLAN.md`.
 - Current admin coverage now includes the app shell, memory-only operator session, query-backed dashboard analytics, cancellation/no-show insights, bookings, timeline, customers, settings, resources, and settings template-preview screens over existing backend APIs.
-- Route-map/app-shell routing is complete with central route metadata, shell links, admin route placeholders, public-surface routes, responsive styling, and route navigation tests.
+- Route-map/app-shell routing is complete with central route metadata, shell links, role-aware admin routes, public-surface routes, responsive styling, and route navigation tests.
 - Shared API DTO/client modules are complete with typed wrappers for auth, bookings, businesses, service/resources, customers, public booking-page config, and widget config.
 - Operator auth screens and memory-session flow are complete with `/login`, protected admin routes, memory-only session metadata, and logout UI.
 - The bookings list slice is complete with a query-backed `/admin/bookings` screen, customer search, status/risk filters, sorting, pagination controls, responsive record rendering, URL-persistent list state for reload/share-safe admin views, and browser-local saved views for lightweight operator workspace recall.
@@ -77,6 +79,67 @@ This selection keeps the frontend independent from the Express backend, allows s
 - Responsive and accessibility QA is complete for existing Phase 16 admin screens, covering mobile/tablet layout resilience, focus states, live state messaging, selected/pressed states, dialog semantics, and long-text overflow.
 - The approved 16.21 admin/public-surface hardening slice is now complete for `/book/:slug`, `/widget/:slug`, and `/portal`, the approved 16.22 admin hardening slice is now complete for `/admin/bookings` URL-state persistence, the approved 16.23 admin hardening slice is now complete for browser-local `/admin/bookings` saved views, and the approved 16.24 admin hardening slice is now complete for lightweight removable filter chips plus a clear-all reset on `/admin/bookings`; the next implementation slice remains another separately approved frontend hardening or session-work slice.
 - All Phase 16 UI work must stay reusable, responsive, minimal, and aligned with `UI_UX_DESIGN_BRIEF.md`; auth/session and lifecycle-action screens remain high-reasoning approval gates.
+
+## Production-Readiness Frontend Snapshot
+- The frontend API client now expects browser-cookie auth to be used alongside the in-memory session metadata and includes CSRF-token handling for unsafe cookie-authenticated requests.
+- API errors now carry frontend-friendly error codes for unauthenticated, forbidden, CSRF/session mismatch, rate-limited, network, and unknown failures.
+- `/login` remains the operator sign-in entry point and is paired with sign-out, current-session revalidation, expiry notices, forbidden-route handling, and rate/security-aware error messaging.
+- The single operator shell has been split into role-aware portal routes:
+  - `/owner` for owner dashboard access.
+  - `/owner/users` for owner-controlled operator invitation, role, and status management.
+  - `/owner/audit` for owner audit-log review.
+  - `/admin` for admin dashboard access.
+  - `/admin/bookings`, `/admin/timeline`, `/admin/customers`, `/admin/resources`, `/admin/settings`, and `/admin/audit` for admin operations where role rules allow them.
+  - `/staff`, `/staff/timeline`, and `/staff/customers` for staff-limited operational workflows.
+- `ProtectedAdminLayout` now blocks direct access to routes outside the current operator role and redirects blocked users to `/forbidden`.
+- `AppShell` filters navigation based on the current role so inaccessible owner/admin/staff destinations are not shown as primary actions.
+- `UserAdminPage` adds the first owner-facing account administration UI over the operator-management API.
+- `AuditLogPage` adds the first owner/admin-facing audit visibility UI over the audit-log API.
+- A light/dark theme foundation now exists through `data-theme` styling and a shell toggle. Theme preference is stored separately from authentication state; operator/customer session tokens remain out of `localStorage`.
+- Public surfaces remain separate from operator portals: `/book/:slug`, `/widget/:slug`, and `/portal` continue to operate as public/customer-facing routes.
+
+## Current Frontend Route Inventory
+- Operator/auth:
+  - `/login`
+  - `/forbidden`
+- Owner:
+  - `/owner`
+  - `/owner/users`
+  - `/owner/audit`
+- Admin:
+  - `/admin`
+  - `/admin/bookings`
+  - `/admin/timeline`
+  - `/admin/customers`
+  - `/admin/resources`
+  - `/admin/settings`
+  - `/admin/audit`
+- Staff:
+  - `/staff`
+  - `/staff/timeline`
+  - `/staff/customers`
+- Customer/public:
+  - `/portal`
+  - `/book/:slug`
+  - `/widget/:slug`
+
+## Current Frontend API Modules
+- `frontend/src/api/client.ts`: base API request helper, query serialization, JSON handling, cookies, CSRF headers, and normalized error codes.
+- `frontend/src/api/auth.ts`: operator session, current session, logout, customer magic-link, operator invitation, and password-reset related auth calls.
+- `frontend/src/api/operators.ts`: operator listing, invitation, role update, and status update calls.
+- `frontend/src/api/auditLogs.ts`: audit-log listing calls.
+- `frontend/src/api/bookings.ts`: booking list/detail/lifecycle/reschedule/suggestions/insights calls.
+- `frontend/src/api/businesses.ts`: business profile and template calls.
+- `frontend/src/api/resources.ts`: service/resource management calls.
+- `frontend/src/api/customers.ts`: customer management calls.
+- `frontend/src/api/publicSurfaces.ts`: public booking page and widget config calls.
+
+## Current Frontend Gaps
+- Invitation acceptance and password-reset completion have backend/API foundations, but the UI should be checked for full end-to-end coverage before calling those flows production-complete.
+- Owner/admin/staff portals are route- and navigation-separated, but several role areas intentionally reuse existing operational components. More role-specific dashboards can be added after production QA confirms the current rules are correct.
+- The light/dark theme foundation exists, but contrast, public-surface polish, and visual regression checks still need browser QA.
+- Browser/in-app visual QA has historically been blocked in this Windows sandbox by the `CreateProcessAsUserW failed: 5` runtime issue. Full desktop/mobile browser verification remains a staging-readiness task.
+- The frontend still uses hand-maintained DTOs rather than a generated API client, so API contract drift remains a risk until contract generation or stronger integration tests are added.
 
 ## Selected Initial Folder Strategy
 When frontend implementation is approved, create a separate `frontend/` workspace folder instead of mixing frontend files into `src/`.
@@ -105,15 +168,8 @@ This folder strategy is now partially realized through the existing `frontend/` 
 ## Screens To Implement Later
 
 ### Admin And Operator App
-- Login/session screen.
-- Dashboard home with KPI strip, pending approvals, today timeline snapshot, and exception summaries.
-- Bookings workspace with filters, saved views, table/list, quick actions, and detail drawer.
-- Timeline view with day/week mode, resource grouping, status chips, conflict-risk indicators, and drill-in details.
-- Booking detail page or drawer with customer identity, booking window, notes, risk signals, status history, and lifecycle actions.
-- Customers list and customer profile with booking history.
-- Resources/services management.
-- Business settings with working hours, blackout dates, templates, notification preferences, widget settings, and public-page settings.
-- Activity/notification center for recent booking changes and outbox-related feedback.
+- Login/session, dashboard, bookings, timeline, customers, resources, business settings, audit-log, and owner user-management surfaces now exist.
+- Remaining admin/operator expansion should focus on production QA, role-specific dashboard refinement, notification/outbox visibility, account/profile settings, and any missing invitation/password-reset screens after route-level testing.
 
 ### Customer Portal And Public Booking Page
 - `/book/:slug` is now implemented with business-branded public booking config, service/resource selection, availability inputs, customer details, suggestions, submit feedback, and portal handoff links.
@@ -144,12 +200,13 @@ This folder strategy is now partially realized through the existing `frontend/` 
 - Widget container, compact stepper, embedded error boundary.
 
 ## API Contract Dependencies
-The future frontend should depend on the existing routes rather than inventing shadow endpoints.
+The frontend should depend on the existing routes rather than inventing shadow endpoints.
 
-- Auth: `POST /auth/session`, `GET /auth/session`, `DELETE /auth/session`, `POST /auth/customer/magic-link`, `POST /auth/customer/verify`.
+- Auth: `POST /auth/session`, `GET /auth/session`, `DELETE /auth/session`, `POST /auth/customer/magic-link`, `POST /auth/customer/verify`, operator invitation, operator invitation acceptance, operator password reset, operator listing, operator role update, and operator status update routes.
 - Bookings: create, list, read, update, approve, reject, cancel, complete, no-show, reschedule, customer-cancel, customer-reschedule.
 - Operational feeds: `GET /bookings/timeline`, `GET /bookings/insights/dashboard`, `GET /bookings/insights/cancellation-no-show`, `POST /bookings/suggestions`.
 - Business setup: `/businesses`, `/businesses/templates`, `/service-resources`, `/customers`.
+- Audit: `/audit-logs`.
 - Public surfaces: `GET /businesses/public/:slug/booking-page`, `GET /businesses/public/:slug/widget`.
 
 Before implementation, define frontend DTOs from the documented response envelopes:
@@ -159,10 +216,12 @@ Before implementation, define frontend DTOs from the documented response envelop
 ## State And Data Rules
 - Treat server data as server state; keep it in query caches with explicit query keys.
 - Keep UI-only state local to screens unless multiple surfaces need it.
-- Store bearer session tokens carefully; final storage choice requires security review before implementation.
+- Keep operator and customer session tokens out of browser persistence; any persistent-login storage change requires a separate security review.
 - Use route search params for durable filters, saved views, date ranges, and pagination.
 - Keep mutation feedback in-context for consequential actions such as approve, reject, cancel, complete, no-show, and reschedule.
 - Do not expose more customer data than a role and screen need.
+- Store only non-auth UI preferences, such as theme, in browser persistence. Auth/session tokens must remain out of `localStorage`.
+- Treat CSRF tokens as session/security metadata, not durable user preferences.
 
 ## Localization And Accessibility Requirements
 - Use translation-ready message keys from the first implementation slice.
@@ -186,7 +245,7 @@ Future implementation verification, after approval:
 - Accessibility smoke checks for keyboard navigation, focus visibility, labels, and color-independent status meaning.
 
 ## Approval And Fix Process Before Scaffolding
-The pre-scaffold planning decisions are approved. Before `frontend/` is created or any frontend package is installed, run this implementation-time checklist:
+The pre-scaffold planning decisions were approved and used to create the current `frontend/` workspace. For any future frontend package, auth/storage, deployment, SSR, or widget-isolation expansion, repeat the relevant implementation-time checks:
 
 1. Confirm the approved package candidate list still matches the first implementation slice.
 2. Review current package versions, maintenance status, and security posture immediately before installation.
@@ -195,7 +254,7 @@ The pre-scaffold planning decisions are approved. Before `frontend/` is created 
 5. Confirm the static SPA deployment default and environment API base URL approach.
 6. Confirm SSR/pre-rendering remains deferred.
 7. Confirm iframe isolation is used for third-party widget embeds.
-8. Only after these checks pass, scaffold `frontend/` and add baseline scripts.
+8. Only after these checks pass, apply the approved expansion to `frontend/`.
 
 ## Deferred Until Approval
 - Adding new frontend packages beyond the approved first scaffold.
@@ -211,7 +270,8 @@ The pre-scaffold planning decisions are approved. Before `frontend/` is created 
 - Widget style isolation has an approved first-slice baseline: iframe embed for third-party hosts.
 
 ## Remaining Implementation Risks
-- Package versions, advisories, and maintenance status can change before installation, so the package review must be repeated immediately before adding dependencies.
-- API DTO drift remains possible until the frontend has typed contracts or generated client coverage.
-- In-memory token storage prioritizes XSS risk reduction but requires users to re-authenticate after refresh; persistent login requires a later backend cookie-session design.
-- Static SPA deployment needs correct API CORS, environment configuration, cache headers, and fallback routing when implemented.
+- Package versions, advisories, and maintenance status can change, so package review must be repeated before adding or upgrading dependencies.
+- API DTO drift remains possible until the frontend has generated client coverage or stronger route-contract integration tests.
+- Cookie-session auth now depends on correct CORS, CSRF, secure-cookie, trusted-proxy, and frontend environment configuration across local, staging, and production.
+- Static SPA deployment still needs correct cache headers, fallback routing, frontend build env values, and staging smoke tests.
+- Role-specific portals are functional foundations; production QA should verify every direct URL and navigation path for owner, admin, staff, customer, public booking page, and widget flows.

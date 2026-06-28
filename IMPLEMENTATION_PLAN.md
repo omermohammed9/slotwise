@@ -45,9 +45,10 @@ Evolve the legacy Booking System backend into `Slotwise`: a flexible, profession
 | 14 | Frontend implementation roadmap | GPT-5 Codex high when implemented | Yes | New app architecture and auth-aware UI decisions. |
 | 15 | Dependency audit and modernization | GPT-5 Codex medium/high | Yes | Security fixes, package upgrades, new packages, and migration changes can alter runtime behavior. |
 | 16 | Frontend/backend feature alignment and full frontend component coverage | GPT-5 Codex medium/high | Yes | Route/API/client/component implementation is medium; auth, lifecycle actions, and customer session flows are high. |
+| 17 | Production-readiness hardening and operations architecture | GPT-5 Codex high | Yes | Cookie auth, CSRF, rate limiting, tenant authorization, operator account management, audit trails, migrations, worker separation, and observability are security/architecture-sensitive. |
 
 ## Phase 1: Documentation And Audit Baseline
-Status: In progress
+Status: Done
 
 Purpose: Establish reliable project memory before coding.
 
@@ -282,7 +283,7 @@ Progress:
 Planned rename targets:
 - Product name: `Slotwise`
 - Package name: `slotwise-api`
-- Current workspace folder: `Booking System`
+- Current workspace folder: `Slotwise`
 - Target workspace folder: `Slotwise`
 - `src/routes/booking.routes.ts`
 - `src/controllers/booking.controller.ts`
@@ -298,8 +299,8 @@ Verification:
 Risks:
 - File/folder renames can break imports, compiled test paths, and workspace references.
 - Root folder rename may affect local tooling paths and should be performed after source/docs are stable.
-- The live root folder was not renamed inside this Codex session because the active workspace and writable root are still bound to `C:\Users\omarz\Desktop\Booking System`; renaming it externally to `Slotwise` remains the final manual workspace step.
-- Remaining `Booking System` mentions should refer only to the current legacy workspace folder or historical context.
+- The live root folder is now `C:\Users\omarz\Desktop\Slotwise`; earlier `Booking System` references should be treated as historical context only.
+- Remaining `Booking System` mentions should refer only to historical context.
 - Remaining `booking-system` mentions should only describe the pre-Phase 8 legacy package identity in historical context.
 
 Completed mitigation:
@@ -504,7 +505,7 @@ Completed notes:
 10. Post-Phase 11 hardening verification passed with `.\node_modules\.bin\tsc.cmd` and `node --test tests\*.test.js` with 63 passing tests.
 
 ## Phase 12: Creative Differentiator Features
-Status: In Progress
+Status: Done
 
 Purpose: Add product ideas that make Slotwise feel more useful, polished, and memorable after the core platform is stable.
 
@@ -663,7 +664,7 @@ Verification:
 
 Completed notes:
 1. Added `FRONTEND_IMPLEMENTATION_ROADMAP.md` as the Phase 14 planning/selection artifact.
-2. Selected a future React + Vite + React Router + TanStack Query direction for the frontend without adding packages or source code.
+2. Selected the React + Vite + React Router + TanStack Query direction that now underpins the current frontend workspace.
 3. Documented the needed admin, customer, public booking-page, and widget screens.
 4. Documented required components, API dependencies, state rules, localization/accessibility expectations, and future verification.
 5. Kept frontend implementation, package installation, auth storage, deployment topology, SSR, and widget style-isolation decisions deferred until explicit approval.
@@ -773,7 +774,7 @@ Outdated snapshot:
 - Final project dependency state: `npm outdated` reports a compatible `axios` update from `1.17.0` to `1.18.0`; this is not an audit-force blocker and can be handled in a normal compatible-update pass.
 
 ## Phase 16: Frontend/Backend Feature Alignment
-Status: In progress
+Status: Done
 
 Purpose: Turn the current frontend scaffold into a complete product frontend that matches the implemented backend feature surface for the admin/operator app, customer portal, public booking page, and iframe-first widget foundation.
 
@@ -983,6 +984,93 @@ Verification:
 - Phase 16.25 verification: in-app browser smoke remains blocked by the known Codex Windows sandbox/runtime issue `CreateProcessAsUserW failed: 5`; no re-investigation was done in this slice.
 - Browser/in-app smoke remains blocked by the known Codex Windows sandbox/runtime error `CreateProcessAsUserW failed: 5`; no re-investigation was done in this slice.
 - Phase 16.22 browser/in-app smoke was not retried because the known Codex Windows sandbox/runtime blocker `CreateProcessAsUserW failed: 5` remains unresolved at the environment level.
+
+## Phase 17: Production-Readiness Hardening And Operations Architecture
+Status: Implemented foundation; production QA remains next
+
+Purpose: Move Slotwise from a feature-complete development system toward a deployable production system by hardening cookie auth, business authorization, operator account management, auditability, migrations, worker topology, observability, and role-based frontend access.
+
+Progress bar: `[##########] 10/10 foundation complete`
+
+Checked:
+- [x] 17.1 Cookie-session CSRF protection
+- [x] 17.2 Production cookie, CORS, trusted-proxy, and HTTPS configuration
+- [x] 17.3 Login and magic-link rate limiting
+- [x] 17.4 Runtime environment validation for local, staging, production, and test
+- [x] 17.5 Business-scoped authorization middleware and route wiring
+- [x] 17.6 Operator invitation, password reset, role, and status management foundations
+- [x] 17.7 Audit-log persistence and owner/admin audit visibility foundations
+- [x] 17.8 Migration registry, index synchronization migration, and first-owner setup command
+- [x] 17.9 Notification worker split from API startup
+- [x] 17.10 Request IDs, structured logging, health/readiness endpoints, and error/not-found middleware
+
+Progress:
+| Task | Type | Status | Model | Approval | Notes |
+|---|---|---:|---|---|---|
+| 17.1 Add CSRF protection for cookie auth | Security | Done | High | Yes | Added CSRF cookie/header validation for unsafe methods when a cookie session is present. |
+| 17.2 Harden cookies, CORS, proxy, HTTPS | Security / Configuration | Done | High | Yes | Added session/CSRF cookie helpers, configured CORS allow-list behavior, trusted-proxy settings, and production HTTPS enforcement. |
+| 17.3 Add auth abuse protection | Security | Done | High | Yes | Added rate limiting for operator login, customer magic-link request, and customer token verification. |
+| 17.4 Validate runtime environment | Configuration | Done | High | Yes | Added local/staging/production/test env interpretation, required-variable validation, production CORS checks, and production rejection of env-backed operator bootstrap credentials. |
+| 17.5 Formalize business-scoped authorization | Security / Architecture | Done | High | Yes | Added `businessAuthorization` middleware and wired business-scope checks across booking, insight, timeline, business, customer, and service-resource routes. |
+| 17.6 Add operator account management foundation | Security / Feature | Done | High | Yes | Added persistent invitation, invitation acceptance, password reset, role update, activation/deactivation, last-owner/self-demotion safeguards, API routes, and owner-facing frontend management surfaces. |
+| 17.7 Add audit trail foundation | Security / Architecture | Done | High | Yes | Added audit-log model, repository, service, controller, routes, indexes, request-id capture, auth/operator audit events, audit API, and frontend audit-log viewer. |
+| 17.8 Add migration and setup discipline | DevOps / Architecture | Done | High | Yes | Added migration state model, ordered migration registry, core index synchronization migration, status/dry-run/run commands, `MIGRATIONS.md`, and controlled `setup:first-owner` command. |
+| 17.9 Split worker process model | Architecture / DevOps | Done | High | Yes | API startup no longer owns notification processing; `src/worker.ts` and worker scripts now start the notification outbox separately with shutdown handling. |
+| 17.10 Add observability foundation | DevOps / Architecture | Done | High | Yes | Added request-id middleware, structured JSON logger utility, request logging, safe error/not-found middleware, `/health`, `/ready`, and response `x-request-id`. |
+| 17.11 Align frontend auth/security | Security / UX/UI | Done | High | Yes | Frontend API client now handles cookie credentials, CSRF metadata, normalized security error codes, revalidation, forbidden state, and role-aware routing. |
+| 17.12 Split owner/admin/staff portals | UX/UI / Security | Done | High | Yes | Added `/owner`, `/admin`, and `/staff` route families, role metadata, route blocking, filtered navigation, owner users page, admin audit page, and staff-limited operational routes. |
+| 17.13 Add light/dark theme foundation | UX/UI | Done | Medium | Yes | Added `data-theme` CSS foundation and shell toggle with theme-only `localStorage` persistence. |
+
+Key files added or materially changed:
+- `src/middleware/csrf.ts`
+- `src/middleware/cors.ts`
+- `src/middleware/rateLimit.ts`
+- `src/middleware/businessAuthorization.ts`
+- `src/middleware/requestObservability.ts`
+- `src/utils/sessionCookie.ts`
+- `src/utils/logger.ts`
+- `src/routes/health.routes.ts`
+- `src/worker.ts`
+- `src/scripts/run-migrations.ts`
+- `src/scripts/setup-first-owner.ts`
+- `src/models/audit-log.model.ts`
+- `src/models/migration-state.model.ts`
+- `src/services/audit-log.service.ts`
+- `frontend/src/api/operators.ts`
+- `frontend/src/api/auditLogs.ts`
+- `frontend/src/auth/ForbiddenPage.tsx`
+- `frontend/src/features/admin/UserAdminPage.tsx`
+- `frontend/src/features/admin/AuditLogPage.tsx`
+- `MIGRATIONS.md`
+
+Verification artifacts added:
+- `tests/securityMiddleware.test.js`
+- `tests/businessAuthorization.test.js`
+- `tests/envConfig.test.js`
+- `tests/migrations.test.js`
+- `tests/observability.test.js`
+- `tests/setupFirstOwner.test.js`
+- Updated frontend tests for API client, auth, routing, role portals, and theme-adjacent shell behavior.
+
+Current production-readiness notes:
+1. Production no longer depends on `SLOTWISE_OWNER_*`, `SLOTWISE_ADMIN_*`, or `SLOTWISE_STAFF_*` bootstrap credentials. Those credentials are rejected in production and remain local/test-only for disposable development databases.
+2. First production owner creation now uses `npm run setup:first-owner` with temporary `SLOTWISE_SETUP_OWNER_USERNAME` and `SLOTWISE_SETUP_OWNER_PASSWORD` variables, then normal owner invitations/account administration.
+3. API and notification processing are now separate runtime processes. Use `npm run start:api` for the compiled API and `npm run start:worker` for the compiled notification worker.
+4. Migrations now have a registry and should be run before starting new API/worker processes in staging or production.
+5. Every HTTP response should include `x-request-id`; request logs and audit logs can carry that id for troubleshooting.
+6. Owner/admin/staff route separation now exists, but several role routes intentionally reuse operational components. A role-specific UX refinement pass remains separate from the security foundation.
+7. Light/dark mode has a working foundation, but contrast and visual regression QA should be completed in a real browser/staging environment.
+
+Verification:
+- Backend tests added or updated for env validation, security middleware, business authorization, migrations, first-owner setup, observability, auth routes, and auth service behavior.
+- Frontend tests added or updated for API client security behavior, role-aware routing, admin shell behavior, user administration, audit log, and public/customer flows.
+- Full production-readiness QA is the next phase: backend build/tests, frontend typecheck/build/tests, migration dry-run/status, worker startup smoke, browser route smoke, and accessibility/contrast checks.
+
+Remaining risks:
+- Invitation acceptance and password-reset UI should receive a direct end-to-end browser QA pass before being marked production-complete.
+- Audit coverage exists for major auth/operator events, but settings/resource/customer edit audit coverage should be verified by test and route audit before compliance-style use.
+- Migration registry currently starts with core index synchronization; future schema/data changes must be added as new immutable migration ids rather than editing historical migration entries.
+- Browser/in-app visual QA remains blocked in this Windows Codex sandbox by the known browser runtime error; staging/browser verification is still required.
 
 ## Completion Criteria
 - Required docs are current after every phase.

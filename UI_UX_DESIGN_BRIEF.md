@@ -277,7 +277,7 @@ Slotwise should feel like a flexible, professional booking platform for any busi
 - Status chips, charts, and timeline markers must remain interpretable without depending on hue alone.
 - Sticky mobile action areas must not hide form errors, helper text, or keyboard focus targets.
 
-## Frontend Planning Gaps To Close Before Phase 14
+## Frontend Planning Gaps Originally Closed For Phase 14
 - Screen inventory:
   - Convert the brief into a full page/screen list for owner, admin, staff, customer, widget, and public booking-page experiences.
 - User flows:
@@ -297,7 +297,7 @@ Slotwise should feel like a flexible, professional booking platform for any busi
 - Public-surface constraints:
   - Define how the widget and hosted booking page should adapt to narrow containers, external site backgrounds, and limited host control.
 - Frontend-to-API contracts:
-  - Confirm the minimum API payload shapes and state transitions each planned screen depends on so Phase 14 does not guess.
+  - Confirm the minimum API payload shapes and state transitions each planned screen depends on so frontend implementation does not guess.
 - Design QA:
   - Decide how responsive review, accessibility review, copy review, and regression review will be performed once implementation begins.
 
@@ -307,14 +307,14 @@ Slotwise should feel like a flexible, professional booking platform for any busi
 - Timeline and dashboard views should reuse a shared design language so analytics, queue management, and scheduling feel like one product.
 - Phase 16 implementation should convert these design directions into reusable frontend components, responsive route layouts, consistent state surfaces, and API-backed screens without one-off page-specific patterns.
 
-## Deferred Implementation Decisions
-- Exact package versions.
-- Authentication UI.
-- Deployment target.
-- SSR or pre-rendering.
-- Widget style isolation implementation.
+## Remaining Design And QA Decisions
+- Exact package versions are selected for the current frontend, but future package additions or upgrades still need review.
+- Authentication UI exists for operator login, invitation acceptance, password reset, customer magic-link, and protected role routes; production browser QA remains the next confidence step.
+- Deployment target remains a static SPA baseline, with staging cache/fallback routing checks still needed.
+- SSR or pre-rendering remains deferred unless public booking pages need SEO or materially faster unauthenticated rendering.
+- Widget style isolation currently uses an iframe-first frontend foundation; richer host sizing guidance and first-party non-iframe variants remain future decisions.
 
 ## Phase 14 Selection Outcome
-- The future frontend implementation direction is documented in `FRONTEND_IMPLEMENTATION_ROADMAP.md`.
+- The frontend implementation direction is documented in `FRONTEND_IMPLEMENTATION_ROADMAP.md`.
 - The selected direction is a separate TypeScript SPA using React, Vite, React Router, and TanStack Query.
-- Package installation, source scaffolding, auth-token storage decisions, deployment topology, SSR, and widget style isolation remain deferred until explicit implementation approval.
+- Package installation, source scaffolding, memory-only token handling, static SPA topology, deferred SSR/pre-rendering, and iframe-first widget isolation were approved and now underpin the current `frontend/` app.
