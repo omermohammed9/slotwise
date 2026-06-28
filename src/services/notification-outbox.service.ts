@@ -28,14 +28,22 @@ export class NotificationOutboxService {
         return NotificationOutboxService.instance;
     }
 
-    public start(): void {
+    public start(options: { processImmediately?: boolean } = {}): void {
         if (this.intervalHandle || !this.isWorkerEnabled()) {
             return;
+        }
+
+        if (options.processImmediately) {
+            void this.processPendingJobs();
         }
 
         this.intervalHandle = setInterval(() => {
             void this.processPendingJobs();
         }, this.getWorkerIntervalMs());
+    }
+
+    public isRunning(): boolean {
+        return Boolean(this.intervalHandle);
     }
 
     public stop(): void {

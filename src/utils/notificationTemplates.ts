@@ -33,6 +33,41 @@ export const renderNotificationTemplate = (
             };
         }
 
+        case "operator_invitation": {
+            const username = safeString(payload.username, "operator");
+            const invitationUrl = safeString(payload.invitationUrl, safeString(payload.token, ""));
+            const role = safeString(payload.role, "operator");
+            const expiresAt = safeString(payload.expiresAt, "soon");
+
+            return {
+                subject: "Your Slotwise operator invitation",
+                text: `Hi ${username}, you have been invited as a Slotwise ${role}. Set up your account here: ${invitationUrl}. This invitation expires at ${expiresAt}.`,
+                html: `<p>Hi ${username},</p><p>You have been invited as a Slotwise ${role}.</p><p>Set up your account here: <a href="${invitationUrl}">${invitationUrl}</a></p><p>This invitation expires at ${expiresAt}.</p>`,
+                sanitizedPayload: {
+                    ...payload,
+                    token: "[redacted-after-send]",
+                    invitationUrl: "[redacted-after-send]",
+                },
+            };
+        }
+
+        case "operator_password_reset": {
+            const username = safeString(payload.username, "operator");
+            const resetUrl = safeString(payload.resetUrl, safeString(payload.token, ""));
+            const expiresAt = safeString(payload.expiresAt, "soon");
+
+            return {
+                subject: "Reset your Slotwise operator password",
+                text: `Hi ${username}, reset your Slotwise password here: ${resetUrl}. This reset link expires at ${expiresAt}.`,
+                html: `<p>Hi ${username},</p><p>Reset your Slotwise password here: <a href="${resetUrl}">${resetUrl}</a></p><p>This reset link expires at ${expiresAt}.</p>`,
+                sanitizedPayload: {
+                    ...payload,
+                    token: "[redacted-after-send]",
+                    resetUrl: "[redacted-after-send]",
+                },
+            };
+        }
+
         case "booking_confirmation":
         case "booking_cancellation":
         case "booking_reschedule":
@@ -44,13 +79,15 @@ export const renderNotificationTemplate = (
 
             const subjectMap: Record<NotificationTemplate, string> = {
                 customer_magic_link: "",
+                operator_invitation: "",
+                operator_password_reset: "",
                 booking_confirmation: `Booking confirmed with ${businessName}`,
                 booking_cancellation: `Booking cancelled with ${businessName}`,
                 booking_reschedule: `Booking rescheduled with ${businessName}`,
                 booking_reminder: `Booking reminder from ${businessName}`,
             };
 
-            const bodyLeadMap: Record<Exclude<NotificationTemplate, "customer_magic_link">, string> = {
+            const bodyLeadMap: Record<Extract<NotificationTemplate, "booking_confirmation" | "booking_cancellation" | "booking_reschedule" | "booking_reminder">, string> = {
                 booking_confirmation: "Your booking is confirmed.",
                 booking_cancellation: "Your booking has been cancelled.",
                 booking_reschedule: "Your booking has been rescheduled.",

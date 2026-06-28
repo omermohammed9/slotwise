@@ -70,7 +70,7 @@ export class CustomerRepository implements CustomerRepositoryContract {
             ...customerData,
             ...buildCustomerSearchFields(customerData),
         }, {
-            new: true,
+            returnDocument: "after",
             runValidators: true,
         });
     }
@@ -104,7 +104,7 @@ export class CustomerRepository implements CustomerRepositoryContract {
                 },
             },
             {
-                new: true,
+                returnDocument: "after",
                 upsert: true,
                 runValidators: true,
                 includeResultMetadata: false,

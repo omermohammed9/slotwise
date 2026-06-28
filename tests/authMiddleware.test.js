@@ -35,8 +35,44 @@ test("requireAuthenticatedSession returns 401 when bearer token is missing", asy
     assert.equal(res.statusCode, 401);
     assert.deepEqual(res.jsonPayload, {
         success: false,
-        error: { message: "Bearer session token is required" },
+        error: { message: "Authenticated session is required" },
     });
+});
+
+test("requireAuthenticatedSession accepts the session cookie", async (t) => {
+    const authService = AuthService.getInstance();
+    const originalGetSession = authService.getSession;
+    let resolvedToken = null;
+    authService.getSession = async (token) => {
+        resolvedToken = token;
+        return {
+            actorType: "operator",
+            actorId: "admin-1",
+            username: "admin",
+            role: "admin",
+            expiresAt: new Date("2030-01-01T00:00:00.000Z"),
+        };
+    };
+
+    t.after(() => {
+        authService.getSession = originalGetSession;
+    });
+
+    const req = {
+        header(name) {
+            return name === "cookie" ? "slotwise_session=cookie-token" : undefined;
+        },
+    };
+    const res = createResponse();
+    let nextCalled = false;
+
+    await requireAuthenticatedSession(req, res, () => {
+        nextCalled = true;
+    });
+
+    assert.equal(nextCalled, true);
+    assert.equal(resolvedToken, "cookie-token");
+    assert.equal(req.slotwiseSessionToken, "cookie-token");
 });
 
 test("requireAuthenticatedSession returns 401 when session is invalid", async (t) => {

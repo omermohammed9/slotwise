@@ -3,6 +3,10 @@ const assert = require("node:assert/strict");
 
 const { BookingController } = require("../dist/controllers/booking.controller");
 
+const noopAuditLogService = {
+    async record() {},
+};
+
 const createResponse = () => {
     return {
         statusCode: 200,
@@ -60,7 +64,7 @@ test("updateBooking returns 404 when the booking does not exist", async () => {
 test("deleteBooking returns 204 with no body when deletion succeeds", async () => {
     const controller = new BookingController({
         deleteBooking: async () => true,
-    });
+    }, noopAuditLogService);
 
     const req = { params: { id: "booking-1" } };
     const res = createResponse();
@@ -73,10 +77,15 @@ test("deleteBooking returns 204 with no body when deletion succeeds", async () =
 
 test("approveBooking returns approved booking", async () => {
     let receivedContext = null;
+    let receivedAudit = null;
     const controller = new BookingController({
         updateBookingStatus: async (_id, status, context) => {
             receivedContext = context;
-            return { _id: "booking-1", status };
+            return { _id: "booking-1", businessId: "business-1", status };
+        },
+    }, {
+        async record(data) {
+            receivedAudit = data;
         },
     });
 
@@ -102,6 +111,9 @@ test("approveBooking returns approved booking", async () => {
         changedBy: "admin-1",
         reason: "Schedule confirmed",
     });
+    assert.equal(receivedAudit.action, "booking.approved");
+    assert.equal(receivedAudit.targetId, "booking-1");
+    assert.equal(receivedAudit.businessId, "business-1");
 });
 
 test("rejectBooking returns 404 when the booking does not exist", async () => {
@@ -132,7 +144,7 @@ test("rejectBooking returns 404 when the booking does not exist", async () => {
 test("cancelBooking returns cancelled booking", async () => {
     const controller = new BookingController({
         updateBookingStatus: async (_id, status) => ({ _id: "booking-1", status }),
-    });
+    }, noopAuditLogService);
 
     const req = {
         params: { id: "booking-1" },
@@ -155,7 +167,7 @@ test("cancelBooking returns cancelled booking", async () => {
 test("completeBooking returns completed booking", async () => {
     const controller = new BookingController({
         updateBookingStatus: async (_id, status) => ({ _id: "booking-1", status }),
-    });
+    }, noopAuditLogService);
 
     const req = {
         params: { id: "booking-1" },
@@ -281,7 +293,7 @@ test("getBookingTimeline returns timeline data with metadata", async () => {
 test("markBookingNoShow returns no_show booking", async () => {
     const controller = new BookingController({
         updateBookingStatus: async (_id, status) => ({ _id: "booking-1", status }),
-    });
+    }, noopAuditLogService);
 
     const req = {
         params: { id: "booking-1" },

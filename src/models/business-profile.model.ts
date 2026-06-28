@@ -137,7 +137,6 @@ const businessProfileSchema = new mongoose.Schema<IBusinessProfile>({
     timestamps: true,
 });
 
-businessProfileSchema.index({ slug: 1 }, { unique: true });
 businessProfileSchema.index({ businessType: 1, status: 1 });
 
 const businessProfileModel = mongoose.model<IBusinessProfile>("BusinessProfile", businessProfileSchema);

@@ -205,7 +205,7 @@ export class BookingRepository implements BookingRepositoryContract {
             ...bookingData,
             ...buildBookingSearchFields(bookingData),
         }, {
-            new: true,
+            returnDocument: "after",
             runValidators: true,
         });
     }
@@ -226,7 +226,7 @@ export class BookingRepository implements BookingRepositoryContract {
                 $push: { statusHistory: { $each: auditEntries } },
             },
             {
-                new: true,
+                returnDocument: "after",
                 runValidators: true,
             },
         );

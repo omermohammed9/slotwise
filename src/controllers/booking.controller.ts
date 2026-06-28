@@ -1,19 +1,28 @@
 import { Request, Response } from "express";
 import { BookingService, BookingStatusChangeContext } from "../services/booking.service";
+import { AuditLogService } from "../services/audit-log.service";
 import { sendError, sendSuccess } from "../utils/apiResponse";
 
 
 export class BookingController {
     private bookingService: BookingService;
+    private auditLogService: AuditLogService;
 
-    constructor(bookingService: BookingService = BookingService.getInstance()) {
+    constructor(
+        bookingService: BookingService = BookingService.getInstance(),
+        auditLogService: AuditLogService = AuditLogService.getInstance(),
+    ) {
         this.bookingService = bookingService;
+        this.auditLogService = auditLogService;
     }
 
     public createBooking = async (req: Request, res: Response)=> {
         try {
             const bookingData = req.body;
             const booking = await this.bookingService.createBooking(bookingData);
+            if (booking) {
+                await this.recordBookingAudit(req, "booking.created", booking);
+            }
             sendSuccess(res, 201, booking);
         } catch (error) {
             sendError(res, 400, (error as Error).message);
@@ -75,6 +84,7 @@ export class BookingController {
             if (!booking) {
                 return sendError(res, 404, 'Booking not found');
             }
+            await this.recordBookingAudit(req, "booking.updated", booking);
             sendSuccess(res, 200, booking);
         } catch (error) {
             sendError(res, 400, (error as Error).message);
@@ -102,6 +112,13 @@ export class BookingController {
             if (!deleted) {
                 return sendError(res, 404, 'Booking not found');
             }
+            await this.auditLogService.record({
+                actor: req.slotwiseSession,
+                action: "booking.deleted",
+                targetEntity: "booking",
+                targetId: id,
+                requestId: req.requestId,
+            });
             res.status(204).send();
         } catch (error) {
             sendError(res, 400, (error as Error).message);
@@ -115,6 +132,7 @@ export class BookingController {
             if (!booking) {
                 return sendError(res, 404, 'Booking not found');
             }
+            await this.recordBookingAudit(req, "booking.approved", booking);
             sendSuccess(res, 200, booking);
         } catch (error) {
             sendError(res, 400, (error as Error).message);
@@ -128,6 +146,7 @@ export class BookingController {
             if (!booking) {
                 return sendError(res, 404, 'Booking not found');
             }
+            await this.recordBookingAudit(req, "booking.rejected", booking);
             sendSuccess(res, 200, booking);
         } catch (error) {
             sendError(res, 400, (error as Error).message);
@@ -141,6 +160,7 @@ export class BookingController {
             if (!booking) {
                 return sendError(res, 404, 'Booking not found');
             }
+            await this.recordBookingAudit(req, "booking.cancelled", booking);
             sendSuccess(res, 200, booking);
         } catch (error) {
             sendError(res, 400, (error as Error).message);
@@ -154,6 +174,7 @@ export class BookingController {
             if (!booking) {
                 return sendError(res, 404, 'Booking not found');
             }
+            await this.recordBookingAudit(req, "booking.completed", booking);
             sendSuccess(res, 200, booking);
         } catch (error) {
             sendError(res, 400, (error as Error).message);
@@ -167,6 +188,7 @@ export class BookingController {
             if (!booking) {
                 return sendError(res, 404, 'Booking not found');
             }
+            await this.recordBookingAudit(req, "booking.no_show", booking);
             sendSuccess(res, 200, booking);
         } catch (error) {
             sendError(res, 400, (error as Error).message);
@@ -180,6 +202,7 @@ export class BookingController {
             if (!booking) {
                 return sendError(res, 404, 'Booking not found');
             }
+            await this.recordBookingAudit(req, "booking.rescheduled", booking);
             sendSuccess(res, 200, booking);
         } catch (error) {
             sendError(res, 400, (error as Error).message);
@@ -193,6 +216,7 @@ export class BookingController {
             if (!booking) {
                 return sendError(res, 404, 'Booking not found');
             }
+            await this.recordBookingAudit(req, "booking.customer_cancelled", booking);
             sendSuccess(res, 200, booking);
         } catch (error) {
             sendError(res, 400, (error as Error).message);
@@ -209,6 +233,7 @@ export class BookingController {
             if (!booking) {
                 return sendError(res, 404, 'Booking not found');
             }
+            await this.recordBookingAudit(req, "booking.customer_rescheduled", booking);
             sendSuccess(res, 200, booking);
         } catch (error) {
             sendError(res, 400, (error as Error).message);
@@ -240,5 +265,16 @@ export class BookingController {
                 ? { reason: req.body.reason.trim() }
                 : {}),
         };
+    }
+
+    private async recordBookingAudit(req: Request, action: string, booking: { _id?: unknown; businessId?: unknown }): Promise<void> {
+        await this.auditLogService.record({
+            actor: req.slotwiseSession,
+            action,
+            targetEntity: "booking",
+            targetId: booking._id ? String(booking._id) : undefined,
+            businessId: booking.businessId ? String(booking.businessId) : undefined,
+            requestId: req.requestId,
+        });
     }
 }

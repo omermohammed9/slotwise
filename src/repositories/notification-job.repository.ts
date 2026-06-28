@@ -68,7 +68,7 @@ export class NotificationJobRepository implements NotificationJobRepositoryContr
                     $inc: { attempts: 1 },
                 },
                 {
-                    new: true,
+                    returnDocument: "after",
                     sort: { availableAt: 1, createdAt: 1 },
                     includeResultMetadata: false,
                 },

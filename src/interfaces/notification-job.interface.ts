@@ -5,6 +5,8 @@ export type NotificationChannelType = "email" | "sms";
 export type NotificationProvider = "resend" | "noop";
 export type NotificationTemplate =
     | "customer_magic_link"
+    | "operator_invitation"
+    | "operator_password_reset"
     | "booking_confirmation"
     | "booking_cancellation"
     | "booking_reschedule"

@@ -2,6 +2,7 @@ import { NextFunction, Request, RequestHandler, Response } from "express";
 import { SlotwiseRole } from "../interfaces/auth.interface";
 import { AuthService } from "../services/auth.service";
 import { sendError } from "../utils/apiResponse";
+import { getSessionTokenFromCookieHeader } from "../utils/sessionCookie";
 
 const extractBearerToken = (authorizationHeader: string | undefined): string | null => {
     if (!authorizationHeader) {
@@ -22,10 +23,10 @@ export const requireAuthenticatedSession: RequestHandler = async (
     res: Response,
     next: NextFunction,
 ) => {
-    const token = extractBearerToken(req.header("authorization"));
+    const token = extractBearerToken(req.header("authorization")) ?? getSessionTokenFromCookieHeader(req.header("cookie"));
 
     if (!token) {
-        return sendError(res, 401, "Bearer session token is required");
+        return sendError(res, 401, "Authenticated session is required");
     }
 
     let session;

@@ -8,6 +8,10 @@ export interface IOperatorAccount extends mongoose.Document {
     passwordHash: string;
     role: Extract<SlotwiseRole, "owner" | "admin" | "staff">;
     active: boolean;
+    invitationAcceptedAt?: Date;
+    invitedByActorId?: string;
+    failedLoginAttempts?: number;
+    lockedUntil?: Date;
     lastLoginAt?: Date;
     createdAt?: Date;
     updatedAt?: Date;

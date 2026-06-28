@@ -8,7 +8,7 @@ const notificationJobSchema = new mongoose.Schema<INotificationJob>({
     template: {
         type: String,
         required: true,
-        enum: ["customer_magic_link", "booking_confirmation", "booking_cancellation", "booking_reschedule", "booking_reminder"],
+        enum: ["customer_magic_link", "operator_invitation", "operator_password_reset", "booking_confirmation", "booking_cancellation", "booking_reschedule", "booking_reminder"],
     },
     status: { type: String, required: true, enum: ["pending", "processing", "sent", "failed"], default: "pending" },
     recipient: { type: String, required: true, trim: true },
@@ -26,7 +26,6 @@ const notificationJobSchema = new mongoose.Schema<INotificationJob>({
     timestamps: true,
 });
 
-notificationJobSchema.index({ jobId: 1 }, { unique: true });
 notificationJobSchema.index({ status: 1, availableAt: 1, lockedAt: 1 });
 notificationJobSchema.index({ dedupeKey: 1 }, { unique: true, sparse: true });
 

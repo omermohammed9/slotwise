@@ -50,7 +50,7 @@ export class BusinessProfileRepository implements BusinessProfileRepositoryContr
 
     public async updateById(id: string, profileData: Partial<IBusinessProfile>): Promise<IBusinessProfile | null> {
         return businessProfileModel.findByIdAndUpdate(id, profileData, {
-            new: true,
+            returnDocument: "after",
             runValidators: true,
         });
     }

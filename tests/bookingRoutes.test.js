@@ -12,6 +12,25 @@ const getRouteMethods = (path) => {
     return [...new Set(layers.flatMap((layer) => Object.keys(layer.route.methods)))].sort();
 };
 
+const getRouteStacks = (path) => {
+    const layers = router.stack.filter((entry) => entry.route && entry.route.path === path);
+    assert.ok(layers.length > 0, `Expected route for path ${path}`);
+
+    return layers.map((layer) => ({
+        methods: Object.keys(layer.route.methods).sort(),
+        handlers: layer.route.stack.map((entry) => entry.handle.name || "(anonymous)"),
+    }));
+};
+
+const assertRouteHasHandler = (path, method, handlerName) => {
+    const route = getRouteStacks(path).find((entry) => entry.methods.includes(method));
+    assert.ok(route, `Expected ${method.toUpperCase()} ${path}`);
+    assert.ok(
+        route.handlers.includes(handlerName),
+        `Expected ${method.toUpperCase()} ${path} to include ${handlerName}`,
+    );
+};
+
 test("preferred REST aliases are registered", () => {
     assert.deepEqual(getRouteMethods("/"), ["get", "post"]);
     assert.deepEqual(getRouteMethods("/insights/dashboard"), ["get"]);
@@ -45,4 +64,12 @@ test("legacy routes remain registered for backward compatibility", () => {
     assert.deepEqual(getRouteMethods("/customer-cancel/:id"), ["post"]);
     assert.deepEqual(getRouteMethods("/customer-reschedule/:id"), ["post"]);
     assert.deepEqual(getRouteMethods("/delete/:id"), ["delete"]);
+});
+
+test("business-scoped booking collection and insight routes require explicit business scope access", () => {
+    assertRouteHasHandler("/", "get", "requireBusinessScopeAccess");
+    assertRouteHasHandler("/all", "get", "requireBusinessScopeAccess");
+    assertRouteHasHandler("/timeline", "get", "requireBusinessScopeAccess");
+    assertRouteHasHandler("/insights/dashboard", "get", "requireBusinessScopeAccess");
+    assertRouteHasHandler("/insights/cancellation-no-show", "get", "requireBusinessScopeAccess");
 });

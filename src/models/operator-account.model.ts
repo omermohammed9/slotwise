@@ -7,13 +7,18 @@ const operatorAccountSchema = new mongoose.Schema<IOperatorAccount>({
     passwordHash: { type: String, required: true },
     role: { type: String, required: true, enum: ["owner", "admin", "staff"] },
     active: { type: Boolean, required: true, default: true },
+    invitationAcceptedAt: { type: Date },
+    invitedByActorId: { type: String, trim: true },
+    failedLoginAttempts: { type: Number, required: true, default: 0, min: 0 },
+    lockedUntil: { type: Date },
     lastLoginAt: { type: Date },
 }, {
     timestamps: true,
 });
 
-operatorAccountSchema.index({ username: 1 }, { unique: true });
-operatorAccountSchema.index({ actorId: 1 }, { unique: true });
+operatorAccountSchema.index({ role: 1, active: 1 });
+operatorAccountSchema.index({ username: 1, active: 1 });
+operatorAccountSchema.index({ actorId: 1, active: 1 });
 
 const operatorAccountModel = mongoose.model<IOperatorAccount>("OperatorAccount", operatorAccountSchema);
 

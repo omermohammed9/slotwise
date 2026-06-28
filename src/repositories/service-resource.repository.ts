@@ -55,7 +55,7 @@ export class ServiceResourceRepository implements ServiceResourceRepositoryContr
             ...resourceData,
             ...buildServiceResourceSearchFields(resourceData),
         }, {
-            new: true,
+            returnDocument: "after",
             runValidators: true,
         });
     }

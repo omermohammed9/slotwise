@@ -685,7 +685,7 @@ test("getBookingDashboardInsights summarizes funnel, utilization, peaks, and rat
 });
 
 test("getBookingTimeline groups sorted bookings by start date and reports day summaries", async () => {
-    const now = Date.now();
+    const now = Date.UTC(2030, 0, 15, 9, 0, 0);
     const firstBookingStart = new Date(now + 2 * 60 * 60_000);
     const firstBookingEnd = new Date(now + 3 * 60 * 60_000);
     const secondBookingStart = new Date(now + 4 * 60 * 60_000);
@@ -721,7 +721,10 @@ test("getBookingTimeline groups sorted bookings by start date and reports day su
                     timeout: firstBookingEnd,
                     status: "pending",
                     partySize: 8,
-                    rescheduleHistory: [{ rescheduledAt: new Date(), previousStartDate: new Date(), previousEndDate: new Date(), previousTimein: new Date(), previousTimeout: new Date(), newStartDate: new Date(), newEndDate: new Date(), newTimein: new Date(), newTimeout: new Date(), rescheduledByRole: "staff" }],
+                    rescheduleHistory: [
+                        { rescheduledAt: new Date(), previousStartDate: new Date(), previousEndDate: new Date(), previousTimein: new Date(), previousTimeout: new Date(), newStartDate: new Date(), newEndDate: new Date(), newTimein: new Date(), newTimeout: new Date(), rescheduledByRole: "staff" },
+                        { rescheduledAt: new Date(), previousStartDate: new Date(), previousEndDate: new Date(), previousTimein: new Date(), previousTimeout: new Date(), newStartDate: new Date(), newEndDate: new Date(), newTimein: new Date(), newTimeout: new Date(), rescheduledByRole: "staff" },
+                    ],
                     statusHistory: [{ fromStatus: "pending", toStatus: "pending", changedAt: new Date(), changedByRole: "system" }],
                     conflictRisk: { level: "high", score: 80, summary: "high", evaluatedAt: new Date(), signals: [] },
                 },

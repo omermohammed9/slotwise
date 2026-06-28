@@ -14,6 +14,13 @@ const getRouteMethods = (path) => {
 
 test("auth session routes are registered", () => {
     assert.deepEqual(getRouteMethods("/session"), ["delete", "get", "post"]);
+    assert.deepEqual(getRouteMethods("/operators"), ["get"]);
+    assert.deepEqual(getRouteMethods("/operators/invitations"), ["post"]);
+    assert.deepEqual(getRouteMethods("/operators/invitations/accept"), ["post"]);
+    assert.deepEqual(getRouteMethods("/operators/password-reset"), ["post"]);
+    assert.deepEqual(getRouteMethods("/operators/password-reset/complete"), ["post"]);
+    assert.deepEqual(getRouteMethods("/operators/:operatorId/role"), ["patch"]);
+    assert.deepEqual(getRouteMethods("/operators/:operatorId/status"), ["patch"]);
     assert.deepEqual(getRouteMethods("/customer/magic-link"), ["post"]);
     assert.deepEqual(getRouteMethods("/customer/verify"), ["post"]);
 });

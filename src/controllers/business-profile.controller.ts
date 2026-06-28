@@ -1,19 +1,31 @@
 import { Request, Response } from "express";
+import { AuditLogService } from "../services/audit-log.service";
 import { BusinessProfileService } from "../services/business-profile.service";
 import { sendError, sendSuccess } from "../utils/apiResponse";
 
 export class BusinessProfileController {
     private readonly businessProfileService: BusinessProfileService;
+    private readonly auditLogService: AuditLogService;
 
     public constructor(
         businessProfileService: BusinessProfileService = BusinessProfileService.getInstance(),
+        auditLogService: AuditLogService = AuditLogService.getInstance(),
     ) {
         this.businessProfileService = businessProfileService;
+        this.auditLogService = auditLogService;
     }
 
     public createBusinessProfile = async (req: Request, res: Response): Promise<Response> => {
         try {
             const profile = await this.businessProfileService.createBusinessProfile(req.body);
+            await this.auditLogService.record({
+                actor: req.slotwiseSession,
+                action: "business.created",
+                targetEntity: "business",
+                targetId: String(profile._id),
+                businessId: String(profile._id),
+                requestId: req.requestId,
+            });
             return sendSuccess(res, 201, profile);
         } catch (error) {
             return sendError(res, 400, (error as Error).message);
@@ -96,6 +108,14 @@ export class BusinessProfileController {
                 return sendError(res, 404, "Business profile not found");
             }
 
+            await this.auditLogService.record({
+                actor: req.slotwiseSession,
+                action: "business.updated",
+                targetEntity: "business",
+                targetId: String(profile._id),
+                businessId: String(profile._id),
+                requestId: req.requestId,
+            });
             return sendSuccess(res, 200, profile);
         } catch (error) {
             return sendError(res, 400, (error as Error).message);

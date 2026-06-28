@@ -5,6 +5,7 @@ declare global {
         interface Request {
             slotwiseSession?: SlotwiseSession;
             slotwiseSessionToken?: string;
+            requestId?: string;
         }
     }
 }

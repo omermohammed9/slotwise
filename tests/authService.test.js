@@ -51,6 +51,8 @@ test("AuthService creates and resolves a session for configured operators", asyn
             async updateLastLogin(id) {
                 updatedLastLoginId = id;
             },
+            async recordFailedLogin() {},
+            async resetFailedLogins() {},
             async getActiveRoles() {
                 return ["owner"];
             },
@@ -96,6 +98,8 @@ test("AuthService rejects invalid credentials", async () => {
             },
             async upsertBootstrapAccount() {},
             async updateLastLogin() {},
+            async recordFailedLogin() {},
+            async resetFailedLogins() {},
             async getActiveRoles() { return ["admin"]; },
         },
         createSessionRepositoryStub(),
@@ -119,6 +123,56 @@ test("AuthService rejects invalid credentials", async () => {
     );
 });
 
+test("AuthService records failed operator logins and locks after repeated failures", async () => {
+    const passwordHash = await hashPassword("admin-pass");
+    const operator = {
+        _id: "operator-1",
+        actorId: "admin-1",
+        username: "admin",
+        passwordHash,
+        role: "admin",
+        active: true,
+        failedLoginAttempts: 4,
+    };
+    let recordedFailure = null;
+    const authService = new AuthService(
+        {
+            async findByUsername() {
+                return operator;
+            },
+            async upsertBootstrapAccount() {},
+            async updateLastLogin() {},
+            async recordFailedLogin(id, failedLoginAttempts, lockedUntil) {
+                recordedFailure = { id, failedLoginAttempts, lockedUntil };
+            },
+            async resetFailedLogins() {},
+            async getActiveRoles() { return ["admin"]; },
+        },
+        createSessionRepositoryStub(),
+        {
+            async findByBusinessAndEmail() { return null; },
+            async findById() { return null; },
+        },
+        {
+            async invalidateActiveTokens() {},
+            async create() {},
+            async consumeActiveToken() { return null; },
+        },
+        {
+            async create() {},
+        },
+    );
+
+    await assert.rejects(
+        async () => authService.createSession("admin", "wrong-pass"),
+        /Operator account is temporarily locked/,
+    );
+
+    assert.equal(recordedFailure.id, "operator-1");
+    assert.equal(recordedFailure.failedLoginAttempts, 5);
+    assert.ok(recordedFailure.lockedUntil instanceof Date);
+});
+
 test("AuthService revokes sessions", async () => {
     const passwordHash = await hashPassword("admin-pass");
     const sessionRepository = createSessionRepositoryStub();
@@ -136,6 +190,8 @@ test("AuthService revokes sessions", async () => {
             },
             async upsertBootstrapAccount() {},
             async updateLastLogin() {},
+            async recordFailedLogin() {},
+            async resetFailedLogins() {},
             async getActiveRoles() { return ["admin"]; },
         },
         sessionRepository,
@@ -175,6 +231,8 @@ test("AuthService creates sessions for configured staff operators", async () => 
             },
             async upsertBootstrapAccount() {},
             async updateLastLogin() {},
+            async recordFailedLogin() {},
+            async resetFailedLogins() {},
             async getActiveRoles() { return ["staff"]; },
         },
         createSessionRepositoryStub(),
@@ -198,6 +256,44 @@ test("AuthService creates sessions for configured staff operators", async () => 
     assert.equal(session.actorId, "staff-42");
 });
 
+test("AuthService blocks env bootstrap outside local and test runtimes", async () => {
+    const originalEnv = { ...process.env };
+    process.env.SLOTWISE_ENV = "production";
+    process.env.SLOTWISE_OWNER_USERNAME = "owner@example.com";
+    process.env.SLOTWISE_OWNER_PASSWORD = "owner-pass";
+
+    const authService = new AuthService(
+        {
+            async findByUsername() { return null; },
+            async upsertBootstrapAccount() { throw new Error("bootstrap should be blocked before repository writes"); },
+            async updateLastLogin() {},
+            async recordFailedLogin() {},
+            async resetFailedLogins() {},
+            async getActiveRoles() { return []; },
+        },
+        createSessionRepositoryStub(),
+        {
+            async findByBusinessAndEmail() { return null; },
+            async findById() { return null; },
+        },
+        {
+            async invalidateActiveTokens() {},
+            async create() {},
+            async consumeActiveToken() { return null; },
+        },
+        {
+            async create() {},
+        },
+    );
+
+    await assert.rejects(
+        async () => authService.bootstrapOperatorAccountsFromEnv(),
+        /only available in local\/test/,
+    );
+
+    process.env = originalEnv;
+});
+
 test("AuthService queues a customer magic link job and verifies it into a customer session", async () => {
     const createdJobs = [];
     const tokenState = {};
@@ -207,6 +303,8 @@ test("AuthService queues a customer magic link job and verifies it into a custom
             async findByUsername() { return null; },
             async upsertBootstrapAccount() {},
             async updateLastLogin() {},
+            async recordFailedLogin() {},
+            async resetFailedLogins() {},
             async getActiveRoles() { return []; },
         },
         sessionRepository,
@@ -274,4 +372,120 @@ test("AuthService queues a customer magic link job and verifies it into a custom
     assert.equal(customerSession.actorId, "customer-1");
     assert.equal(customerSession.businessId, "business-1");
     assert.equal(typeof customerSession.token, "string");
+});
+
+test("AuthService queues operator invitation notifications without exposing production tokens", async () => {
+    const originalEnv = { ...process.env };
+    process.env.SLOTWISE_ENV = "production";
+    process.env.SLOTWISE_OPERATOR_INVITATION_BASE_URL = "https://app.example.com/operators/invitations/accept";
+
+    const createdJobs = [];
+    const createdTokens = [];
+    const authService = new AuthService(
+        {
+            async findByUsername() { return null; },
+            async findAnyByUsername() { return null; },
+            async create(data) {
+                return { _id: "operator-2", ...data };
+            },
+            async upsertBootstrapAccount() {},
+            async updateLastLogin() {},
+            async recordFailedLogin() {},
+            async resetFailedLogins() {},
+            async getActiveRoles() { return []; },
+        },
+        createSessionRepositoryStub(),
+        {
+            async findByBusinessAndEmail() { return null; },
+            async findById() { return null; },
+        },
+        {
+            async invalidateActiveEmailTokens() {},
+            async invalidateActiveTokens() {},
+            async create(tokenData) {
+                createdTokens.push(tokenData);
+            },
+            async consumeActiveToken() { return null; },
+        },
+        {
+            async create(jobData) {
+                createdJobs.push(jobData);
+            },
+        },
+        { async record() {} },
+    );
+
+    const result = await authService.inviteOperator(
+        { actorId: "owner-1", role: "owner" },
+        "Staff@Example.com",
+        "staff",
+    );
+
+    assert.deepEqual(result, { invited: true, operatorId: "operator-2" });
+    assert.equal(createdTokens.length, 1);
+    assert.equal(createdJobs.length, 1);
+    assert.equal(createdJobs[0].template, "operator_invitation");
+    assert.equal(createdJobs[0].recipient, "staff@example.com");
+    assert.equal(createdJobs[0].payload.invitationUrl.startsWith("https://app.example.com/operators/invitations/accept?token="), true);
+    assert.equal(hashOpaqueToken(createdJobs[0].payload.token), createdTokens[0].tokenHash);
+
+    process.env = originalEnv;
+});
+
+test("AuthService queues operator password reset notifications without exposing production tokens", async () => {
+    const originalEnv = { ...process.env };
+    process.env.SLOTWISE_ENV = "production";
+    process.env.SLOTWISE_OPERATOR_PASSWORD_RESET_BASE_URL = "https://app.example.com/operators/password-reset/complete";
+
+    const createdJobs = [];
+    const createdTokens = [];
+    const authService = new AuthService(
+        {
+            async findByUsername() { return null; },
+            async findAnyByUsername() {
+                return {
+                    _id: "operator-1",
+                    actorId: "owner-1",
+                    username: "owner@example.com",
+                    role: "owner",
+                    active: true,
+                };
+            },
+            async upsertBootstrapAccount() {},
+            async updateLastLogin() {},
+            async recordFailedLogin() {},
+            async resetFailedLogins() {},
+            async getActiveRoles() { return []; },
+        },
+        createSessionRepositoryStub(),
+        {
+            async findByBusinessAndEmail() { return null; },
+            async findById() { return null; },
+        },
+        {
+            async invalidateActiveOperatorTokens() {},
+            async invalidateActiveTokens() {},
+            async create(tokenData) {
+                createdTokens.push(tokenData);
+            },
+            async consumeActiveToken() { return null; },
+        },
+        {
+            async create(jobData) {
+                createdJobs.push(jobData);
+            },
+        },
+        { async record() {} },
+    );
+
+    const result = await authService.requestOperatorPasswordReset("owner@example.com");
+
+    assert.deepEqual(result, { requested: true });
+    assert.equal(createdTokens.length, 1);
+    assert.equal(createdJobs.length, 1);
+    assert.equal(createdJobs[0].template, "operator_password_reset");
+    assert.equal(createdJobs[0].payload.resetUrl.startsWith("https://app.example.com/operators/password-reset/complete?token="), true);
+    assert.equal(hashOpaqueToken(createdJobs[0].payload.token), createdTokens[0].tokenHash);
+
+    process.env = originalEnv;
 });

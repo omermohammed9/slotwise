@@ -17,8 +17,6 @@ const authSessionSchema = new mongoose.Schema<IAuthSession>({
     timestamps: true,
 });
 
-authSessionSchema.index({ sessionId: 1 }, { unique: true });
-authSessionSchema.index({ tokenHash: 1 }, { unique: true });
 authSessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 authSessionSchema.index({ actorType: 1, actorId: 1, revokedAt: 1 });
 
