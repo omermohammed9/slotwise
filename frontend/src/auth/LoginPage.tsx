@@ -1,6 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { LockKeyhole, ShieldCheck } from 'lucide-react';
-import { Navigate, useLocation, useNavigate } from 'react-router';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router';
 import { createOperatorSession } from '../api/auth';
 import { useSessionStore } from './sessionStore';
 
@@ -59,7 +59,7 @@ export function LoginPage() {
         </div>
         <p className="eyebrow">Operator access</p>
         <h1 id="operator-login-title">Sign in to Slotwise</h1>
-        <p className="lede">Use your owner, admin, or staff credentials. Session tokens stay in memory only.</p>
+        <p className="lede">Use your owner, admin, or staff credentials. Slotwise keeps your signed-in session in a secure browser cookie.</p>
 
         <form className="auth-form" onSubmit={handleSubmit}>
           <label className="form-field">
@@ -101,6 +101,9 @@ export function LoginPage() {
             <LockKeyhole size={17} aria-hidden="true" />
             {isSubmitting ? 'Signing in' : 'Sign in'}
           </button>
+          <Link className="auth-inline-link" to="/operators/password-reset">
+            Reset operator password
+          </Link>
         </form>
       </section>
     </main>

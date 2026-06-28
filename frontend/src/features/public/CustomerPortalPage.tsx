@@ -328,7 +328,7 @@ export function CustomerPortalPage() {
         <section className="portal-grid">
           <article className="portal-auth-panel portal-stack">
             <div className="portal-section-heading">
-              <h3>Portal access</h3>
+              <h2>Portal access</h2>
               <p>Use the same email from your booking confirmation to request a portal token.</p>
             </div>
 
@@ -359,7 +359,7 @@ export function CustomerPortalPage() {
 
           <article className="portal-session-panel portal-stack">
             <div className="portal-section-heading">
-              <h3>Session status</h3>
+              <h2>Session status</h2>
               <p>{session ? 'Portal access is active.' : 'Verify a token to unlock booking details.'}</p>
             </div>
 
@@ -377,7 +377,7 @@ export function CustomerPortalPage() {
         <section className="portal-grid">
           <article className="portal-booking-panel portal-stack">
             <div className="portal-section-heading">
-              <h3>Bookings</h3>
+              <h2>Bookings</h2>
               <p>Choose a booking to inspect details or send a cancellation/reschedule request.</p>
             </div>
 
@@ -417,7 +417,7 @@ export function CustomerPortalPage() {
 
           <article className="portal-detail-panel portal-stack">
             <div className="portal-section-heading">
-              <h3>Booking detail</h3>
+              <h2>Booking detail</h2>
               <p>Review the selected booking before requesting changes.</p>
             </div>
 

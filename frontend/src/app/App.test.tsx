@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, vi } from 'vitest';
@@ -153,6 +153,7 @@ test('renders query-backed dashboard analytics', async () => {
   }));
   vi.stubGlobal('fetch', fetchMock);
   signInForTest();
+  window.history.pushState({}, '', '/admin');
   renderApp();
 
   expect(screen.getByRole('heading', { name: /today at a glance/i })).toBeInTheDocument();
@@ -698,6 +699,7 @@ test('navigates through the admin route map', async () => {
   });
   vi.stubGlobal('fetch', fetchMock);
   signInForTest();
+  window.history.pushState({}, '', '/admin');
   renderApp();
 
   await user.click(screen.getByRole('link', { name: /bookings/i }));
@@ -770,6 +772,7 @@ test('renders the backend timeline feed with filters', async () => {
   });
   vi.stubGlobal('fetch', fetchMock);
   signInForTest();
+  window.history.pushState({}, '', '/admin');
   renderApp();
 
   await user.click(screen.getByRole('link', { name: /timeline/i }));
@@ -2297,6 +2300,7 @@ test('exposes the widget surface route from the shell', async () => {
   });
   vi.stubGlobal('fetch', fetchMock);
   signInForTest();
+  window.history.pushState({}, '', '/admin');
   renderApp();
 
   await user.click(screen.getByRole('link', { name: /widget/i }));
@@ -2305,11 +2309,211 @@ test('exposes the widget surface route from the shell', async () => {
   expect(screen.getByText(/general requests/i)).toBeInTheDocument();
 });
 
-test('redirects protected admin routes to operator login', () => {
+test('renders the production homepage entry points without self-signup', () => {
+  renderApp();
+
+  expect(screen.getByRole('heading', { name: /slotwise booking operations/i })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: /sign in/i })).toHaveAttribute('href', '/login');
+  expect(screen.getByRole('link', { name: /customer portal/i })).toHaveAttribute('href', '/portal');
+  expect(screen.getByRole('link', { name: /\/book\/demo-business/i })).toHaveAttribute('href', '/book/demo-business');
+  expect(screen.queryByRole('link', { name: /sign up/i })).not.toBeInTheDocument();
+});
+
+test('accepts an operator invitation token', async () => {
+  const user = userEvent.setup();
+  const fetchMock = vi.fn().mockResolvedValue({
+    json: () => Promise.resolve({ success: true, data: { accepted: true } }),
+    status: 200,
+  });
+  vi.stubGlobal('fetch', fetchMock);
+
+  window.history.pushState({}, '', '/operators/invitations/accept?token=invite-token-1');
+  renderApp();
+
+  expect(screen.getByLabelText(/invitation token/i)).toHaveValue('invite-token-1');
+  await user.type(screen.getByLabelText(/new password/i), 'strong-pass');
+  await user.click(screen.getByRole('button', { name: /accept invitation/i }));
+
+  expect(await screen.findByText(/invitation accepted/i)).toBeInTheDocument();
+  expect(fetchMock).toHaveBeenCalledWith(
+    'http://localhost:3000/auth/operators/invitations/accept',
+    expect.objectContaining({
+      body: JSON.stringify({ token: 'invite-token-1', password: 'strong-pass' }),
+      method: 'POST',
+    }),
+  );
+});
+
+test('requests and completes operator password reset', async () => {
+  const user = userEvent.setup();
+  const fetchMock = vi.fn((url: string) => Promise.resolve({
+    json: () =>
+      Promise.resolve(
+        url.endsWith('/auth/operators/password-reset/complete')
+          ? { success: true, data: { reset: true } }
+          : { success: true, data: { requested: true } },
+      ),
+    status: url.endsWith('/auth/operators/password-reset/complete') ? 200 : 202,
+  }));
+  vi.stubGlobal('fetch', fetchMock);
+
+  window.history.pushState({}, '', '/operators/password-reset');
+  renderApp();
+
+  await user.type(screen.getByLabelText(/username/i), 'owner@example.com');
+  await user.click(screen.getByRole('button', { name: /send reset token/i }));
+
+  expect(await screen.findByText(/reset message is on the way/i)).toBeInTheDocument();
+  expect(fetchMock).toHaveBeenCalledWith(
+    'http://localhost:3000/auth/operators/password-reset',
+    expect.objectContaining({
+      body: JSON.stringify({ username: 'owner@example.com' }),
+      method: 'POST',
+    }),
+  );
+
+  cleanup();
+  window.history.pushState({}, '', '/operators/password-reset/complete?token=reset-token-1');
+  renderApp();
+
+  expect(screen.getByLabelText(/reset token/i)).toHaveValue('reset-token-1');
+  await user.type(screen.getByLabelText(/new password/i, { selector: 'input' }), 'new-strong-pass');
+  await user.click(screen.getByRole('button', { name: /reset password/i }));
+
+  expect(await screen.findByText(/password reset complete/i)).toBeInTheDocument();
+  expect(fetchMock).toHaveBeenCalledWith(
+    'http://localhost:3000/auth/operators/password-reset/complete',
+    expect.objectContaining({
+      body: JSON.stringify({ token: 'reset-token-1', password: 'new-strong-pass' }),
+      method: 'POST',
+    }),
+  );
+});
+
+test('owner user administration shows loading, empty, and one-time setup token states', async () => {
+  const user = userEvent.setup();
+  let operatorListCount = 0;
+  const fetchMock = vi.fn((url: string) => {
+    if (url.endsWith('/auth/operators') && operatorListCount === 0) {
+      operatorListCount += 1;
+      return Promise.resolve({
+        json: () => Promise.resolve({ success: true, data: { operators: [] } }),
+        status: 200,
+      });
+    }
+
+    if (url.endsWith('/auth/operators') && operatorListCount > 0) {
+      return Promise.resolve({
+        json: () =>
+          Promise.resolve({
+            success: true,
+            data: {
+              operators: [
+                {
+                  id: 'operator-id-2',
+                  actorId: 'operator-2',
+                  username: 'staff@example.com',
+                  role: 'staff',
+                  active: false,
+                },
+              ],
+            },
+          }),
+        status: 200,
+      });
+    }
+
+    if (url.endsWith('/auth/operators/invitations')) {
+      operatorListCount += 1;
+      return Promise.resolve({
+        json: () => Promise.resolve({ success: true, data: { invited: true, operatorId: 'operator-id-2', token: 'setup-token-2' } }),
+        status: 201,
+      });
+    }
+
+    throw new Error(`Unexpected request: ${url}`);
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  signInForTest();
+  window.history.pushState({}, '', '/owner/users');
+  renderApp();
+
+  expect(await screen.findByText(/no operators found/i)).toBeInTheDocument();
+
+  await user.type(screen.getByLabelText(/username/i), 'staff@example.com');
+  await user.click(screen.getByRole('button', { name: /invite/i }));
+
+  expect(await screen.findByText(/share this setup token/i)).toBeInTheDocument();
+  expect(screen.getByText('setup-token-2')).toBeInTheDocument();
+  expect(await screen.findByText('staff@example.com')).toBeInTheDocument();
+});
+
+test('audit log page applies filters deliberately and handles empty results', async () => {
+  const user = userEvent.setup();
+  const fetchMock = vi.fn((url: string) => {
+    if (url.includes('/audit-logs/export')) {
+      return Promise.resolve({
+        ok: true,
+        text: () => Promise.resolve('createdAt,actorRole,actorId\n'),
+      });
+    }
+
+    if (url.includes('/audit-logs')) {
+      return Promise.resolve({
+        json: () => Promise.resolve({ success: true, data: { logs: [] }, meta: { page: 1, limit: 50, total: 0, totalPages: 1 } }),
+        status: 200,
+      });
+    }
+
+    throw new Error(`Unexpected request: ${url}`);
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  signInForTest();
+  window.history.pushState({}, '', '/owner/audit');
+  renderApp();
+
+  expect(await screen.findByText(/no audit events found/i)).toBeInTheDocument();
+  expect(screen.getByText(/page 1 of 1/i)).toBeInTheDocument();
+
+  await user.type(screen.getByLabelText(/action/i), 'operator.invited');
+  await user.click(screen.getByRole('button', { name: /apply filters/i }));
+
+  await waitFor(() => {
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      expect.stringContaining('/audit-logs?action=operator.invited'),
+      expect.any(Object),
+    );
+  });
+
+  vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:audit-export');
+  vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+  await user.click(screen.getByRole('button', { name: /export csv/i }));
+
+  await waitFor(() => {
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/audit-logs/export?action=operator.invited'),
+      expect.any(Object),
+    );
+  });
+});
+
+test('redirects protected admin routes to operator login', async () => {
+  const fetchMock = vi.fn().mockResolvedValue({
+    json: () =>
+      Promise.resolve({
+        success: false,
+        error: {
+          message: 'Authenticated session is required',
+        },
+      }),
+    status: 401,
+  });
+  vi.stubGlobal('fetch', fetchMock);
   window.history.pushState({}, '', '/admin/bookings');
   renderApp();
 
-  expect(screen.getByRole('heading', { name: /sign in to slotwise/i })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: /checking your current session/i })).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: /sign in to slotwise/i })).toBeInTheDocument();
 });
 
 test('stores operator sessions in memory after login', async () => {

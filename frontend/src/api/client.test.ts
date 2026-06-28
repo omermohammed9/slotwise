@@ -10,6 +10,7 @@ test('uses the local backend as the default API target', () => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  document.cookie = 'slotwise_csrf=; Max-Age=0; Path=/';
 });
 
 test('builds API paths with clean query parameters', () => {
@@ -47,6 +48,110 @@ test('sends JSON bodies and bearer tokens through the shared client', async () =
       }),
     }),
   );
+});
+
+test('sends CSRF tokens from cookies on unsafe cookie-session requests', async () => {
+  document.cookie = 'slotwise_csrf=csrf-cookie-token; Path=/';
+  const fetchMock = vi.fn().mockResolvedValue({
+    json: () => Promise.resolve({ success: true, data: { revoked: true } }),
+    ok: true,
+    status: 200,
+  });
+  vi.stubGlobal('fetch', fetchMock);
+
+  await apiRequest('/auth/session', {
+    method: 'DELETE',
+  });
+
+  expect(fetchMock).toHaveBeenCalledWith(
+    'http://localhost:3000/auth/session',
+    expect.objectContaining({
+      credentials: 'include',
+      headers: expect.objectContaining({
+        'x-csrf-token': 'csrf-cookie-token',
+      }),
+      method: 'DELETE',
+    }),
+  );
+});
+
+test('normalizes CSRF, rate-limit, and network failures', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi
+      .fn()
+      .mockResolvedValueOnce({
+        json: () => Promise.resolve({ success: false, error: { message: 'CSRF token is missing or invalid' } }),
+        ok: false,
+        status: 419,
+      })
+      .mockResolvedValueOnce({
+        json: () => Promise.resolve({ success: false, error: { message: 'Too many requests. Please try again later.' } }),
+        ok: false,
+        status: 429,
+      })
+      .mockRejectedValueOnce(new Error('offline')),
+  );
+
+  await expect(apiRequest('/bookings/1', { method: 'PATCH' })).resolves.toEqual({
+    success: false,
+    status: 419,
+    error: {
+      code: 'csrf',
+      message: 'CSRF token is missing or invalid',
+    },
+  });
+  await expect(apiRequest('/auth/session', { method: 'POST' })).resolves.toEqual({
+    success: false,
+    status: 429,
+    error: {
+      code: 'rate_limited',
+      message: 'Too many requests. Please try again later.',
+    },
+  });
+  await expect(apiRequest('/auth/session', { method: 'GET' })).resolves.toEqual({
+    success: false,
+    status: 0,
+    error: {
+      code: 'network',
+      message: 'Unable to reach Slotwise. Check your connection and try again.',
+    },
+  });
+});
+
+test('normalizes unauthorized and forbidden responses', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi
+      .fn()
+      .mockResolvedValueOnce({
+        json: () => Promise.resolve({ success: false, error: { message: 'Authenticated session is required' } }),
+        ok: false,
+        status: 401,
+      })
+      .mockResolvedValueOnce({
+        json: () => Promise.resolve({ success: false, error: { message: 'Business access is denied' } }),
+        ok: false,
+        status: 403,
+      }),
+  );
+
+  await expect(apiRequest('/auth/session')).resolves.toEqual({
+    success: false,
+    status: 401,
+    error: {
+      code: 'unauthorized',
+      message: 'Authenticated session is required',
+    },
+  });
+  await expect(apiRequest('/admin-only')).resolves.toEqual({
+    success: false,
+    status: 403,
+    error: {
+      code: 'forbidden',
+      message: 'Business access is denied',
+    },
+  });
 });
 
 test('handles no-content responses without parsing JSON', async () => {

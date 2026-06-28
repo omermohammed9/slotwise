@@ -354,7 +354,7 @@ export function PublicBookingPage() {
       <main className="public-booking-page">
         <div className="public-booking-shell">
           <div className="table-state" role="status" aria-live="polite">
-            Loading booking page
+            <h1>Loading booking page</h1>
           </div>
         </div>
       </main>

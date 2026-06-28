@@ -8,7 +8,9 @@ export type ApiSuccess<T> = {
 
 export type ApiFailure = {
   success: false;
+  status?: number;
   error: {
+    code?: 'csrf' | 'forbidden' | 'network' | 'rate_limited' | 'unauthorized' | 'unknown';
     message: string;
   };
 };
@@ -20,7 +22,8 @@ export type QueryParams = Record<string, boolean | null | number | string | unde
 export type Role = 'admin' | 'customer' | 'owner' | 'staff';
 
 export type SessionDto = {
-  token: string;
+  token?: string;
+  csrfToken?: string;
   role: Role;
   actorId: string;
   actorType?: 'customer' | 'operator';

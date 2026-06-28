@@ -1,6 +1,15 @@
 @import "tailwindcss";
 
 :root {
+  --color-bg: #f7f6f2;
+  --color-surface: #ffffff;
+  --color-sidebar: #fbfaf7;
+  --color-panel-muted: #fbfcfb;
+  --color-text: #14201d;
+  --color-muted: #66736f;
+  --color-border: #d9ded8;
+  --color-accent: #0f766e;
+  --color-focus: #91d6cf;
   color: #18211f;
   background: #f7f6f2;
   font-family:
@@ -8,6 +17,20 @@
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+}
+
+:root[data-theme='dark'] {
+  --color-bg: #101816;
+  --color-surface: #17211f;
+  --color-sidebar: #131d1a;
+  --color-panel-muted: #1c2926;
+  --color-text: #eef7f4;
+  --color-muted: #a9bbb6;
+  --color-border: #34433f;
+  --color-accent: #54c7ba;
+  --color-focus: #54c7ba;
+  color: var(--color-text);
+  background: var(--color-bg);
 }
 
 * {
@@ -18,6 +41,8 @@ body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
 }
 
 button,
@@ -1499,6 +1524,104 @@ h3 {
   width: 100%;
 }
 
+.auth-result {
+  display: grid;
+  gap: 12px;
+}
+
+.auth-inline-link {
+  justify-self: center;
+  color: #0f766e;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.auth-inline-link:hover {
+  text-decoration: underline;
+}
+
+.home-page {
+  display: grid;
+  min-height: 100vh;
+  align-content: start;
+  gap: 18px;
+  padding: clamp(18px, 4vw, 44px);
+  background: var(--color-bg);
+}
+
+.home-hero {
+  display: grid;
+  max-width: 840px;
+  gap: 16px;
+  padding: clamp(24px, 5vw, 48px) 0 8px;
+}
+
+.home-hero h1 {
+  max-width: 760px;
+  overflow-wrap: anywhere;
+}
+
+.home-brand-mark {
+  display: grid;
+  width: 54px;
+  height: 54px;
+  place-items: center;
+  border-radius: 8px;
+  background: #0f766e;
+  color: #ffffff;
+  font-size: 1.3rem;
+  font-weight: 900;
+}
+
+.home-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.home-actions .secondary-button {
+  margin-top: 0;
+}
+
+.home-band {
+  display: grid;
+  max-width: 920px;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.7fr);
+  gap: 18px;
+  align-items: start;
+  padding: 22px 0 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.home-slug-list {
+  display: grid;
+  gap: 8px;
+}
+
+.home-slug-link {
+  display: grid;
+  min-height: 46px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 0 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.home-slug-link span {
+  overflow-wrap: anywhere;
+}
+
+.home-slug-link:hover {
+  border-color: #0f766e;
+}
+
 .route-hero {
   display: flex;
   align-items: center;
@@ -2102,7 +2225,7 @@ h3 {
   gap: 6px;
 }
 
-.portal-section-heading h3,
+.portal-section-heading h2,
 .portal-section-heading p {
   margin: 0;
 }
@@ -2393,4 +2516,75 @@ h3 {
   .placeholder-grid {
     grid-template-columns: 1fr;
   }
+}
+
+:root[data-theme='dark'] .sidebar,
+:root[data-theme='dark'] .auth-page,
+:root[data-theme='dark'] .main-surface,
+:root[data-theme='dark'] .public-booking-page {
+  background: var(--color-bg);
+}
+
+:root[data-theme='dark'] .sidebar {
+  border-color: var(--color-border);
+  background: var(--color-sidebar);
+}
+
+:root[data-theme='dark'] .panel,
+:root[data-theme='dark'] .metric-card,
+:root[data-theme='dark'] .account-panel,
+:root[data-theme='dark'] .auth-panel,
+:root[data-theme='dark'] .booking-row,
+:root[data-theme='dark'] .timeline-entry,
+:root[data-theme='dark'] .timeline-day,
+:root[data-theme='dark'] .route-hero,
+:root[data-theme='dark'] .placeholder-card,
+:root[data-theme='dark'] .detail-drawer,
+:root[data-theme='dark'] .detail-field {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+}
+
+:root[data-theme='dark'] h1,
+:root[data-theme='dark'] h2,
+:root[data-theme='dark'] h3,
+:root[data-theme='dark'] h4,
+:root[data-theme='dark'] .brand-name,
+:root[data-theme='dark'] .account-id,
+:root[data-theme='dark'] .booking-main h3,
+:root[data-theme='dark'] .detail-field strong {
+  color: var(--color-text);
+}
+
+:root[data-theme='dark'] .eyebrow,
+:root[data-theme='dark'] .lede,
+:root[data-theme='dark'] .body-copy,
+:root[data-theme='dark'] .brand-subtitle,
+:root[data-theme='dark'] .booking-main p,
+:root[data-theme='dark'] .result-count,
+:root[data-theme='dark'] .session-note,
+:root[data-theme='dark'] .detail-field span {
+  color: var(--color-muted);
+}
+
+:root[data-theme='dark'] .nav-item,
+:root[data-theme='dark'] .surface-link,
+:root[data-theme='dark'] .form-field,
+:root[data-theme='dark'] .secondary-button,
+:root[data-theme='dark'] .icon-button,
+:root[data-theme='dark'] input,
+:root[data-theme='dark'] select,
+:root[data-theme='dark'] textarea {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+:root[data-theme='dark'] .nav-item-active,
+:root[data-theme='dark'] .nav-item:hover,
+:root[data-theme='dark'] .surface-link-active,
+:root[data-theme='dark'] .surface-link:hover {
+  border-color: var(--color-accent);
+  background: var(--color-panel-muted);
+  color: var(--color-accent);
 }

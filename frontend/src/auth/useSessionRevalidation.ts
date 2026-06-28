@@ -14,7 +14,7 @@ type UseSessionRevalidationOptions = {
 };
 
 function isInvalidSessionMessage(message: string): boolean {
-  return /authenticated session is required|bearer session token is required/i.test(message);
+  return /authenticated session is required|bearer session token is required|session is invalid or expired/i.test(message);
 }
 
 export function useSessionRevalidation({
@@ -26,7 +26,7 @@ export function useSessionRevalidation({
   setNotice,
   setSession,
 }: UseSessionRevalidationOptions) {
-  const [isInitialCheckPending, setIsInitialCheckPending] = useState(Boolean(enabled && token && session));
+  const [isInitialCheckPending, setIsInitialCheckPending] = useState(Boolean(enabled && !session));
   const revalidationInFlightRef = useRef(false);
   const latestStateRef = useRef({
     clearSession,
@@ -51,7 +51,7 @@ export function useSessionRevalidation({
   async function revalidateSession(mode: 'initial' | 'refresh') {
     const current = latestStateRef.current;
 
-    if (!current.enabled || !current.token || !current.session) {
+    if (!current.enabled) {
       if (mode === 'initial') {
         setIsInitialCheckPending(false);
       }
@@ -80,7 +80,7 @@ export function useSessionRevalidation({
 
       current.setSession({
         ...response.data,
-        token: current.token,
+        ...(current.session?.token ? { token: current.session.token } : {}),
       });
     } catch {
       // Keep the current memory-only session when revalidation cannot reach the API.
@@ -93,9 +93,9 @@ export function useSessionRevalidation({
   }
 
   useEffect(() => {
-    setIsInitialCheckPending(Boolean(enabled && token && session));
+    setIsInitialCheckPending(Boolean(enabled && !session));
 
-    if (!enabled || !token || !session) {
+    if (!enabled) {
       return;
     }
 
@@ -103,7 +103,7 @@ export function useSessionRevalidation({
   }, [enabled, token]);
 
   useEffect(() => {
-    if (!enabled || !token || !session) {
+    if (!enabled) {
       return;
     }
 

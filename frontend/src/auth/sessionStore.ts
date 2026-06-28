@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { COOKIE_SESSION_TOKEN } from '../api/client';
 import type { SessionDto } from '../api/types';
 
 export type SessionNotice = {
@@ -85,7 +86,7 @@ function createMemorySessionStore(seedSession: SessionDto | null = null) {
       setNotice,
       setSession,
       setToken,
-      token: session?.token ?? null,
+      token: session ? session.token ?? COOKIE_SESSION_TOKEN : null,
     };
   }
 

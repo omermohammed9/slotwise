@@ -1,6 +1,7 @@
 import {
   CalendarDays,
   Clock3,
+  ClipboardList,
   LayoutDashboard,
   MonitorSmartphone,
   Settings,
@@ -14,9 +15,11 @@ import type { ReactElement } from 'react';
 import { BookingsPage } from '../features/admin/BookingsPage';
 import { CustomersPage } from '../features/admin/CustomersPage';
 import { DashboardPage } from '../features/admin/DashboardPage';
+import { AuditLogPage } from '../features/admin/AuditLogPage';
 import { ResourcesPage } from '../features/admin/ResourcesPage';
 import { SettingsPage } from '../features/admin/SettingsPage';
 import { TimelinePage } from '../features/admin/TimelinePage';
+import { UserAdminPage } from '../features/admin/UserAdminPage';
 import { CustomerPortalPage } from '../features/public/CustomerPortalPage';
 import { PublicBookingPage } from '../features/public/PublicBookingPage';
 import { WidgetPage } from '../features/public/WidgetPage';
@@ -27,17 +30,44 @@ export type AppRoute = {
   icon: LucideIcon;
   element: ReactElement;
   nav: 'admin' | 'surface';
+  roles?: Array<'owner' | 'admin' | 'staff'>;
   end?: boolean;
   navPath?: string;
 };
 
 export const appRoutes: readonly AppRoute[] = [
   {
+    path: '/owner',
+    label: 'Owner home',
+    icon: LayoutDashboard,
+    element: <DashboardPage />,
+    nav: 'admin',
+    roles: ['owner'],
+    end: true,
+  },
+  {
+    path: '/owner/users',
+    label: 'Users',
+    icon: UsersRound,
+    element: <UserAdminPage />,
+    nav: 'admin',
+    roles: ['owner'],
+  },
+  {
+    path: '/owner/audit',
+    label: 'Audit',
+    icon: ClipboardList,
+    element: <AuditLogPage />,
+    nav: 'admin',
+    roles: ['owner'],
+  },
+  {
     path: '/admin',
     label: 'Dashboard',
     icon: LayoutDashboard,
     element: <DashboardPage />,
     nav: 'admin',
+    roles: ['owner', 'admin'],
     end: true,
   },
   {
@@ -45,6 +75,7 @@ export const appRoutes: readonly AppRoute[] = [
     label: 'Bookings',
     icon: CalendarDays,
     nav: 'admin',
+    roles: ['owner', 'admin', 'staff'],
     element: <BookingsPage />,
   },
   {
@@ -52,6 +83,7 @@ export const appRoutes: readonly AppRoute[] = [
     label: 'Timeline',
     icon: Clock3,
     nav: 'admin',
+    roles: ['owner', 'admin', 'staff'],
     element: <TimelinePage />,
   },
   {
@@ -59,6 +91,7 @@ export const appRoutes: readonly AppRoute[] = [
     label: 'Customers',
     icon: UsersRound,
     nav: 'admin',
+    roles: ['owner', 'admin', 'staff'],
     element: <CustomersPage />,
   },
   {
@@ -66,6 +99,7 @@ export const appRoutes: readonly AppRoute[] = [
     label: 'Resources',
     icon: Wrench,
     nav: 'admin',
+    roles: ['owner', 'admin'],
     element: <ResourcesPage />,
   },
   {
@@ -73,7 +107,41 @@ export const appRoutes: readonly AppRoute[] = [
     label: 'Settings',
     icon: Settings,
     nav: 'admin',
+    roles: ['owner', 'admin'],
     element: <SettingsPage />,
+  },
+  {
+    path: '/admin/audit',
+    label: 'Audit',
+    icon: ClipboardList,
+    element: <AuditLogPage />,
+    nav: 'admin',
+    roles: ['owner', 'admin'],
+  },
+  {
+    path: '/staff',
+    label: 'Bookings',
+    icon: CalendarDays,
+    nav: 'admin',
+    element: <BookingsPage />,
+    roles: ['staff'],
+    end: true,
+  },
+  {
+    path: '/staff/timeline',
+    label: 'Timeline',
+    icon: Clock3,
+    nav: 'admin',
+    element: <TimelinePage />,
+    roles: ['staff'],
+  },
+  {
+    path: '/staff/customers',
+    label: 'Customers',
+    icon: UsersRound,
+    nav: 'admin',
+    element: <CustomersPage />,
+    roles: ['staff'],
   },
   {
     path: '/portal',

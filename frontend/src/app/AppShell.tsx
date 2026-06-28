@@ -1,4 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
+import { Moon, Sun } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router';
 import { deleteSession } from '../api/auth';
 import { useSessionStore } from '../auth/sessionStore';
@@ -19,6 +21,12 @@ type AppShellProps = {
 export function AppShell({ navItems, surfaceItems }: AppShellProps) {
   const { clearNotice, clearSession, session, token } = useSessionStore();
   const navigate = useNavigate();
+  const [theme, setTheme] = useState(() => window.localStorage.getItem('slotwise-theme') ?? 'light');
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    window.localStorage.setItem('slotwise-theme', theme);
+  }, [theme]);
 
   async function handleSignOut() {
     try {
@@ -87,6 +95,15 @@ export function AppShell({ navItems, surfaceItems }: AppShellProps) {
           </div>
           <button className="text-button" type="button" onClick={handleSignOut}>
             Sign out
+          </button>
+          <button
+            className="icon-button"
+            type="button"
+            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          >
+            {theme === 'dark' ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}
           </button>
         </div>
       </aside>

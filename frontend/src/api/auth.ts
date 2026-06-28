@@ -15,9 +15,36 @@ export type CustomerVerifyBody = {
   token: string;
 };
 
+export type OperatorInvitationAcceptBody = {
+  token: string;
+  password: string;
+};
+
+export type OperatorPasswordResetRequestBody = {
+  username: string;
+};
+
+export type OperatorPasswordResetCompleteBody = {
+  token: string;
+  password: string;
+};
+
 export type CustomerMagicLinkResult = {
   accepted?: boolean;
   requested?: boolean;
+};
+
+export type OperatorInvitationAcceptResult = {
+  accepted: true;
+};
+
+export type OperatorPasswordResetRequestResult = {
+  requested: true;
+  token?: string;
+};
+
+export type OperatorPasswordResetCompleteResult = {
+  reset: true;
 };
 
 export function createOperatorSession(body: OperatorLoginBody): Promise<ApiResponse<SessionDto>> {
@@ -27,17 +54,44 @@ export function createOperatorSession(body: OperatorLoginBody): Promise<ApiRespo
   });
 }
 
-export function getCurrentSession(token: string): Promise<ApiResponse<CurrentSessionDto>> {
+export function getCurrentSession(token?: string | null): Promise<ApiResponse<CurrentSessionDto>> {
   return apiRequest<CurrentSessionDto>('/auth/session', {
     method: 'GET',
     token,
   });
 }
 
-export function deleteSession(token: string): Promise<ApiResponse<{ revoked: boolean }>> {
+export function deleteSession(token?: string | null): Promise<ApiResponse<{ revoked: boolean }>> {
   return apiRequest<{ revoked: boolean }>('/auth/session', {
     method: 'DELETE',
     token,
+  });
+}
+
+export function acceptOperatorInvitation(
+  body: OperatorInvitationAcceptBody,
+): Promise<ApiResponse<OperatorInvitationAcceptResult>> {
+  return apiRequest<OperatorInvitationAcceptResult>('/auth/operators/invitations/accept', {
+    method: 'POST',
+    body,
+  });
+}
+
+export function requestOperatorPasswordReset(
+  body: OperatorPasswordResetRequestBody,
+): Promise<ApiResponse<OperatorPasswordResetRequestResult>> {
+  return apiRequest<OperatorPasswordResetRequestResult>('/auth/operators/password-reset', {
+    method: 'POST',
+    body,
+  });
+}
+
+export function completeOperatorPasswordReset(
+  body: OperatorPasswordResetCompleteBody,
+): Promise<ApiResponse<OperatorPasswordResetCompleteResult>> {
+  return apiRequest<OperatorPasswordResetCompleteResult>('/auth/operators/password-reset/complete', {
+    method: 'POST',
+    body,
   });
 }
 
