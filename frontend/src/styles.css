@@ -199,6 +199,31 @@ button:disabled {
   background: #ffffff;
 }
 
+.language-switcher {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 7px 8px;
+  align-items: center;
+  color: #33403d;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.language-switcher svg {
+  color: #0f766e;
+}
+
+.language-switcher select {
+  grid-column: 1 / -1;
+  min-height: 38px;
+  width: 100%;
+  border: 1px solid #cfd8d5;
+  border-radius: 8px;
+  padding: 0 10px;
+  background: #ffffff;
+  color: #14201d;
+}
+
 .account-id {
   overflow-wrap: anywhere;
   color: #273431;
@@ -762,6 +787,15 @@ h3 {
   border: 1px solid #d9ded8;
   border-radius: 8px;
   background: #ffffff;
+}
+
+.auth-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.auth-toolbar .language-switcher {
+  width: min(100%, 220px);
 }
 
 .auth-mark {
@@ -1548,6 +1582,15 @@ h3 {
   gap: 18px;
   padding: clamp(18px, 4vw, 44px);
   background: var(--color-bg);
+}
+
+.home-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.home-toolbar .language-switcher {
+  width: min(100%, 220px);
 }
 
 .home-hero {
@@ -2518,6 +2561,50 @@ h3 {
   }
 }
 
+:root[dir='rtl'] {
+  text-align: right;
+}
+
+:root[dir='rtl'] .sidebar {
+  border-right: 0;
+  border-left: 1px solid #d9ded8;
+}
+
+:root[dir='rtl'] .text-button,
+:root[dir='rtl'] .nav-item,
+:root[dir='rtl'] .surface-link,
+:root[dir='rtl'] .public-resource-option,
+:root[dir='rtl'] .widget-resource-option,
+:root[dir='rtl'] .portal-booking-row,
+:root[dir='rtl'] .suggestion-option {
+  text-align: right;
+}
+
+:root[dir='rtl'] .input-with-icon svg {
+  right: 12px;
+  left: auto;
+}
+
+:root[dir='rtl'] .input-with-icon input {
+  padding-right: 40px;
+  padding-left: 12px;
+}
+
+:root[dir='rtl'] .timeline-card,
+:root[dir='rtl'] .timeline-entry,
+:root[dir='rtl'] .history-entry {
+  border-right: 5px solid #0f766e;
+  border-left: 1px solid #e0e5e2;
+}
+
+:root[dir='rtl'] .detail-drawer {
+  right: auto;
+  left: 0;
+  border-right: 1px solid #cfd8d5;
+  border-left: 0;
+  box-shadow: 18px 0 44px rgb(22 32 29 / 0.16);
+}
+
 :root[data-theme='dark'] .sidebar,
 :root[data-theme='dark'] .auth-page,
 :root[data-theme='dark'] .main-surface,
@@ -2569,6 +2656,7 @@ h3 {
 
 :root[data-theme='dark'] .nav-item,
 :root[data-theme='dark'] .surface-link,
+:root[data-theme='dark'] .language-switcher,
 :root[data-theme='dark'] .form-field,
 :root[data-theme='dark'] .secondary-button,
 :root[data-theme='dark'] .icon-button,

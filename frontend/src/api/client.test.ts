@@ -1,8 +1,9 @@
 import { afterEach, expect, vi } from 'vitest';
-import { createOperatorSession } from './auth';
-import { getBookingSuggestions, listBookings, updateBookingStatus } from './bookings';
-import { apiRequest, buildApiPath, getApiBaseUrl } from './client';
-import { getPublicWidgetConfig } from './publicSurfaces';
+import { createOperatorSession } from '@/api/auth';
+import { getBookingSuggestions, listBookings, updateBookingStatus } from '@/api/bookings';
+import { listBusinesses } from '@/api/businesses';
+import { apiRequest, buildApiPath, getApiBaseUrl } from '@/api/client';
+import { getPublicWidgetConfig } from '@/api/publicSurfaces';
 
 test('uses the local backend as the default API target', () => {
   expect(getApiBaseUrl()).toBe('http://localhost:3000');
@@ -175,6 +176,7 @@ test('wraps operator auth and booking endpoint paths', async () => {
   vi.stubGlobal('fetch', fetchMock);
 
   await createOperatorSession({ username: 'owner', password: 'secret' });
+  await listBusinesses('operator-token', { businessId: 'business-1' });
   await listBookings({ page: 1, status: 'pending' }, 'operator-token');
   await updateBookingStatus('bk_101', 'approved', { reason: 'Reviewed' }, 'operator-token');
 
@@ -185,11 +187,16 @@ test('wraps operator auth and booking endpoint paths', async () => {
   );
   expect(fetchMock).toHaveBeenNthCalledWith(
     2,
-    'http://localhost:3000/bookings?page=1&status=pending',
+    'http://localhost:3000/businesses?businessId=business-1',
     expect.objectContaining({ method: 'GET' }),
   );
   expect(fetchMock).toHaveBeenNthCalledWith(
     3,
+    'http://localhost:3000/bookings?page=1&status=pending',
+    expect.objectContaining({ method: 'GET' }),
+  );
+  expect(fetchMock).toHaveBeenNthCalledWith(
+    4,
     'http://localhost:3000/bookings/bk_101/approve',
     expect.objectContaining({ method: 'PATCH' }),
   );

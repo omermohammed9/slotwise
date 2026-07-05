@@ -1,14 +1,16 @@
 import { Navigate, useLocation } from 'react-router';
-import { AppShell } from '../app/AppShell';
-import { adminNavItems, adminRoutes, surfaceNavItems } from '../app/routeMap';
-import { useSessionStore } from './sessionStore';
-import { useSessionRevalidation } from './useSessionRevalidation';
-import type { Role } from '../api/types';
+import { AppShell } from '@/app/AppShell';
+import { adminNavItems, adminRoutes, surfaceNavItems } from '@/app/routeMap';
+import { useSessionStore } from '@/auth/sessionStore';
+import { useSessionRevalidation } from '@/auth/useSessionRevalidation';
+import type { Role } from '@/api/types';
+import { useI18n } from '@/i18n/I18nProvider';
 
 type OperatorRole = Exclude<Role, 'customer'>;
 
 export function ProtectedAdminLayout() {
   const { clearSession, session, setNotice, setSession, token } = useSessionStore();
+  const { t } = useI18n();
   const location = useLocation();
   const pathRole = location.pathname.startsWith('/owner')
     ? 'owner'
@@ -21,7 +23,7 @@ export function ProtectedAdminLayout() {
   const { isInitialCheckPending } = useSessionRevalidation({
     clearSession,
     enabled: shouldRevalidateSession,
-    invalidMessage: 'Your operator session expired. Sign in again to keep working.',
+    invalidMessage: t('auth.sessionExpired'),
     session,
     setNotice,
     setSession,
@@ -33,9 +35,9 @@ export function ProtectedAdminLayout() {
       return (
         <main className="auth-page">
           <section className="auth-panel" aria-labelledby="operator-session-check-title">
-            <p className="eyebrow">Operator access</p>
-            <h1 id="operator-session-check-title">Checking your current session</h1>
-            <p className="lede">Slotwise is checking for an active browser session before loading the admin workspace.</p>
+            <p className="eyebrow">{t('auth.operatorAccess')}</p>
+            <h1 id="operator-session-check-title">{t('auth.sessionCheckTitle')}</h1>
+            <p className="lede">{t('auth.sessionCheckInitial')}</p>
           </section>
         </main>
       );
@@ -48,9 +50,9 @@ export function ProtectedAdminLayout() {
     return (
       <main className="auth-page">
         <section className="auth-panel" aria-labelledby="operator-session-check-title">
-          <p className="eyebrow">Operator access</p>
-          <h1 id="operator-session-check-title">Checking your current session</h1>
-          <p className="lede">Slotwise is revalidating this browser session before loading the admin workspace.</p>
+          <p className="eyebrow">{t('auth.operatorAccess')}</p>
+          <h1 id="operator-session-check-title">{t('auth.sessionCheckTitle')}</h1>
+          <p className="lede">{t('auth.sessionCheckRevalidate')}</p>
         </section>
       </main>
     );

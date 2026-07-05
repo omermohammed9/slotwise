@@ -1,5 +1,5 @@
-import { apiRequest } from './client';
-import type { ApiResponse, Role } from './types';
+import { apiRequest } from '@/api/client';
+import type { ApiResponse, Role } from '@/api/types';
 
 export type OperatorAccountDto = {
   id: string;

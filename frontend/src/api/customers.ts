@@ -1,5 +1,5 @@
-import { apiRequest } from './client';
-import type { ApiResponse, CustomerDto, QueryParams } from './types';
+import { apiRequest } from '@/api/client';
+import type { ApiResponse, CustomerDto, QueryParams } from '@/api/types';
 
 export type CreateCustomerBody = Partial<CustomerDto>;
 export type UpdateCustomerBody = Partial<Omit<CustomerDto, '_id'>>;

@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
-import { COOKIE_SESSION_TOKEN } from '../api/client';
-import type { SessionDto } from '../api/types';
+import { COOKIE_SESSION_TOKEN } from '@/api/client';
+import type { SessionDto } from '@/api/types';
 
 export type SessionNotice = {
   message: string;

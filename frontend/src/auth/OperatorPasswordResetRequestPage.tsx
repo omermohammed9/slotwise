@@ -1,9 +1,12 @@
 import { FormEvent, useState } from 'react';
 import { MailCheck, Send } from 'lucide-react';
 import { Link } from 'react-router';
-import { requestOperatorPasswordReset } from '../api/auth';
+import { requestOperatorPasswordReset } from '@/api/auth';
+import { LanguageSwitcher } from '@/i18n/LanguageSwitcher';
+import { useI18n } from '@/i18n/I18nProvider';
 
 export function OperatorPasswordResetRequestPage() {
+  const { t } = useI18n();
   const [username, setUsername] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -28,24 +31,27 @@ export function OperatorPasswordResetRequestPage() {
   return (
     <main className="auth-page">
       <section className="auth-panel" aria-labelledby="operator-reset-title">
+        <div className="auth-toolbar">
+          <LanguageSwitcher />
+        </div>
         <div className="auth-mark" aria-hidden="true">
           <MailCheck size={24} />
         </div>
-        <p className="eyebrow">Password reset</p>
-        <h1 id="operator-reset-title">Reset operator access</h1>
-        <p className="lede">Enter your operator username. If the account is active, Slotwise will send a reset token.</p>
+        <p className="eyebrow">{t('auth.passwordReset')}</p>
+        <h1 id="operator-reset-title">{t('auth.resetRequestTitle')}</h1>
+        <p className="lede">{t('auth.resetRequestLede')}</p>
 
         {requested ? (
           <div className="auth-result" role="status">
-            <p className="form-success">If that operator account is active, a reset message is on the way.</p>
+            <p className="form-success">{t('auth.resetRequested')}</p>
             <Link className="secondary-button auth-submit" to="/operators/password-reset/complete">
-              Enter reset token
+              {t('auth.enterResetToken')}
             </Link>
           </div>
         ) : (
           <form className="auth-form" onSubmit={handleSubmit}>
             <label className="form-field">
-              <span>Username</span>
+              <span>{t('auth.username')}</span>
               <input
                 autoComplete="username"
                 name="username"
@@ -64,7 +70,7 @@ export function OperatorPasswordResetRequestPage() {
 
             <button className="primary-button auth-submit" disabled={isSubmitting} type="submit">
               <Send size={17} aria-hidden="true" />
-              {isSubmitting ? 'Sending' : 'Send reset token'}
+              {isSubmitting ? t('auth.sending') : t('auth.sendResetToken')}
             </button>
           </form>
         )}

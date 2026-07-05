@@ -1,5 +1,5 @@
-import { apiRequest } from './client';
-import type { ApiResponse, PublicBookingPageConfigDto, PublicWidgetConfigDto } from './types';
+import { apiRequest } from '@/api/client';
+import type { ApiResponse, PublicBookingPageConfigDto, PublicWidgetConfigDto } from '@/api/types';
 
 export function getPublicBookingPageConfig(slug: string): Promise<ApiResponse<PublicBookingPageConfigDto>> {
   return apiRequest<PublicBookingPageConfigDto>(`/businesses/public/${slug}/booking-page`, {

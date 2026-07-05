@@ -1,5 +1,5 @@
-import { apiRequest, buildApiPath, COOKIE_SESSION_TOKEN, getApiBaseUrl } from './client';
-import type { ApiMeta, ApiResponse, QueryParams, Role } from './types';
+import { apiRequest, buildApiPath, COOKIE_SESSION_TOKEN, getApiBaseUrl } from '@/api/client';
+import type { ApiMeta, ApiResponse, QueryParams, Role } from '@/api/types';
 
 export type AuditLogDto = {
   _id: string;

@@ -1,8 +1,10 @@
 import { FormEvent, useState } from 'react';
 import { LockKeyhole, ShieldCheck } from 'lucide-react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router';
-import { createOperatorSession } from '../api/auth';
-import { useSessionStore } from './sessionStore';
+import { createOperatorSession } from '@/api/auth';
+import { LanguageSwitcher } from '@/i18n/LanguageSwitcher';
+import { useI18n } from '@/i18n/I18nProvider';
+import { useSessionStore } from '@/auth/sessionStore';
 
 type LoginLocationState = {
   from?: {
@@ -12,6 +14,7 @@ type LoginLocationState = {
 
 export function LoginPage() {
   const { clearNotice, notice, session, setSession } = useSessionStore();
+  const { t } = useI18n();
   const location = useLocation();
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
@@ -36,7 +39,7 @@ export function LoginPage() {
       username,
     }).catch((requestError: unknown) => ({
       error: {
-        message: requestError instanceof Error ? requestError.message : 'Unable to reach Slotwise.',
+        message: requestError instanceof Error ? requestError.message : t('auth.unreachable'),
       },
       success: false as const,
     }));
@@ -54,16 +57,19 @@ export function LoginPage() {
   return (
     <main className="auth-page">
       <section className="auth-panel" aria-labelledby="operator-login-title">
+        <div className="auth-toolbar">
+          <LanguageSwitcher />
+        </div>
         <div className="auth-mark" aria-hidden="true">
           <ShieldCheck size={24} />
         </div>
-        <p className="eyebrow">Operator access</p>
-        <h1 id="operator-login-title">Sign in to Slotwise</h1>
-        <p className="lede">Use your owner, admin, or staff credentials. Slotwise keeps your signed-in session in a secure browser cookie.</p>
+        <p className="eyebrow">{t('auth.operatorAccess')}</p>
+        <h1 id="operator-login-title">{t('auth.signInTitle')}</h1>
+        <p className="lede">{t('auth.signInLede')}</p>
 
         <form className="auth-form" onSubmit={handleSubmit}>
           <label className="form-field">
-            <span>Username</span>
+            <span>{t('auth.username')}</span>
             <input
               autoComplete="username"
               name="username"
@@ -75,7 +81,7 @@ export function LoginPage() {
           </label>
 
           <label className="form-field">
-            <span>Password</span>
+            <span>{t('auth.password')}</span>
             <input
               autoComplete="current-password"
               name="password"
@@ -99,10 +105,10 @@ export function LoginPage() {
 
           <button className="primary-button auth-submit" disabled={isSubmitting} type="submit">
             <LockKeyhole size={17} aria-hidden="true" />
-            {isSubmitting ? 'Signing in' : 'Sign in'}
+            {isSubmitting ? t('auth.signingIn') : t('home.signIn')}
           </button>
           <Link className="auth-inline-link" to="/operators/password-reset">
-            Reset operator password
+            {t('auth.resetOperatorPassword')}
           </Link>
         </form>
       </section>

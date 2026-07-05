@@ -1,38 +1,42 @@
 import { ArrowRight, CalendarDays, LogIn, UserRoundCheck } from 'lucide-react';
 import { Link } from 'react-router';
+import { LanguageSwitcher } from '@/i18n/LanguageSwitcher';
+import { useI18n } from '@/i18n/I18nProvider';
 
 const knownBookingSlugs = ['demo-business'];
 
 export function HomePage() {
+  const { t } = useI18n();
+
   return (
     <main className="home-page">
+      <div className="home-toolbar">
+        <LanguageSwitcher />
+      </div>
       <section className="home-hero" aria-labelledby="home-title">
         <div className="home-brand-mark" aria-hidden="true">
           S
         </div>
-        <p className="eyebrow">Slotwise</p>
-        <h1 id="home-title">Slotwise booking operations</h1>
-        <p className="lede">
-          A production entry point for operators and customers, with owner setup kept to the CLI and customer access kept
-          through portal magic links.
-        </p>
+        <p className="eyebrow">{t('home.eyebrow')}</p>
+        <h1 id="home-title">{t('home.title')}</h1>
+        <p className="lede">{t('home.lede')}</p>
         <div className="home-actions">
           <Link className="primary-button" to="/login">
             <LogIn size={17} aria-hidden="true" />
-            Sign in
+            {t('home.signIn')}
           </Link>
           <Link className="secondary-button" to="/portal">
             <UserRoundCheck size={17} aria-hidden="true" />
-            Customer portal
+            {t('home.customerPortal')}
           </Link>
         </div>
       </section>
 
       <section className="home-band" aria-labelledby="booking-guidance-title">
         <div>
-          <p className="eyebrow">Public booking</p>
-          <h2 id="booking-guidance-title">Book through a business link</h2>
-          <p className="body-copy">Use a known business slug when one has been shared with you.</p>
+          <p className="eyebrow">{t('home.publicBooking')}</p>
+          <h2 id="booking-guidance-title">{t('home.bookingTitle')}</h2>
+          <p className="body-copy">{t('home.bookingCopy')}</p>
         </div>
         <div className="home-slug-list">
           {knownBookingSlugs.map((slug) => (

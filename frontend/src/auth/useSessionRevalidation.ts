@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { getCurrentSession } from '../api/auth';
-import type { SessionDto } from '../api/types';
-import type { SessionNotice } from './sessionStore';
+import { getCurrentSession } from '@/api/auth';
+import type { SessionDto } from '@/api/types';
+import type { SessionNotice } from '@/auth/sessionStore';
 
 type UseSessionRevalidationOptions = {
   enabled?: boolean;

@@ -1,4 +1,4 @@
-import type { ApiResponse, QueryParams } from './types';
+import type { ApiResponse, QueryParams } from '@/api/types';
 
 const DEFAULT_API_BASE_URL = 'http://localhost:3000';
 
@@ -9,7 +9,7 @@ export type ApiRequestOptions = Omit<RequestInit, 'body'> & {
 };
 
 export const COOKIE_SESSION_TOKEN = '__slotwise_cookie_session__';
-const CSRF_COOKIE_NAME = 'slotwise_csrf';
+const CSRF_COOKIE_NAME = import.meta.env.VITE_SLOTWISE_CSRF_COOKIE_NAME ?? 'slotwise_csrf';
 const CSRF_HEADER_NAME = 'X-CSRF-Token';
 const unsafeMethods = new Set(['DELETE', 'PATCH', 'POST', 'PUT']);
 

@@ -1,4 +1,4 @@
-import { apiRequest } from './client';
+import { apiRequest } from '@/api/client';
 import type {
   ApiResponse,
   BookingDto,
@@ -12,7 +12,7 @@ import type {
   DashboardInsightsDto,
   RescheduleBookingBody,
   TimelineDayDto,
-} from './types';
+} from '@/api/types';
 
 export type CreateBookingBody = Partial<BookingDto>;
 export type UpdateBookingBody = Partial<Omit<BookingDto, '_id' | 'createdAt' | 'status' | 'updatedAt'>>;

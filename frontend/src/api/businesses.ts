@@ -1,12 +1,13 @@
-import { apiRequest } from './client';
-import type { ApiResponse, BusinessProfileDto, BusinessTemplateDto } from './types';
+import { apiRequest } from '@/api/client';
+import type { ApiResponse, BusinessProfileDto, BusinessTemplateDto, QueryParams } from '@/api/types';
 
 export type CreateBusinessProfileBody = Partial<BusinessProfileDto>;
 export type UpdateBusinessProfileBody = Partial<Omit<BusinessProfileDto, '_id' | 'createdAt' | 'updatedAt'>>;
 
-export function listBusinesses(token: string): Promise<ApiResponse<BusinessProfileDto[]>> {
+export function listBusinesses(token: string, query?: QueryParams): Promise<ApiResponse<BusinessProfileDto[]>> {
   return apiRequest<BusinessProfileDto[]>('/businesses', {
     method: 'GET',
+    query,
     token,
   });
 }

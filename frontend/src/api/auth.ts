@@ -1,5 +1,5 @@
-import { apiRequest } from './client';
-import type { ApiResponse, CurrentSessionDto, SessionDto } from './types';
+import { apiRequest } from '@/api/client';
+import type { ApiResponse, CurrentSessionDto, SessionDto } from '@/api/types';
 
 export type OperatorLoginBody = {
   username: string;

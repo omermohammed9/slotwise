@@ -1,9 +1,12 @@
 import { FormEvent, useMemo, useState } from 'react';
 import { CheckCircle2, KeyRound } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router';
-import { completeOperatorPasswordReset } from '../api/auth';
+import { completeOperatorPasswordReset } from '@/api/auth';
+import { LanguageSwitcher } from '@/i18n/LanguageSwitcher';
+import { useI18n } from '@/i18n/I18nProvider';
 
 export function OperatorPasswordResetCompletePage() {
+  const { t } = useI18n();
   const [searchParams] = useSearchParams();
   const initialToken = useMemo(() => searchParams.get('token') ?? '', [searchParams]);
   const [token, setToken] = useState(initialToken);
@@ -31,24 +34,27 @@ export function OperatorPasswordResetCompletePage() {
   return (
     <main className="auth-page">
       <section className="auth-panel" aria-labelledby="operator-reset-complete-title">
+        <div className="auth-toolbar">
+          <LanguageSwitcher />
+        </div>
         <div className="auth-mark" aria-hidden="true">
           {completed ? <CheckCircle2 size={24} /> : <KeyRound size={24} />}
         </div>
-        <p className="eyebrow">Password reset</p>
-        <h1 id="operator-reset-complete-title">Create a new password</h1>
-        <p className="lede">Use the reset token from your operator password reset message.</p>
+        <p className="eyebrow">{t('auth.passwordReset')}</p>
+        <h1 id="operator-reset-complete-title">{t('auth.resetCompleteTitle')}</h1>
+        <p className="lede">{t('auth.resetCompleteLede')}</p>
 
         {completed ? (
           <div className="auth-result" role="status">
-            <p className="form-success">Password reset complete. You can now sign in.</p>
+            <p className="form-success">{t('auth.passwordResetComplete')}</p>
             <Link className="primary-button auth-submit" to="/login">
-              Sign in
+              {t('home.signIn')}
             </Link>
           </div>
         ) : (
           <form className="auth-form" onSubmit={handleSubmit}>
             <label className="form-field">
-              <span>Reset token</span>
+              <span>{t('auth.resetToken')}</span>
               <input
                 autoComplete="one-time-code"
                 name="token"
@@ -60,7 +66,7 @@ export function OperatorPasswordResetCompletePage() {
             </label>
 
             <label className="form-field">
-              <span>New password</span>
+              <span>{t('auth.newPassword')}</span>
               <input
                 autoComplete="new-password"
                 minLength={8}
@@ -80,7 +86,7 @@ export function OperatorPasswordResetCompletePage() {
 
             <button className="primary-button auth-submit" disabled={isSubmitting} type="submit">
               <KeyRound size={17} aria-hidden="true" />
-              {isSubmitting ? 'Saving' : 'Reset password'}
+              {isSubmitting ? t('auth.saving') : t('auth.resetPassword')}
             </button>
           </form>
         )}

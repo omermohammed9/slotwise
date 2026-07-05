@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { BookingStatus } from '../api/types';
+import type { BookingStatus } from '@/api/types';
 
 type StatusChipProps = {
   children: ReactNode;

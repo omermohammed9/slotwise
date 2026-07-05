@@ -1,13 +1,13 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
-import { LoginPage } from '../auth/LoginPage';
-import { ForbiddenPage } from '../auth/ForbiddenPage';
-import { OperatorInvitationPage } from '../auth/OperatorInvitationPage';
-import { OperatorPasswordResetCompletePage } from '../auth/OperatorPasswordResetCompletePage';
-import { OperatorPasswordResetRequestPage } from '../auth/OperatorPasswordResetRequestPage';
-import { ProtectedAdminLayout } from '../auth/ProtectedAdminLayout';
-import { HomePage } from './HomePage';
-import { useSessionStore } from '../auth/sessionStore';
-import { adminRoutes, surfaceRoutes } from './routeMap';
+import { LoginPage } from '@/auth/LoginPage';
+import { ForbiddenPage } from '@/auth/ForbiddenPage';
+import { OperatorInvitationPage } from '@/auth/OperatorInvitationPage';
+import { OperatorPasswordResetCompletePage } from '@/auth/OperatorPasswordResetCompletePage';
+import { OperatorPasswordResetRequestPage } from '@/auth/OperatorPasswordResetRequestPage';
+import { ProtectedAdminLayout } from '@/auth/ProtectedAdminLayout';
+import { HomePage } from '@/app/HomePage';
+import { useSessionStore } from '@/auth/sessionStore';
+import { adminRoutes, surfaceRoutes } from '@/app/routeMap';
 
 export function App() {
   return (

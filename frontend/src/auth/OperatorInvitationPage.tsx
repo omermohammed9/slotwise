@@ -1,9 +1,12 @@
 import { FormEvent, useMemo, useState } from 'react';
 import { CheckCircle2, KeyRound } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router';
-import { acceptOperatorInvitation } from '../api/auth';
+import { acceptOperatorInvitation } from '@/api/auth';
+import { LanguageSwitcher } from '@/i18n/LanguageSwitcher';
+import { useI18n } from '@/i18n/I18nProvider';
 
 export function OperatorInvitationPage() {
+  const { t } = useI18n();
   const [searchParams] = useSearchParams();
   const initialToken = useMemo(() => searchParams.get('token') ?? '', [searchParams]);
   const [token, setToken] = useState(initialToken);
@@ -31,24 +34,27 @@ export function OperatorInvitationPage() {
   return (
     <main className="auth-page">
       <section className="auth-panel" aria-labelledby="operator-invitation-title">
+        <div className="auth-toolbar">
+          <LanguageSwitcher />
+        </div>
         <div className="auth-mark" aria-hidden="true">
           {accepted ? <CheckCircle2 size={24} /> : <KeyRound size={24} />}
         </div>
-        <p className="eyebrow">Operator invitation</p>
-        <h1 id="operator-invitation-title">Set your Slotwise password</h1>
-        <p className="lede">Accept your owner-issued invitation and then sign in with your operator username.</p>
+        <p className="eyebrow">{t('auth.operatorInvitation')}</p>
+        <h1 id="operator-invitation-title">{t('auth.invitationTitle')}</h1>
+        <p className="lede">{t('auth.invitationLede')}</p>
 
         {accepted ? (
           <div className="auth-result" role="status">
-            <p className="form-success">Invitation accepted. You can now sign in.</p>
+            <p className="form-success">{t('auth.invitationAccepted')}</p>
             <Link className="primary-button auth-submit" to="/login">
-              Sign in
+              {t('home.signIn')}
             </Link>
           </div>
         ) : (
           <form className="auth-form" onSubmit={handleSubmit}>
             <label className="form-field">
-              <span>Invitation token</span>
+              <span>{t('auth.invitationToken')}</span>
               <input
                 autoComplete="one-time-code"
                 name="token"
@@ -60,7 +66,7 @@ export function OperatorInvitationPage() {
             </label>
 
             <label className="form-field">
-              <span>New password</span>
+              <span>{t('auth.newPassword')}</span>
               <input
                 autoComplete="new-password"
                 minLength={8}
@@ -80,7 +86,7 @@ export function OperatorInvitationPage() {
 
             <button className="primary-button auth-submit" disabled={isSubmitting} type="submit">
               <KeyRound size={17} aria-hidden="true" />
-              {isSubmitting ? 'Accepting' : 'Accept invitation'}
+              {isSubmitting ? t('auth.accepting') : t('auth.acceptInvitation')}
             </button>
           </form>
         )}

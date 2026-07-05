@@ -1,5 +1,5 @@
-import { apiRequest } from './client';
-import type { ApiResponse, QueryParams, ServiceResourceDto } from './types';
+import { apiRequest } from '@/api/client';
+import type { ApiResponse, QueryParams, ServiceResourceDto } from '@/api/types';
 
 export type CreateServiceResourceBody = Partial<ServiceResourceDto>;
 export type UpdateServiceResourceBody = Partial<Omit<ServiceResourceDto, '_id'>>;
