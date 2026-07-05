@@ -13,12 +13,12 @@ import {
   Wrench,
   X,
 } from 'lucide-react';
-import { listBusinesses } from '../../api/businesses';
-import { createServiceResource, getServiceResource, listServiceResources, updateServiceResource } from '../../api/resources';
-import type { BusinessProfileDto, Role, ServiceResourceDto } from '../../api/types';
-import { useSessionStore } from '../../auth/sessionStore';
-import { InlineNotice, LoadingState } from '../../components/AdminState';
-import { EmptyState } from '../../components/EmptyState';
+import { listBusinesses } from '@/api/businesses';
+import { createServiceResource, getServiceResource, listServiceResources, updateServiceResource } from '@/api/resources';
+import type { BusinessProfileDto, Role, ServiceResourceDto } from '@/api/types';
+import { useSessionStore } from '@/auth/sessionStore';
+import { InlineNotice, LoadingState } from '@/components/AdminState';
+import { EmptyState } from '@/components/EmptyState';
 import {
   createBlackoutDateDrafts,
   createEmptyBlackoutDateDraft,
@@ -31,7 +31,7 @@ import {
   validateWorkingHours,
   type BlackoutDateDraft,
   type WorkingHourDraft,
-} from './scheduleEditors';
+} from '@/features/admin/scheduleEditors';
 
 const resourceTypes = ['service', 'staff', 'room', 'table', 'equipment', 'appointment', 'event'];
 const supportedRoleOptions: Role[] = ['owner', 'admin', 'staff'];
@@ -142,9 +142,9 @@ function createEditFormState(resource?: ServiceResourceDto): ResourceEditFormSta
 }
 
 export function ResourcesPage() {
-  const { token } = useSessionStore();
+  const { session, token } = useSessionStore();
   const queryClient = useQueryClient();
-  const [businessId, setBusinessId] = useState('');
+  const [businessId, setBusinessId] = useState(session?.role !== 'owner' && session?.businessId ? session.businessId : '');
   const [resourceType, setResourceType] = useState('');
   const [showInactive, setShowInactive] = useState(false);
   const [selectedResourceId, setSelectedResourceId] = useState<string | null>(null);
@@ -154,7 +154,10 @@ export function ResourcesPage() {
   const businessesQuery = useQuery({
     enabled: Boolean(token),
     queryFn: async () => {
-      const response = await listBusinesses(token ?? '');
+      const response = await listBusinesses(
+        token ?? '',
+        session?.role !== 'owner' && session?.businessId ? { businessId: session.businessId } : undefined,
+      );
 
       if (!response.success) {
         throw new Error(response.error.message);
@@ -162,10 +165,16 @@ export function ResourcesPage() {
 
       return response.data;
     },
-    queryKey: ['businesses', token],
+    queryKey: ['businesses', session?.businessId, session?.role, token],
   });
 
   const businesses = businessesQuery.data ?? [];
+
+  useEffect(() => {
+    if (session?.role !== 'owner' && session?.businessId && businessId !== session.businessId) {
+      setBusinessId(session.businessId);
+    }
+  }, [businessId, session?.businessId, session?.role]);
 
   useEffect(() => {
     if (!createForm.businessId && businessId) {

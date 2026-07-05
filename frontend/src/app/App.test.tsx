@@ -2,8 +2,9 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, vi } from 'vitest';
-import { customerSessionStore, sessionStore } from '../auth/sessionStore';
-import { App } from './App';
+import { customerSessionStore, sessionStore } from '@/auth/sessionStore';
+import { I18nProvider } from '@/i18n/I18nProvider';
+import { App } from '@/app/App';
 
 const localStorageMock = (() => {
   let store = new Map<string, string>();
@@ -46,7 +47,9 @@ function renderApp() {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <App />
+      <I18nProvider>
+        <App />
+      </I18nProvider>
     </QueryClientProvider>,
   );
 }
@@ -174,6 +177,29 @@ test('renders query-backed dashboard analytics', async () => {
     'http://localhost:3000/bookings/insights/cancellation-no-show',
     expect.objectContaining({ method: 'GET' }),
   );
+});
+
+test('switches dashboard analytics copy to Arabic', async () => {
+  const user = userEvent.setup();
+  const fetchMock = vi.fn((url: string) => Promise.resolve({
+    json: () => Promise.resolve(
+      url.includes('/bookings/insights/cancellation-no-show')
+        ? cancellationInsightsResponse
+        : dashboardInsightsResponse,
+    ),
+    status: 200,
+  }));
+  vi.stubGlobal('fetch', fetchMock);
+  signInForTest();
+  window.history.pushState({}, '', '/admin');
+  renderApp();
+
+  await user.selectOptions(screen.getByLabelText(/language/i), 'ar');
+
+  expect(screen.getByRole('heading', { name: /نظرة سريعة على اليوم/i })).toBeInTheDocument();
+  expect(await screen.findByText(/إجمالي الحجوزات/i)).toBeInTheDocument();
+  expect(screen.getByText(/قيد الانتظار/i)).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: /قمع الحجز/i })).toBeInTheDocument();
 });
 
 test('renders and saves business settings', async () => {
@@ -318,6 +344,72 @@ test('renders and saves business settings', async () => {
     expect.arrayContaining([{ dayOfWeek: 1, startTime: '10:00', endTime: '18:00', closed: false }]),
   );
   expect(await screen.findByText(/settings saved/i)).toBeInTheDocument();
+});
+
+test('hides business creation controls for non-owner settings sessions', async () => {
+  const fetchMock = vi.fn((url: string) => {
+    if (url.endsWith('/businesses/templates')) {
+      return Promise.resolve({
+        json: () =>
+          Promise.resolve({
+            success: true,
+            data: [
+              {
+                key: 'clinic',
+                label: 'Clinic Appointments',
+                description: 'Structured appointment slots.',
+              },
+            ],
+          }),
+        status: 200,
+      });
+    }
+
+    return Promise.resolve({
+      json: () =>
+        Promise.resolve({
+          success: true,
+          data: [
+            {
+              _id: 'biz_101',
+              availabilityRules: { slotIntervalMinutes: 30 },
+              blackoutDates: [],
+              businessType: 'clinic',
+              contactEmail: 'hello@example.com',
+              contactPhone: '+15550001111',
+              name: 'North Clinic',
+              publicPageSettings: { enabled: true },
+              slug: 'north-clinic',
+              status: 'active',
+              templateKey: 'clinic',
+              timezone: 'America/New_York',
+              widgetSettings: { enabled: true },
+              workingHours: [{ dayOfWeek: 1, startTime: '09:00', endTime: '17:00' }],
+            },
+          ],
+        }),
+      status: 200,
+    });
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  sessionStore.setSession({
+    actorId: 'admin-1',
+    businessId: 'biz_101',
+    role: 'admin',
+    token: 'admin-token',
+  });
+  window.history.pushState({}, '', '/admin/settings');
+
+  renderApp();
+
+  expect(await screen.findByRole('heading', { name: /^settings$/i })).toBeInTheDocument();
+  expect(await screen.findByDisplayValue('North Clinic')).toBeInTheDocument();
+  expect(screen.queryByRole('heading', { name: /create business/i })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /create business/i })).not.toBeInTheDocument();
+  expect(fetchMock).toHaveBeenCalledWith(
+    'http://localhost:3000/businesses?businessId=biz_101',
+    expect.objectContaining({ method: 'GET' }),
+  );
 });
 
 test('renders customer management with create, edit, and booking history flows', async () => {
@@ -513,6 +605,67 @@ test('renders customer management with create, edit, and booking history flows',
     'http://localhost:3000/bookings?customerId=cus_101&email=maya%40example.com&phone=%2B15551234567&limit=5&sortBy=startDate&sortOrder=desc',
     expect.objectContaining({ method: 'GET' }),
   );
+});
+
+test('switches customer management copy to Arabic', async () => {
+  const user = userEvent.setup();
+  const fetchMock = vi.fn((url: string) => {
+    if (url.endsWith('/businesses')) {
+      return Promise.resolve({
+        json: () =>
+          Promise.resolve({
+            success: true,
+            data: [
+              {
+                _id: 'biz_101',
+                businessType: 'clinic',
+                name: 'North Clinic',
+                slug: 'north-clinic',
+                timezone: 'America/New_York',
+              },
+            ],
+          }),
+        status: 200,
+      });
+    }
+
+    if (url.includes('/customers')) {
+      return Promise.resolve({
+        json: () =>
+          Promise.resolve({
+            success: true,
+            data: [
+              {
+                _id: 'cus_101',
+                businessId: 'biz_101',
+                firstName: 'Maya',
+                lastName: 'Carter',
+                email: 'maya@example.com',
+                phone: '+15551234567',
+                totalBookings: 3,
+              },
+            ],
+          }),
+        status: 200,
+      });
+    }
+
+    throw new Error(`Unexpected request: ${url}`);
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  signInForTest();
+  window.history.pushState({}, '', '/admin/customers');
+
+  renderApp();
+
+  await user.selectOptions(screen.getByLabelText(/language/i), 'ar');
+
+  expect(await screen.findByRole('heading', { name: /^العملاء$/i })).toBeInTheDocument();
+  expect(screen.getAllByLabelText(/الاسم/i).length).toBeGreaterThan(0);
+  expect(screen.getByRole('heading', { name: /عميل جديد/i })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /إنشاء عميل/i })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: /قائمة العملاء/i })).toBeInTheDocument();
+  expect(await screen.findByText(/Maya Carter/i)).toBeInTheDocument();
 });
 
 test('renders resources with create and edit-drawer override flows', async () => {
@@ -797,6 +950,64 @@ test('renders the backend timeline feed with filters', async () => {
   });
 });
 
+test('switches timeline copy to Arabic', async () => {
+  const user = userEvent.setup();
+  const fetchMock = vi.fn().mockResolvedValue({
+    json: () =>
+      Promise.resolve({
+        success: true,
+        data: [
+          {
+            date: '2030-05-03',
+            summary: {
+              totalBookings: 1,
+              pendingBookings: 1,
+              approvedBookings: 0,
+              completedBookings: 0,
+              cancelledBookings: 0,
+              noShowBookings: 0,
+              highRiskBookings: 1,
+            },
+            bookings: [
+              {
+                id: 'bk_t1',
+                customerName: 'Maya Carter',
+                startDate: '2030-05-03T00:00:00.000Z',
+                endDate: '2030-05-03T00:00:00.000Z',
+                timein: '2030-05-03T09:00:00.000Z',
+                timeout: '2030-05-03T10:00:00.000Z',
+                status: 'pending',
+                serviceResourceId: 'room_2',
+                durationMinutes: 60,
+                isRescheduled: true,
+                conflictRisk: {
+                  evaluatedAt: '2030-05-02T00:00:00.000Z',
+                  level: 'high',
+                  score: 82,
+                  signals: ['tight turnaround'],
+                  summary: 'One risk signal',
+                },
+              },
+            ],
+          },
+        ],
+      }),
+    status: 200,
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  signInForTest();
+  window.history.pushState({}, '', '/admin/timeline');
+  renderApp();
+
+  await user.selectOptions(screen.getByLabelText(/language/i), 'ar');
+
+  expect(screen.getByRole('heading', { level: 1, name: /الخط الزمني/i })).toBeInTheDocument();
+  expect(await screen.findByText(/حجوزات عالية المخاطر/i)).toBeInTheDocument();
+  expect((await screen.findAllByText(/قيد الانتظار/i)).length).toBeGreaterThan(0);
+  expect(screen.getByText(/مرتفع مخاطر/i)).toBeInTheDocument();
+  expect(screen.getByText(/تمت إعادة الجدولة/i)).toBeInTheDocument();
+});
+
 test('renders backend bookings with filters and pagination controls', async () => {
   const user = userEvent.setup();
   const listResponse = {
@@ -874,6 +1085,56 @@ test('renders backend bookings with filters and pagination controls', async () =
       expect.objectContaining({ method: 'GET' }),
     );
   });
+});
+
+test('switches bookings workspace copy to Arabic', async () => {
+  const user = userEvent.setup();
+  const fetchMock = vi.fn(() =>
+    Promise.resolve({
+      json: () =>
+        Promise.resolve({
+          success: true,
+          data: [
+            {
+              _id: 'bk_201',
+              fName: 'Maya',
+              lName: 'Carter',
+              email: 'maya@example.com',
+              phone: '+15551234567',
+              startDate: '2030-01-02T00:00:00.000Z',
+              endDate: '2030-01-02T00:00:00.000Z',
+              timein: '2030-01-02T09:00:00.000Z',
+              timeout: '2030-01-02T10:00:00.000Z',
+              status: 'pending',
+              conflictRisk: {
+                evaluatedAt: '2030-01-01T00:00:00.000Z',
+                level: 'high',
+                score: 85,
+                signals: ['overlap'],
+                summary: 'Possible overlap',
+              },
+            },
+          ],
+          meta: {
+            pagination: { page: 1, limit: 10, total: 11, totalPages: 2 },
+            sort: { sortBy: 'createdAt', sortOrder: 'desc' },
+          },
+        }),
+      status: 200,
+    }),
+  );
+  vi.stubGlobal('fetch', fetchMock);
+  signInForTest();
+  window.history.pushState({}, '', '/admin/bookings');
+
+  renderApp();
+
+  await user.selectOptions(screen.getByLabelText(/language/i), 'ar');
+
+  expect(screen.getByRole('heading', { level: 1, name: /الحجوزات/i })).toBeInTheDocument();
+  expect((await screen.findAllByText(/قيد الانتظار/i)).length).toBeGreaterThan(0);
+  expect(screen.getByText(/مرتفع مخاطر/i)).toBeInTheDocument();
+  expect(screen.getByLabelText(/الحالة/i)).toBeInTheDocument();
 });
 
 test('hydrates bookings filters and pagination from URL search params', async () => {
@@ -2319,6 +2580,30 @@ test('renders the production homepage entry points without self-signup', () => {
   expect(screen.queryByRole('link', { name: /sign up/i })).not.toBeInTheDocument();
 });
 
+test('switches homepage language and document direction', async () => {
+  const user = userEvent.setup();
+  renderApp();
+
+  await user.selectOptions(screen.getByLabelText(/language/i), 'ar');
+
+  expect(screen.getByRole('heading', { name: /عمليات الحجز في Slotwise/i })).toBeInTheDocument();
+  expect(document.documentElement).toHaveAttribute('lang', 'ar');
+  expect(document.documentElement).toHaveAttribute('dir', 'rtl');
+  expect(window.localStorage.getItem('slotwise-locale')).toBe('ar');
+});
+
+test('switches operator login copy to Arabic', async () => {
+  const user = userEvent.setup();
+  window.history.pushState({}, '', '/login');
+  renderApp();
+
+  await user.selectOptions(screen.getByLabelText(/language/i), 'ar');
+
+  expect(screen.getByRole('heading', { name: /تسجيل الدخول إلى Slotwise/i })).toBeInTheDocument();
+  expect(screen.getByLabelText(/اسم المستخدم/i)).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /تسجيل الدخول/i })).toBeInTheDocument();
+});
+
 test('accepts an operator invitation token', async () => {
   const user = userEvent.setup();
   const fetchMock = vi.fn().mockResolvedValue({
@@ -2487,6 +2772,7 @@ test('audit log page applies filters deliberately and handles empty results', as
 
   vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:audit-export');
   vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
   await user.click(screen.getByRole('button', { name: /export csv/i }));
 
   await waitFor(() => {

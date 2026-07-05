@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { format, parseISO } from 'date-fns';
+import { parseISO } from 'date-fns';
 import {
   AlertTriangle,
   CalendarDays,
@@ -12,14 +12,16 @@ import {
   Search,
   UserRound,
 } from 'lucide-react';
-import { listBookings } from '../../api/bookings';
-import { listBusinesses } from '../../api/businesses';
-import { createCustomer, getCustomer, listCustomers, updateCustomer } from '../../api/customers';
-import type { BookingDto, BookingListQuery, BusinessProfileDto, CustomerDto, QueryParams } from '../../api/types';
-import { useSessionStore } from '../../auth/sessionStore';
-import { InlineNotice, LoadingState } from '../../components/AdminState';
-import { EmptyState } from '../../components/EmptyState';
-import { StatusChip } from '../../components/StatusChip';
+import { listBookings } from '@/api/bookings';
+import { listBusinesses } from '@/api/businesses';
+import { createCustomer, getCustomer, listCustomers, updateCustomer } from '@/api/customers';
+import type { BookingDto, BookingListQuery, BookingStatus, BusinessProfileDto, CustomerDto, QueryParams } from '@/api/types';
+import { useSessionStore } from '@/auth/sessionStore';
+import { InlineNotice, LoadingState } from '@/components/AdminState';
+import { EmptyState } from '@/components/EmptyState';
+import { StatusChip } from '@/components/StatusChip';
+import { useI18n } from '@/i18n/I18nProvider';
+import type { Locale, TranslationKey } from '@/i18n/translations';
 
 type CustomerFormState = {
   businessId: string;
@@ -49,33 +51,33 @@ function getCustomerLastName(customer?: CustomerDto): string {
   return customer?.lastName ?? customer?.lName ?? '';
 }
 
-function getCustomerName(customer?: CustomerDto): string {
-  return `${getCustomerFirstName(customer)} ${getCustomerLastName(customer)}`.trim() || 'Unnamed customer';
+function getCustomerName(customer: CustomerDto | undefined, fallback: string): string {
+  return `${getCustomerFirstName(customer)} ${getCustomerLastName(customer)}`.trim() || fallback;
 }
 
 function getCustomerBookingCount(customer?: CustomerDto): number {
   return Number(customer?.totalBookings ?? customer?.bookingCount ?? 0);
 }
 
-function formatDate(value?: string): string {
+function formatDate(value: string | undefined, locale: Locale, fallback: string): string {
   if (!value) {
-    return 'Not tracked';
+    return fallback;
   }
 
   try {
-    return format(parseISO(value), 'MMM d, yyyy');
+    return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric' }).format(parseISO(value));
   } catch {
     return value;
   }
 }
 
-function formatTime(value?: string): string {
+function formatTime(value: string | undefined, locale: Locale, fallback: string): string {
   if (!value) {
-    return 'Not tracked';
+    return fallback;
   }
 
   try {
-    return format(parseISO(value), 'h:mm a');
+    return new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit' }).format(parseISO(value));
   } catch {
     return value;
   }
@@ -110,40 +112,52 @@ function buildBookingHistoryQuery(customer?: CustomerDto): BookingListQuery | un
   };
 }
 
-function getBusinessName(businesses: BusinessProfileDto[], businessId?: string): string {
+function getBusinessName(businesses: BusinessProfileDto[], businessId: string | undefined, fallback: string): string {
   if (!businessId) {
-    return 'Not set';
+    return fallback;
   }
 
   return businesses.find((business) => business._id === businessId)?.name ?? businessId;
 }
 
-function DetailField({ label, value }: { label: string; value?: number | string }) {
+function DetailField({ fallback, label, value }: { fallback: string; label: string; value?: number | string }) {
   return (
     <div className="detail-field">
       <span>{label}</span>
-      <strong>{value || 'Not set'}</strong>
+      <strong>{value || fallback}</strong>
     </div>
   );
 }
 
-function BookingHistory({ bookings }: { bookings: BookingDto[] }) {
+function getStatusLabel(status: BookingStatus, t: (key: TranslationKey) => string): string {
+  return t(`status.${status}` as TranslationKey);
+}
+
+function BookingHistory({
+  bookings,
+  locale,
+  t,
+}: {
+  bookings: BookingDto[];
+  locale: Locale;
+  t: (key: TranslationKey) => string;
+}) {
   if (!bookings.length) {
-    return <p className="body-copy">No booking history matched the existing customer fields.</p>;
+    return <p className="body-copy">{t('customers.bookingHistoryEmpty')}</p>;
   }
 
   return (
-    <div className="customer-booking-list" aria-label="Customer booking history">
+    <div className="customer-booking-list" aria-label={t('customers.bookingHistory')}>
       {bookings.map((booking) => (
         <article className="customer-booking-row" key={booking._id}>
           <div>
-            <h4>{formatDate(booking.startDate)}</h4>
+            <h4>{formatDate(booking.startDate, locale, t('customers.notTracked'))}</h4>
             <p>
-              {formatTime(booking.timein)} - {formatTime(booking.timeout)}
+              {formatTime(booking.timein, locale, t('customers.notTracked'))} - {formatTime(booking.timeout, locale, t('customers.notTracked'))}
               {booking.serviceResourceId ? ` · ${booking.serviceResourceId}` : ''}
             </p>
           </div>
-          <StatusChip status={booking.status}>{booking.status.replace('_', ' ')}</StatusChip>
+          <StatusChip status={booking.status}>{getStatusLabel(booking.status, t)}</StatusChip>
         </article>
       ))}
     </div>
@@ -151,9 +165,10 @@ function BookingHistory({ bookings }: { bookings: BookingDto[] }) {
 }
 
 export function CustomersPage() {
-  const { token } = useSessionStore();
+  const { formatNumber, locale, t } = useI18n();
+  const { session, token } = useSessionStore();
   const queryClient = useQueryClient();
-  const [businessId, setBusinessId] = useState('');
+  const [businessId, setBusinessId] = useState(session?.role !== 'owner' && session?.businessId ? session.businessId : '');
   const [customerName, setCustomerName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -164,7 +179,10 @@ export function CustomersPage() {
   const businessesQuery = useQuery({
     enabled: Boolean(token),
     queryFn: async () => {
-      const response = await listBusinesses(token ?? '');
+      const response = await listBusinesses(
+        token ?? '',
+        session?.role !== 'owner' && session?.businessId ? { businessId: session.businessId } : undefined,
+      );
 
       if (!response.success) {
         throw new Error(response.error.message);
@@ -172,10 +190,16 @@ export function CustomersPage() {
 
       return response.data;
     },
-    queryKey: ['businesses', token],
+    queryKey: ['businesses', session?.businessId, session?.role, token],
   });
 
   const businesses = businessesQuery.data ?? [];
+
+  useEffect(() => {
+    if (session?.role !== 'owner' && session?.businessId && businessId !== session.businessId) {
+      setBusinessId(session.businessId);
+    }
+  }, [businessId, session?.businessId, session?.role]);
 
   useEffect(() => {
     if (!createForm.businessId && businessId) {
@@ -214,7 +238,7 @@ export function CustomersPage() {
     enabled: Boolean(selectedCustomerId && token),
     queryFn: async () => {
       if (!selectedCustomerId || !token) {
-        throw new Error('Select a customer before loading details.');
+        throw new Error(t('customers.selectBeforeLoading'));
       }
 
       const response = await getCustomer(selectedCustomerId, token);
@@ -255,7 +279,7 @@ export function CustomersPage() {
   const createMutation = useMutation({
     mutationFn: async () => {
       if (!token) {
-        throw new Error('Sign in before creating customers.');
+        throw new Error(t('customers.signInBeforeCreating'));
       }
 
       const response = await createCustomer(
@@ -291,7 +315,7 @@ export function CustomersPage() {
   const updateMutation = useMutation({
     mutationFn: async () => {
       if (!selectedCustomerId || !token) {
-        throw new Error('Select a customer before saving.');
+        throw new Error(t('customers.selectBeforeSaving'));
       }
 
       const response = await updateCustomer(
@@ -339,37 +363,37 @@ export function CustomersPage() {
     <>
       <section className="workspace-header" aria-labelledby="customers-title">
         <div>
-          <p className="eyebrow">Relationships</p>
-          <h1 id="customers-title">Customers</h1>
-          <p className="lede">Search customer records, create new profiles, and edit customer details with recent booking history.</p>
+          <p className="eyebrow">{t('customers.relationships')}</p>
+          <h1 id="customers-title">{t('customers.title')}</h1>
+          <p className="lede">{t('customers.lede')}</p>
         </div>
-        <div className="header-actions" aria-label="Customer actions">
-          <button className="icon-button" type="button" aria-label="Refresh customers" onClick={() => customersQuery.refetch()}>
+        <div className="header-actions" aria-label={t('customers.actions')}>
+          <button className="icon-button" type="button" aria-label={t('customers.refresh')} onClick={() => customersQuery.refetch()}>
             <RefreshCw size={18} aria-hidden="true" />
           </button>
         </div>
       </section>
 
-      <section className="panel customer-controls" aria-label="Customer filters">
+      <section className="panel customer-controls" aria-label={t('customers.filters')}>
         <label className="form-field">
-          Name
+          {t('customers.name')}
           <span className="input-with-icon">
             <Search size={17} aria-hidden="true" />
-            <input value={customerName} onChange={(event) => setCustomerName(event.target.value)} placeholder="Search by name" />
+            <input value={customerName} onChange={(event) => setCustomerName(event.target.value)} placeholder={t('customers.searchByName')} />
           </span>
         </label>
         <label className="form-field">
-          Email
-          <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="customer@example.com" />
+          {t('customers.email')}
+          <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder={t('customers.emailPlaceholder')} />
         </label>
         <label className="form-field">
-          Phone
-          <input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="+15550001111" />
+          {t('customers.phone')}
+          <input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder={t('customers.phonePlaceholder')} />
         </label>
         <label className="form-field">
-          Business
+          {t('customers.business')}
           <select value={businessId} onChange={(event) => setBusinessId(event.target.value)}>
-            <option value="">All businesses</option>
+            <option value="">{t('customers.allBusinesses')}</option>
             {businesses.map((business) => (
               <option key={business._id} value={business._id}>
                 {business.name}
@@ -383,27 +407,27 @@ export function CustomersPage() {
         <div className="panel customer-list-panel">
           <div className="panel-heading">
             <div>
-              <p className="eyebrow">Create</p>
-              <h2>New customer</h2>
+              <p className="eyebrow">{t('customers.create')}</p>
+              <h2>{t('customers.newCustomer')}</h2>
             </div>
             <Plus size={20} aria-hidden="true" />
           </div>
           <form
             className="management-form"
-            aria-label="Create customer form"
+            aria-label={t('customers.createForm')}
             onSubmit={(event) => {
               event.preventDefault();
               createMutation.mutate();
             }}
           >
             <label className="form-field">
-              Business
+              {t('customers.business')}
               <select
                 value={createForm.businessId}
                 onChange={(event) => setCreateForm({ ...createForm, businessId: event.target.value })}
                 required
               >
-                <option value="">Select a business</option>
+                <option value="">{t('customers.selectBusiness')}</option>
                 {businesses.map((business) => (
                   <option key={business._id} value={business._id}>
                     {business.name}
@@ -413,7 +437,7 @@ export function CustomersPage() {
             </label>
             <div className="form-grid">
               <label className="form-field">
-                First name
+                {t('customers.firstName')}
                 <input
                   value={createForm.firstName}
                   onChange={(event) => setCreateForm({ ...createForm, firstName: event.target.value })}
@@ -421,7 +445,7 @@ export function CustomersPage() {
                 />
               </label>
               <label className="form-field">
-                Last name
+                {t('customers.lastName')}
                 <input
                   value={createForm.lastName}
                   onChange={(event) => setCreateForm({ ...createForm, lastName: event.target.value })}
@@ -430,7 +454,7 @@ export function CustomersPage() {
               </label>
             </div>
             <label className="form-field">
-              Email
+              {t('customers.email')}
               <input
                 type="email"
                 value={createForm.email}
@@ -439,16 +463,16 @@ export function CustomersPage() {
               />
             </label>
             <label className="form-field">
-              Phone
+              {t('customers.phone')}
               <input value={createForm.phone} onChange={(event) => setCreateForm({ ...createForm, phone: event.target.value })} required />
             </label>
             <label className="form-field">
-              Notes
+              {t('customers.notes')}
               <textarea value={createForm.notes} onChange={(event) => setCreateForm({ ...createForm, notes: event.target.value })} />
             </label>
             <fieldset className="form-field">
-              <legend>Preferred notifications</legend>
-              <div className="checkbox-grid" role="group" aria-label="Create customer preferred notifications">
+              <legend>{t('customers.preferredNotifications')}</legend>
+              <div className="checkbox-grid" role="group" aria-label={t('customers.createNotifications')}>
                 {(['email', 'sms'] as const).map((channel) => (
                   <label className="toggle-field" key={channel}>
                     <input
@@ -456,7 +480,7 @@ export function CustomersPage() {
                       type="checkbox"
                       onChange={() => toggleNotificationChannel(channel, 'create')}
                     />
-                    {channel}
+                    {t(`customers.channel.${channel}` as TranslationKey)}
                   </label>
                 ))}
               </div>
@@ -465,38 +489,42 @@ export function CustomersPage() {
               <InlineNotice tone="error" message={(createMutation.error as Error).message} icon={AlertTriangle} />
             ) : null}
             {createMutation.isSuccess ? (
-              <InlineNotice tone="success" message="Customer created." icon={CheckCircle2} />
+              <InlineNotice tone="success" message={t('customers.created')} icon={CheckCircle2} />
             ) : null}
             <button className="primary-button compact-button" type="submit" disabled={createMutation.isPending}>
               <Plus size={17} aria-hidden="true" />
-              {createMutation.isPending ? 'Creating' : 'Create customer'}
+              {createMutation.isPending ? t('customers.creating') : t('customers.createCustomer')}
             </button>
           </form>
 
           <div className="panel-heading customer-directory-heading">
             <div>
-              <p className="eyebrow">Directory</p>
-              <h2>Customer list</h2>
+              <p className="eyebrow">{t('customers.directory')}</p>
+              <h2>{t('customers.customerList')}</h2>
             </div>
-            <p className="result-count">{customersQuery.isFetching ? 'Refreshing' : `${customers.length} shown`}</p>
+            <p className="result-count">
+              {customersQuery.isFetching
+                ? t('customers.refreshing')
+                : `${formatNumber(customers.length)} ${t('customers.shown')}`}
+            </p>
           </div>
 
           {customersQuery.isLoading ? (
-            <LoadingState label="Loading customers" />
+            <LoadingState label={t('customers.loading')} />
           ) : customersQuery.isError ? (
             <EmptyState
               icon={AlertTriangle}
-              title="Customers could not load"
+              title={t('customers.loadError')}
               description={(customersQuery.error as Error).message}
             />
           ) : customers.length === 0 ? (
             <EmptyState
               icon={Search}
-              title="No customers found"
-              description="Adjust the current filters or create a customer for the selected business."
+              title={t('customers.empty')}
+              description={t('customers.emptyDescription')}
             />
           ) : (
-            <div className="customer-list" aria-label="Customers">
+            <div className="customer-list" aria-label={t('customers.title')}>
               {customers.map((customer) => {
                 const isSelected = customer._id === selectedCustomerId;
 
@@ -509,13 +537,15 @@ export function CustomersPage() {
                     onClick={() => setSelectedCustomerId(customer._id)}
                   >
                     <span className="customer-avatar" aria-hidden="true">
-                      {getCustomerName(customer).slice(0, 1).toUpperCase()}
+                      {getCustomerName(customer, t('customers.unnamed')).slice(0, 1).toUpperCase()}
                     </span>
                     <span>
-                      <strong>{getCustomerName(customer)}</strong>
+                      <strong>{getCustomerName(customer, t('customers.unnamed'))}</strong>
                       <small>{customer.email}</small>
                     </span>
-                    <small>{getCustomerBookingCount(customer)} bookings</small>
+                    <small>
+                      {formatNumber(getCustomerBookingCount(customer))} {t('customers.bookings')}
+                    </small>
                   </button>
                 );
               })}
@@ -523,11 +553,11 @@ export function CustomersPage() {
           )}
         </div>
 
-        <aside className="panel customer-profile-panel" aria-label="Customer profile">
+        <aside className="panel customer-profile-panel" aria-label={t('customers.profile')}>
           <div className="panel-heading">
             <div>
-              <p className="eyebrow">Profile</p>
-              <h2>{activeCustomer ? getCustomerName(activeCustomer) : 'Customer details'}</h2>
+              <p className="eyebrow">{t('customers.profileEyebrow')}</p>
+              <h2>{activeCustomer ? getCustomerName(activeCustomer, t('customers.unnamed')) : t('customers.details')}</h2>
             </div>
             <UserRound size={20} aria-hidden="true" />
           </div>
@@ -535,59 +565,59 @@ export function CustomersPage() {
           {!selectedCustomerId ? (
             <EmptyState
               icon={UserRound}
-              title="Select a customer"
-              description="Choose a customer from the directory to load profile details."
+              title={t('customers.selectCustomer')}
+              description={t('customers.selectCustomerDescription')}
             />
           ) : customerDetailQuery.isLoading ? (
-            <LoadingState label="Loading customer profile" />
+            <LoadingState label={t('customers.loadingProfile')} />
           ) : customerDetailQuery.isError ? (
             <EmptyState
               icon={AlertTriangle}
-              title="Customer profile could not load"
+              title={t('customers.profileLoadError')}
               description={(customerDetailQuery.error as Error).message}
             />
           ) : activeCustomer ? (
             <div className="detail-content compact-detail-content">
-              <section className="detail-section" aria-label="Customer contact">
-                <h3>Contact</h3>
+              <section className="detail-section" aria-label={t('customers.contact')}>
+                <h3>{t('customers.contact')}</h3>
                 <p className="detail-line">
                   <Mail size={16} aria-hidden="true" />
                   {activeCustomer.email}
                 </p>
                 <p className="detail-line">
                   <Phone size={16} aria-hidden="true" />
-                  {activeCustomer.phone ?? 'No phone recorded'}
+                  {activeCustomer.phone ?? t('customers.noPhone')}
                 </p>
               </section>
 
               <div className="detail-grid">
-                <DetailField label="Business" value={getBusinessName(businesses, activeCustomer.businessId)} />
-                <DetailField label="Bookings" value={getCustomerBookingCount(activeCustomer)} />
-                <DetailField label="Customer ID" value={activeCustomer._id} />
-                <DetailField label="Updated" value={formatDate(activeCustomer.updatedAt as string | undefined)} />
+                <DetailField fallback={t('customers.notSet')} label={t('customers.business')} value={getBusinessName(businesses, activeCustomer.businessId, t('customers.notSet'))} />
+                <DetailField fallback={t('customers.notSet')} label={t('customers.bookings')} value={formatNumber(getCustomerBookingCount(activeCustomer))} />
+                <DetailField fallback={t('customers.notSet')} label={t('customers.customerId')} value={activeCustomer._id} />
+                <DetailField fallback={t('customers.notSet')} label={t('customers.updated')} value={formatDate(activeCustomer.updatedAt as string | undefined, locale, t('customers.notTracked'))} />
               </div>
 
-              <section className="detail-section" aria-label="Edit customer profile">
+              <section className="detail-section" aria-label={t('customers.editProfile')}>
                 <div className="panel-heading inline-heading">
                   <div>
-                    <p className="eyebrow">Edit</p>
-                    <h3>Customer profile</h3>
+                    <p className="eyebrow">{t('customers.edit')}</p>
+                    <h3>{t('customers.profile')}</h3>
                   </div>
                 </div>
                 <div className="form-grid">
                   <label className="form-field">
-                    First name
+                    {t('customers.firstName')}
                     <input value={editForm.firstName} onChange={(event) => setEditForm({ ...editForm, firstName: event.target.value })} />
                   </label>
                   <label className="form-field">
-                    Last name
+                    {t('customers.lastName')}
                     <input value={editForm.lastName} onChange={(event) => setEditForm({ ...editForm, lastName: event.target.value })} />
                   </label>
                 </div>
                 <label className="form-field">
-                  Business
+                  {t('customers.business')}
                   <select value={editForm.businessId} onChange={(event) => setEditForm({ ...editForm, businessId: event.target.value })}>
-                    <option value="">Select a business</option>
+                    <option value="">{t('customers.selectBusiness')}</option>
                     {businesses.map((business) => (
                       <option key={business._id} value={business._id}>
                         {business.name}
@@ -596,20 +626,20 @@ export function CustomersPage() {
                   </select>
                 </label>
                 <label className="form-field">
-                  Email
+                  {t('customers.email')}
                   <input type="email" value={editForm.email} onChange={(event) => setEditForm({ ...editForm, email: event.target.value })} />
                 </label>
                 <label className="form-field">
-                  Phone
+                  {t('customers.phone')}
                   <input value={editForm.phone} onChange={(event) => setEditForm({ ...editForm, phone: event.target.value })} />
                 </label>
                 <label className="form-field">
-                  Notes
+                  {t('customers.notes')}
                   <textarea value={editForm.notes} onChange={(event) => setEditForm({ ...editForm, notes: event.target.value })} />
                 </label>
                 <fieldset className="form-field">
-                  <legend>Preferred notifications</legend>
-                  <div className="checkbox-grid" role="group" aria-label="Edit customer preferred notifications">
+                  <legend>{t('customers.preferredNotifications')}</legend>
+                  <div className="checkbox-grid" role="group" aria-label={t('customers.editNotifications')}>
                     {(['email', 'sms'] as const).map((channel) => (
                       <label className="toggle-field" key={channel}>
                         <input
@@ -617,7 +647,7 @@ export function CustomersPage() {
                           type="checkbox"
                           onChange={() => toggleNotificationChannel(channel, 'edit')}
                         />
-                        {channel}
+                        {t(`customers.channel.${channel}` as TranslationKey)}
                       </label>
                     ))}
                   </div>
@@ -626,32 +656,32 @@ export function CustomersPage() {
                   <InlineNotice tone="error" message={(updateMutation.error as Error).message} icon={AlertTriangle} />
                 ) : null}
                 {updateMutation.isSuccess ? (
-                  <InlineNotice tone="success" message="Customer updated." icon={CheckCircle2} />
+                  <InlineNotice tone="success" message={t('customers.updatedSuccess')} icon={CheckCircle2} />
                 ) : null}
                 <button className="primary-button compact-button" type="button" disabled={updateMutation.isPending} onClick={() => updateMutation.mutate()}>
                   <CheckCircle2 size={17} aria-hidden="true" />
-                  {updateMutation.isPending ? 'Saving' : 'Save customer'}
+                  {updateMutation.isPending ? t('customers.saving') : t('customers.saveCustomer')}
                 </button>
               </section>
 
-              <section className="detail-section" aria-label="Customer booking history">
+              <section className="detail-section" aria-label={t('customers.bookingHistory')}>
                 <div className="panel-heading inline-heading">
                   <div>
-                    <p className="eyebrow">History</p>
-                    <h3>Recent bookings</h3>
+                    <p className="eyebrow">{t('customers.history')}</p>
+                    <h3>{t('customers.recentBookings')}</h3>
                   </div>
                   <CalendarDays size={18} aria-hidden="true" />
                 </div>
                 {bookingHistoryQuery.isLoading ? (
-                  <LoadingState label="Loading booking history" />
+                  <LoadingState label={t('customers.loadingBookingHistory')} />
                 ) : bookingHistoryQuery.isError ? (
                   <EmptyState
                     icon={AlertTriangle}
-                    title="Booking history could not load"
+                    title={t('customers.bookingHistoryLoadError')}
                     description={(bookingHistoryQuery.error as Error).message}
                   />
                 ) : (
-                  <BookingHistory bookings={bookingHistoryQuery.data ?? []} />
+                  <BookingHistory bookings={bookingHistoryQuery.data ?? []} locale={locale} t={t} />
                 )}
               </section>
             </div>

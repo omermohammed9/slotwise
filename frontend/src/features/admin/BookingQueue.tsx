@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
-import { StatusChip } from '../../components/StatusChip';
-import type { BookingPreview } from './types';
+import { StatusChip } from '@/components/StatusChip';
+import type { BookingPreview } from '@/features/admin/types';
 
 type BookingQueueProps = {
   bookings: readonly BookingPreview[];

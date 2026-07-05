@@ -9,36 +9,41 @@ import {
   RefreshCw,
   Search,
 } from 'lucide-react';
-import { getCancellationNoShowInsights, getDashboardInsights } from '../../api/bookings';
-import { getApiBaseUrl } from '../../api/client';
-import type { BookingInsightsQuery, BookingStatus, CancellationNoShowInsightsDto, DashboardInsightsDto } from '../../api/types';
-import { useSessionStore } from '../../auth/sessionStore';
-import { LoadingState } from '../../components/AdminState';
-import { EmptyState } from '../../components/EmptyState';
-import { MetricCard } from '../../components/MetricCard';
-import { StatusChip } from '../../components/StatusChip';
+import { getCancellationNoShowInsights, getDashboardInsights } from '@/api/bookings';
+import { getApiBaseUrl } from '@/api/client';
+import type { BookingInsightsQuery, BookingStatus, CancellationNoShowInsightsDto, DashboardInsightsDto } from '@/api/types';
+import { useSessionStore } from '@/auth/sessionStore';
+import { LoadingState } from '@/components/AdminState';
+import { EmptyState } from '@/components/EmptyState';
+import { MetricCard } from '@/components/MetricCard';
+import { StatusChip } from '@/components/StatusChip';
+import { useI18n } from '@/i18n/I18nProvider';
+import type { TranslationKey } from '@/i18n/translations';
 
-function formatPercent(value?: number): string {
-  return `${Number(value ?? 0).toFixed(0)}%`;
+function formatPercent(value: number | undefined, locale: string): string {
+  return new Intl.NumberFormat(locale, { maximumFractionDigits: 0, style: 'percent' }).format(Number(value ?? 0) / 100);
 }
 
-function formatHours(minutes?: number): string {
-  return `${Math.round(Number(minutes ?? 0) / 60)}h`;
+function formatHours(minutes: number | undefined, formatNumber: (value: number) => string): string {
+  return `${formatNumber(Math.round(Number(minutes ?? 0) / 60))}h`;
 }
 
 function getMaxCount(items: Array<{ bookings?: number; count?: number }>): number {
   return Math.max(1, ...items.map((item) => Number(item.bookings ?? item.count ?? 0)));
 }
 
-function getFunnelLabel(status: BookingStatus): string {
-  return status.replace('_', ' ');
+function getStatusLabel(status: BookingStatus, t: (key: TranslationKey) => string): string {
+  return t(`status.${status}` as TranslationKey);
 }
 
-function DashboardLoadingState() {
-  return <LoadingState label="Loading dashboard analytics" />;
+function getWeekdayLabel(weekday: string, t: (key: TranslationKey) => string): string {
+  const key = `weekday.${weekday}` as TranslationKey;
+  const translated = t(key);
+  return translated === key ? weekday : translated;
 }
 
 function CancellationInsights({ insights }: { insights: CancellationNoShowInsightsDto }) {
+  const { formatNumber, locale, t } = useI18n();
   const maxWeekdayCount = Math.max(
     1,
     ...insights.trends.byWeekday.map((weekday) => weekday.cancellations + weekday.noShows),
@@ -49,28 +54,28 @@ function CancellationInsights({ insights }: { insights: CancellationNoShowInsigh
       <div className="panel">
         <div className="panel-heading">
           <div>
-            <p className="eyebrow">Cancellation health</p>
-            <h2>Cancellation and no-show insights</h2>
+            <p className="eyebrow">{t('dashboard.cancellationHealth')}</p>
+            <h2>{t('dashboard.cancellationInsights')}</h2>
           </div>
           <CircleOff size={20} aria-hidden="true" />
         </div>
-        <section className="metric-grid compact-metric-grid" aria-label="Cancellation metrics">
+        <section className="metric-grid compact-metric-grid" aria-label={t('dashboard.cancellationMetrics')}>
           <MetricCard
-            label="Cancelled"
-            value={String(insights.summary.cancelledBookings)}
-            trend={`${formatPercent(insights.summary.cancellationRate)} cancellation rate`}
+            label={t('dashboard.cancelled')}
+            value={formatNumber(insights.summary.cancelledBookings)}
+            trend={`${formatPercent(insights.summary.cancellationRate, locale)} ${t('dashboard.cancellationRate')}`}
             tone="danger"
           />
           <MetricCard
-            label="No-shows"
-            value={String(insights.summary.noShowBookings)}
-            trend={`${formatPercent(insights.summary.noShowRate)} no-show rate`}
+            label={t('dashboard.noShows')}
+            value={formatNumber(insights.summary.noShowBookings)}
+            trend={`${formatPercent(insights.summary.noShowRate, locale)} ${t('dashboard.noShowRate')}`}
             tone="warning"
           />
           <MetricCard
-            label="Delivered"
-            value={String(insights.summary.completedBookings)}
-            trend={`${formatPercent(insights.summary.serviceDeliveryRate)} delivery rate`}
+            label={t('dashboard.delivered')}
+            value={formatNumber(insights.summary.completedBookings)}
+            trend={`${formatPercent(insights.summary.serviceDeliveryRate, locale)} ${t('dashboard.deliveryRate')}`}
             tone="success"
           />
         </section>
@@ -81,13 +86,16 @@ function CancellationInsights({ insights }: { insights: CancellationNoShowInsigh
             return (
               <div className="analytics-bar-row" key={weekday.weekday}>
                 <div className="analytics-bar-label">
-                  <span>{weekday.weekday}</span>
-                  <strong>{total}</strong>
+                  <span>{getWeekdayLabel(weekday.weekday, t)}</span>
+                  <strong>{formatNumber(total)}</strong>
                 </div>
                 <div className="analytics-bar-track" aria-hidden="true">
                   <span style={{ width: `${Math.max(4, (total / maxWeekdayCount) * 100)}%` }} />
                 </div>
-                <small>{weekday.cancellations} cancellations · {weekday.noShows} no-shows</small>
+                <small>
+                  {formatNumber(weekday.cancellations)} {t('dashboard.cancellations')} · {formatNumber(weekday.noShows)}{' '}
+                  {t('dashboard.noShows')}
+                </small>
               </div>
             );
           })}
@@ -97,36 +105,36 @@ function CancellationInsights({ insights }: { insights: CancellationNoShowInsigh
       <div className="panel">
         <div className="panel-heading">
           <div>
-            <p className="eyebrow">Reason patterns</p>
-            <h2>Top reasons</h2>
+            <p className="eyebrow">{t('dashboard.reasonPatterns')}</p>
+            <h2>{t('dashboard.topReasons')}</h2>
           </div>
           <AlertTriangle size={20} aria-hidden="true" />
         </div>
         <div className="reason-grid">
           <div>
-            <h3>Cancellations</h3>
+            <h3>{t('dashboard.cancellations')}</h3>
             {insights.trends.cancellationReasons.length ? (
               insights.trends.cancellationReasons.slice(0, 4).map((reason) => (
                 <div className="reason-row" key={reason.reason}>
                   <span>{reason.reason}</span>
-                  <strong>{reason.count}</strong>
+                  <strong>{formatNumber(reason.count)}</strong>
                 </div>
               ))
             ) : (
-              <p className="body-copy">No cancellation reasons in this range.</p>
+              <p className="body-copy">{t('dashboard.noCancellationReasons')}</p>
             )}
           </div>
           <div>
-            <h3>No-shows</h3>
+            <h3>{t('dashboard.noShows')}</h3>
             {insights.trends.noShowReasons.length ? (
               insights.trends.noShowReasons.slice(0, 4).map((reason) => (
                 <div className="reason-row" key={reason.reason}>
                   <span>{reason.reason}</span>
-                  <strong>{reason.count}</strong>
+                  <strong>{formatNumber(reason.count)}</strong>
                 </div>
               ))
             ) : (
-              <p className="body-copy">No no-show reasons in this range.</p>
+              <p className="body-copy">{t('dashboard.noNoShowReasons')}</p>
             )}
           </div>
         </div>
@@ -136,35 +144,36 @@ function CancellationInsights({ insights }: { insights: CancellationNoShowInsigh
 }
 
 function DashboardAnalytics({ insights }: { insights: DashboardInsightsDto }) {
+  const { formatNumber, locale, t } = useI18n();
   const maxFunnelCount = getMaxCount(insights.funnel);
   const maxWeekdayBookings = getMaxCount(insights.utilization.byWeekday);
   const maxPeakBookings = getMaxCount(insights.peaks.topTimeSlots);
 
   return (
     <>
-      <section className="metric-grid" aria-label="Operational metrics">
+      <section className="metric-grid" aria-label={t('dashboard.operationalMetrics')}>
         <MetricCard
-          label="Total bookings"
-          value={String(insights.summary.totalBookings)}
-          trend={`${insights.summary.pendingBookings} pending review`}
+          label={t('dashboard.totalBookings')}
+          value={formatNumber(insights.summary.totalBookings)}
+          trend={`${formatNumber(insights.summary.pendingBookings)} ${t('dashboard.pendingReview')}`}
           tone="info"
         />
         <MetricCard
-          label="Approval rate"
-          value={formatPercent(insights.summary.approvalRate)}
-          trend={`${insights.summary.approvedBookings} approved bookings`}
+          label={t('dashboard.approvalRate')}
+          value={formatPercent(insights.summary.approvalRate, locale)}
+          trend={`${formatNumber(insights.summary.approvedBookings)} ${t('dashboard.approvedBookings')}`}
           tone="success"
         />
         <MetricCard
-          label="Completion rate"
-          value={formatPercent(insights.summary.completionRate)}
-          trend={`${insights.summary.completedBookings} completed bookings`}
+          label={t('dashboard.completionRate')}
+          value={formatPercent(insights.summary.completionRate, locale)}
+          trend={`${formatNumber(insights.summary.completedBookings)} ${t('dashboard.completedBookings')}`}
           tone="warning"
         />
         <MetricCard
-          label="Utilization"
-          value={formatHours(insights.summary.utilizationMinutes)}
-          trend={`${insights.summary.utilizationMinutes} booked minutes`}
+          label={t('dashboard.utilization')}
+          value={formatHours(insights.summary.utilizationMinutes, formatNumber)}
+          trend={`${formatNumber(insights.summary.utilizationMinutes)} ${t('dashboard.bookedMinutes')}`}
           tone="danger"
         />
       </section>
@@ -173,8 +182,8 @@ function DashboardAnalytics({ insights }: { insights: DashboardInsightsDto }) {
         <div className="panel">
           <div className="panel-heading">
             <div>
-              <p className="eyebrow">Lifecycle</p>
-              <h2>Booking funnel</h2>
+              <p className="eyebrow">{t('dashboard.lifecycle')}</p>
+              <h2>{t('dashboard.bookingFunnel')}</h2>
             </div>
             <BarChart3 size={20} aria-hidden="true" />
           </div>
@@ -182,8 +191,8 @@ function DashboardAnalytics({ insights }: { insights: DashboardInsightsDto }) {
             {insights.funnel.map((item) => (
               <div className="analytics-bar-row" key={item.status}>
                 <div className="analytics-bar-label">
-                  <StatusChip status={item.status}>{getFunnelLabel(item.status)}</StatusChip>
-                  <strong>{item.count}</strong>
+                  <StatusChip status={item.status}>{getStatusLabel(item.status, t)}</StatusChip>
+                  <strong>{formatNumber(item.count)}</strong>
                 </div>
                 <div className="analytics-bar-track" aria-hidden="true">
                   <span style={{ width: `${Math.max(4, (item.count / maxFunnelCount) * 100)}%` }} />
@@ -196,19 +205,21 @@ function DashboardAnalytics({ insights }: { insights: DashboardInsightsDto }) {
         <div className="panel">
           <div className="panel-heading">
             <div>
-              <p className="eyebrow">Peaks</p>
-              <h2>Peak booking times</h2>
+              <p className="eyebrow">{t('dashboard.peaks')}</p>
+              <h2>{t('dashboard.peakBookingTimes')}</h2>
             </div>
             <CalendarDays size={20} aria-hidden="true" />
           </div>
           <div className="peak-summary">
             <div>
-              <span>Busiest weekday</span>
-              <strong>{insights.peaks.busiestWeekday ?? 'Not enough data'}</strong>
+              <span>{t('dashboard.busiestWeekday')}</span>
+              <strong>
+                {insights.peaks.busiestWeekday ? getWeekdayLabel(insights.peaks.busiestWeekday, t) : t('dashboard.notEnoughData')}
+              </strong>
             </div>
             <div>
-              <span>Busiest hour</span>
-              <strong>{insights.peaks.busiestHour ?? 'Not enough data'}</strong>
+              <span>{t('dashboard.busiestHour')}</span>
+              <strong>{insights.peaks.busiestHour ?? t('dashboard.notEnoughData')}</strong>
             </div>
           </div>
           <div className="analytics-bar-list">
@@ -217,7 +228,7 @@ function DashboardAnalytics({ insights }: { insights: DashboardInsightsDto }) {
                 <div className="analytics-bar-row" key={slot.label}>
                   <div className="analytics-bar-label">
                     <span>{slot.label}</span>
-                    <strong>{slot.bookings}</strong>
+                    <strong>{formatNumber(slot.bookings)}</strong>
                   </div>
                   <div className="analytics-bar-track" aria-hidden="true">
                     <span style={{ width: `${Math.max(4, (slot.bookings / maxPeakBookings) * 100)}%` }} />
@@ -225,7 +236,7 @@ function DashboardAnalytics({ insights }: { insights: DashboardInsightsDto }) {
                 </div>
               ))
             ) : (
-              <p className="body-copy">No peak time slots in this range.</p>
+              <p className="body-copy">{t('dashboard.noPeakSlots')}</p>
             )}
           </div>
         </div>
@@ -235,8 +246,8 @@ function DashboardAnalytics({ insights }: { insights: DashboardInsightsDto }) {
         <div className="panel">
           <div className="panel-heading">
             <div>
-              <p className="eyebrow">Weekday load</p>
-              <h2>Utilization by day</h2>
+              <p className="eyebrow">{t('dashboard.weekdayLoad')}</p>
+              <h2>{t('dashboard.utilizationByDay')}</h2>
             </div>
             <BarChart3 size={20} aria-hidden="true" />
           </div>
@@ -244,13 +255,13 @@ function DashboardAnalytics({ insights }: { insights: DashboardInsightsDto }) {
             {insights.utilization.byWeekday.map((weekday) => (
               <div className="analytics-bar-row" key={weekday.weekday}>
                 <div className="analytics-bar-label">
-                  <span>{weekday.weekday}</span>
-                  <strong>{weekday.bookings}</strong>
+                  <span>{getWeekdayLabel(weekday.weekday, t)}</span>
+                  <strong>{formatNumber(weekday.bookings)}</strong>
                 </div>
                 <div className="analytics-bar-track" aria-hidden="true">
                   <span style={{ width: `${Math.max(4, (weekday.bookings / maxWeekdayBookings) * 100)}%` }} />
                 </div>
-                <small>{weekday.bookedMinutes} minutes</small>
+                <small>{formatNumber(weekday.bookedMinutes)} {t('dashboard.minutes')}</small>
               </div>
             ))}
           </div>
@@ -259,8 +270,8 @@ function DashboardAnalytics({ insights }: { insights: DashboardInsightsDto }) {
         <div className="panel">
           <div className="panel-heading">
             <div>
-              <p className="eyebrow">Resources</p>
-              <h2>Top resource load</h2>
+              <p className="eyebrow">{t('dashboard.resources')}</p>
+              <h2>{t('dashboard.topResourceLoad')}</h2>
             </div>
             <CheckCircle2 size={20} aria-hidden="true" />
           </div>
@@ -269,13 +280,13 @@ function DashboardAnalytics({ insights }: { insights: DashboardInsightsDto }) {
               {insights.utilization.byResource.slice(0, 5).map((resource) => (
                 <div className="resource-load-row" key={resource.resourceId}>
                   <strong>{resource.resourceId}</strong>
-                  <span>{resource.bookings} bookings</span>
-                  <small>{resource.bookedMinutes} minutes</small>
+                  <span>{formatNumber(resource.bookings)} {t('dashboard.bookings')}</span>
+                  <small>{formatNumber(resource.bookedMinutes)} {t('dashboard.minutes')}</small>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="body-copy">No resource utilization data in this range.</p>
+            <p className="body-copy">{t('dashboard.noResourceData')}</p>
           )}
         </div>
       </section>
@@ -285,6 +296,7 @@ function DashboardAnalytics({ insights }: { insights: DashboardInsightsDto }) {
 
 export function DashboardPage() {
   const session = useSessionStore();
+  const { t } = useI18n();
   const apiBaseUrl = getApiBaseUrl();
   const [startDateFrom, setStartDateFrom] = useState('');
   const [startDateTo, setStartDateTo] = useState('');
@@ -292,11 +304,12 @@ export function DashboardPage() {
 
   const query: BookingInsightsQuery = useMemo(
     () => ({
+      ...(session.session?.role !== 'owner' && session.session?.businessId ? { businessId: session.session.businessId } : {}),
       ...(serviceResourceId.trim() ? { serviceResourceId: serviceResourceId.trim() } : {}),
       ...(startDateFrom ? { startDateFrom } : {}),
       ...(startDateTo ? { startDateTo } : {}),
     }),
-    [serviceResourceId, startDateFrom, startDateTo],
+    [serviceResourceId, session.session?.businessId, session.session?.role, startDateFrom, startDateTo],
   );
 
   const dashboardQuery = useQuery({
@@ -329,15 +342,15 @@ export function DashboardPage() {
     <>
       <section className="workspace-header" aria-labelledby="dashboard-title">
         <div>
-          <p className="eyebrow">Owner dashboard</p>
-          <h1 id="dashboard-title">Today at a glance</h1>
-          <p className="lede">Dashboard analytics from {apiBaseUrl}</p>
+          <p className="eyebrow">{t('dashboard.ownerEyebrow')}</p>
+          <h1 id="dashboard-title">{t('dashboard.title')}</h1>
+          <p className="lede">{t('dashboard.analyticsFrom')} {apiBaseUrl}</p>
         </div>
-        <div className="header-actions" aria-label="Dashboard actions">
+        <div className="header-actions" aria-label={t('dashboard.actions')}>
           <button
             className="icon-button"
             type="button"
-            aria-label="Refresh dashboard"
+            aria-label={t('dashboard.refresh')}
             onClick={() => {
               dashboardQuery.refetch();
               cancellationQuery.refetch();
@@ -348,34 +361,34 @@ export function DashboardPage() {
         </div>
       </section>
 
-      <section className="panel dashboard-controls" aria-label="Dashboard filters">
+      <section className="panel dashboard-controls" aria-label={t('dashboard.filters')}>
         <label className="form-field">
-          From
+          {t('dashboard.from')}
           <input type="date" value={startDateFrom} onChange={(event) => setStartDateFrom(event.target.value)} />
         </label>
         <label className="form-field">
-          To
+          {t('dashboard.to')}
           <input type="date" value={startDateTo} onChange={(event) => setStartDateTo(event.target.value)} />
         </label>
         <label className="form-field">
-          Resource
+          {t('dashboard.resource')}
           <span className="input-with-icon">
             <Search size={17} aria-hidden="true" />
             <input
               value={serviceResourceId}
               onChange={(event) => setServiceResourceId(event.target.value)}
-              placeholder="Resource ID"
+              placeholder={t('dashboard.resourcePlaceholder')}
             />
           </span>
         </label>
       </section>
 
       {dashboardQuery.isLoading ? (
-        <DashboardLoadingState />
+        <LoadingState label={t('dashboard.loadingAnalytics')} />
       ) : dashboardQuery.isError ? (
         <EmptyState
           icon={AlertTriangle}
-          title="Dashboard analytics could not load"
+          title={t('dashboard.analyticsLoadError')}
           description={(dashboardQuery.error as Error).message}
         />
       ) : dashboardQuery.data?.summary ? (
@@ -383,17 +396,17 @@ export function DashboardPage() {
       ) : (
         <EmptyState
           icon={Search}
-          title="No dashboard analytics"
-          description="Adjust the current filters or try a broader reporting range."
+          title={t('dashboard.noAnalytics')}
+          description={t('dashboard.noAnalyticsDescription')}
         />
       )}
 
       {cancellationQuery.isLoading ? (
-        <LoadingState label="Loading cancellation insights" />
+        <LoadingState label={t('dashboard.loadingCancellations')} />
       ) : cancellationQuery.isError ? (
         <EmptyState
           icon={AlertTriangle}
-          title="Cancellation insights could not load"
+          title={t('dashboard.cancellationLoadError')}
           description={(cancellationQuery.error as Error).message}
         />
       ) : cancellationQuery.data?.summary ? (
@@ -404,29 +417,30 @@ export function DashboardPage() {
         <div className="panel">
           <div className="panel-heading">
             <div>
-              <p className="eyebrow">Session posture</p>
-              <h2>Approved storage baseline</h2>
+              <p className="eyebrow">{t('dashboard.sessionPosture')}</p>
+              <h2>{t('dashboard.storageBaseline')}</h2>
             </div>
             <CheckCircle2 size={20} aria-hidden="true" />
           </div>
           <p className="body-copy">
-            Session tokens are held in memory for the first frontend slice. Refreshing the page requires sign-in again,
-            and persistent login remains a later backend cookie-session review.
+            {t('dashboard.storageCopy')}
           </p>
           <button
             className="secondary-button"
             type="button"
             onClick={() => session.setToken('demo-memory-token')}
           >
-            Store demo memory token
+            {t('dashboard.storeDemoToken')}
           </button>
-          <p className="session-note">Token status: {session.token ? 'Stored in memory' : 'Not stored'}</p>
+          <p className="session-note">
+            {t('dashboard.tokenStatus')}: {session.token ? t('dashboard.tokenStored') : t('dashboard.tokenNotStored')}
+          </p>
         </div>
 
         <EmptyState
           icon={AlertTriangle}
-          title="Public widget isolation"
-          description="Third-party embeds will use iframe isolation first, keeping host page styles away from booking flows."
+          title={t('dashboard.widgetIsolation')}
+          description={t('dashboard.widgetIsolationDescription')}
         />
       </section>
     </>

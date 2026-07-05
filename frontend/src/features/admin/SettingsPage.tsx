@@ -11,13 +11,14 @@ import {
   RefreshCw,
   Save,
   Search,
+  Settings as SettingsIcon,
   Sparkles,
 } from 'lucide-react';
-import { getBusinessTemplate, listBusinesses, listBusinessTemplates, updateBusiness } from '../../api/businesses';
-import type { BusinessProfileDto, BusinessTemplateDto } from '../../api/types';
-import { useSessionStore } from '../../auth/sessionStore';
-import { InlineNotice, LoadingState } from '../../components/AdminState';
-import { EmptyState } from '../../components/EmptyState';
+import { createBusiness, getBusinessTemplate, listBusinesses, listBusinessTemplates, updateBusiness } from '@/api/businesses';
+import type { BusinessProfileDto, BusinessTemplateDto } from '@/api/types';
+import { useSessionStore } from '@/auth/sessionStore';
+import { InlineNotice, LoadingState } from '@/components/AdminState';
+import { EmptyState } from '@/components/EmptyState';
 import {
   createBlackoutDateDrafts,
   createBusinessWorkingHourDrafts,
@@ -29,7 +30,7 @@ import {
   validateWorkingHours,
   type BlackoutDateDraft,
   type WorkingHourDraft,
-} from './scheduleEditors';
+} from '@/features/admin/scheduleEditors';
 
 const businessTypes = ['restaurant', 'clinic', 'salon', 'consulting', 'venue', 'rental', 'fitness', 'other'];
 
@@ -44,6 +45,10 @@ type BusinessSettingsFormState = {
   timezone: string;
 };
 
+type BusinessCreateFormState = BusinessSettingsFormState & {
+  templateKey: string;
+};
+
 const defaultFormState: BusinessSettingsFormState = {
   businessType: 'other',
   contactEmail: '',
@@ -53,6 +58,11 @@ const defaultFormState: BusinessSettingsFormState = {
   slug: '',
   status: 'active',
   timezone: 'UTC',
+};
+
+const defaultCreateFormState: BusinessCreateFormState = {
+  ...defaultFormState,
+  templateKey: 'restaurant',
 };
 
 function getBooleanLabel(value?: unknown): string {
@@ -87,11 +97,33 @@ function formatTemplateValue(value: unknown): string {
   return String(value);
 }
 
+function formatJson(value: unknown): string {
+  return value === undefined || value === null ? '' : JSON.stringify(value, null, 2);
+}
+
+function parseJsonField(value: string, fieldName: string): unknown | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    throw new Error(`${fieldName} must be valid JSON.`);
+  }
+}
+
 export function SettingsPage() {
-  const { token } = useSessionStore();
+  const { session, token } = useSessionStore();
   const queryClient = useQueryClient();
   const [selectedBusinessId, setSelectedBusinessId] = useState('');
+  const [createForm, setCreateForm] = useState<BusinessCreateFormState>(defaultCreateFormState);
   const [form, setForm] = useState<BusinessSettingsFormState>(defaultFormState);
+  const [availabilityRulesJson, setAvailabilityRulesJson] = useState('');
+  const [notificationSettingsJson, setNotificationSettingsJson] = useState('');
+  const [widgetSettingsJson, setWidgetSettingsJson] = useState('');
+  const [publicPageSettingsJson, setPublicPageSettingsJson] = useState('');
   const [workingHours, setWorkingHours] = useState<WorkingHourDraft[]>(createBusinessWorkingHourDrafts());
   const [blackoutDates, setBlackoutDates] = useState<BlackoutDateDraft[]>([]);
   const [selectedTemplateKey, setSelectedTemplateKey] = useState('');
@@ -99,7 +131,10 @@ export function SettingsPage() {
   const businessesQuery = useQuery({
     enabled: Boolean(token),
     queryFn: async () => {
-      const response = await listBusinesses(token ?? '');
+      const response = await listBusinesses(
+        token ?? '',
+        session?.role !== 'owner' && session?.businessId ? { businessId: session.businessId } : undefined,
+      );
 
       if (!response.success) {
         throw new Error(response.error.message);
@@ -107,7 +142,7 @@ export function SettingsPage() {
 
       return response.data;
     },
-    queryKey: ['businesses', token],
+    queryKey: ['businesses', session?.businessId, session?.role, token],
   });
 
   const templatesQuery = useQuery({
@@ -126,6 +161,7 @@ export function SettingsPage() {
 
   const businesses = businessesQuery.data ?? [];
   const templates = templatesQuery.data ?? [];
+  const canCreateBusinesses = session?.role === 'owner';
   const selectedBusiness = useMemo(
     () => businesses.find((business) => business._id === selectedBusinessId) ?? getFirstBusiness(businesses),
     [businesses, selectedBusinessId],
@@ -163,6 +199,10 @@ export function SettingsPage() {
     });
     setWorkingHours(createBusinessWorkingHourDrafts(selectedBusiness.workingHours));
     setBlackoutDates(createBlackoutDateDrafts(selectedBusiness.blackoutDates));
+    setAvailabilityRulesJson(formatJson(selectedBusiness.availabilityRules));
+    setNotificationSettingsJson(formatJson(selectedBusiness.notificationSettings));
+    setWidgetSettingsJson(formatJson(selectedBusiness.widgetSettings));
+    setPublicPageSettingsJson(formatJson(selectedBusiness.publicPageSettings));
     setSelectedTemplateKey(selectedBusiness.templateKey ?? '');
   }, [selectedBusiness]);
 
@@ -188,11 +228,20 @@ export function SettingsPage() {
         throw new Error(blackoutDatesError);
       }
 
+      const availabilityRules = parseJsonField(availabilityRulesJson, 'Availability rules');
+      const notificationSettings = parseJsonField(notificationSettingsJson, 'Notification settings');
+      const widgetSettings = parseJsonField(widgetSettingsJson, 'Widget settings');
+      const publicPageSettings = parseJsonField(publicPageSettingsJson, 'Public page settings');
+
       const response = await updateBusiness(
         selectedBusiness._id,
         {
           ...form,
+          ...(availabilityRules ? { availabilityRules } : {}),
           blackoutDates: serializeBlackoutDates(blackoutDates),
+          ...(notificationSettings ? { notificationSettings } : {}),
+          ...(publicPageSettings ? { publicPageSettings } : {}),
+          ...(widgetSettings ? { widgetSettings } : {}),
           workingHours: serializeWorkingHours(workingHours),
         },
         token,
@@ -205,6 +254,40 @@ export function SettingsPage() {
       return response.data;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['businesses'] });
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async () => {
+      if (!token) {
+        throw new Error('An active operator session is required.');
+      }
+
+      const response = await createBusiness(
+        {
+          businessType: createForm.businessType,
+          contactEmail: createForm.contactEmail.trim(),
+          contactPhone: createForm.contactPhone.trim(),
+          description: createForm.description.trim() || undefined,
+          name: createForm.name.trim(),
+          slug: createForm.slug.trim(),
+          status: createForm.status,
+          templateKey: createForm.templateKey,
+          timezone: createForm.timezone.trim(),
+        },
+        token,
+      );
+
+      if (!response.success) {
+        throw new Error(response.error.message);
+      }
+
+      return response.data;
+    },
+    onSuccess: (createdBusiness) => {
+      setCreateForm(defaultCreateFormState);
+      setSelectedBusinessId(createdBusiness._id);
       queryClient.invalidateQueries({ queryKey: ['businesses'] });
     },
   });
@@ -223,6 +306,74 @@ export function SettingsPage() {
           </button>
         </div>
       </section>
+
+      {canCreateBusinesses ? (
+        <section className="panel management-form" aria-label="Create business profile">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">New profile</p>
+              <h2>Create business</h2>
+            </div>
+            <Plus size={20} aria-hidden="true" />
+          </div>
+          <div className="form-grid">
+            <label className="form-field">
+              Name
+              <input value={createForm.name} onChange={(event) => setCreateForm({ ...createForm, name: event.target.value })} />
+            </label>
+            <label className="form-field">
+              Slug
+              <input value={createForm.slug} onChange={(event) => setCreateForm({ ...createForm, slug: event.target.value })} />
+            </label>
+            <label className="form-field">
+              Template
+              <select value={createForm.templateKey} onChange={(event) => setCreateForm({ ...createForm, templateKey: event.target.value })}>
+                {(templates.length ? templates : [{ key: 'restaurant', label: 'Restaurant' } as BusinessTemplateDto]).map((template) => (
+                  <option key={template.key} value={template.key}>
+                    {template.label ?? template.key}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="form-field">
+              Type
+              <select value={createForm.businessType} onChange={(event) => setCreateForm({ ...createForm, businessType: event.target.value })}>
+                {businessTypes.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="form-field">
+              Create email
+              <input type="email" value={createForm.contactEmail} onChange={(event) => setCreateForm({ ...createForm, contactEmail: event.target.value })} />
+            </label>
+            <label className="form-field">
+              Create phone
+              <input value={createForm.contactPhone} onChange={(event) => setCreateForm({ ...createForm, contactPhone: event.target.value })} />
+            </label>
+            <label className="form-field">
+              Timezone
+              <input value={createForm.timezone} onChange={(event) => setCreateForm({ ...createForm, timezone: event.target.value })} />
+            </label>
+          </div>
+          <label className="form-field">
+            Description
+            <textarea value={createForm.description} onChange={(event) => setCreateForm({ ...createForm, description: event.target.value })} />
+          </label>
+          {createMutation.isError ? (
+            <InlineNotice tone="error" message={(createMutation.error as Error).message} icon={AlertTriangle} />
+          ) : null}
+          {createMutation.isSuccess ? (
+            <InlineNotice tone="success" message="Business profile created." icon={CheckCircle2} />
+          ) : null}
+          <button className="primary-button compact-button" type="button" disabled={createMutation.isPending} onClick={() => createMutation.mutate()}>
+            <Plus size={17} aria-hidden="true" />
+            {createMutation.isPending ? 'Creating' : 'Create business'}
+          </button>
+        </section>
+      ) : null}
 
       {businessesQuery.isLoading ? (
         <LoadingState label="Loading business settings" />
@@ -460,6 +611,32 @@ export function SettingsPage() {
                 <Plus size={17} aria-hidden="true" />
                 Add blackout range
               </button>
+            </section>
+
+            <section className="detail-section" aria-labelledby="advanced-settings-title">
+              <div className="panel-heading inline-heading">
+                <div>
+                  <p className="eyebrow">Advanced</p>
+                  <h3 id="advanced-settings-title">Rules and public surfaces</h3>
+                </div>
+                <SettingsIcon size={18} aria-hidden="true" />
+              </div>
+              <label className="form-field">
+                Availability rules JSON
+                <textarea value={availabilityRulesJson} onChange={(event) => setAvailabilityRulesJson(event.target.value)} />
+              </label>
+              <label className="form-field">
+                Notification settings JSON
+                <textarea value={notificationSettingsJson} onChange={(event) => setNotificationSettingsJson(event.target.value)} />
+              </label>
+              <label className="form-field">
+                Widget settings JSON
+                <textarea value={widgetSettingsJson} onChange={(event) => setWidgetSettingsJson(event.target.value)} />
+              </label>
+              <label className="form-field">
+                Public page settings JSON
+                <textarea value={publicPageSettingsJson} onChange={(event) => setPublicPageSettingsJson(event.target.value)} />
+              </label>
             </section>
 
             {updateMutation.isError ? (

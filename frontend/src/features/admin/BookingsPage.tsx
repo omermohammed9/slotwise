@@ -12,14 +12,25 @@ import {
   ChevronRight,
   Mail,
   Phone,
+  Pencil,
   RefreshCw,
+  Save,
   Search,
   Sparkles,
+  Trash2,
   UserX,
   X,
   XCircle,
 } from 'lucide-react';
-import { getBooking, getBookingSuggestions, listBookings, rescheduleBooking, updateBookingStatus } from '../../api/bookings';
+import {
+  deleteBooking,
+  getBooking,
+  getBookingSuggestions,
+  listBookings,
+  rescheduleBooking,
+  updateBooking,
+  updateBookingStatus,
+} from '@/api/bookings';
 import type {
   ApiMeta,
   BookingDto,
@@ -30,11 +41,13 @@ import type {
   RescheduleBookingBody,
   Role,
   SortOrder,
-} from '../../api/types';
-import { useSessionStore } from '../../auth/sessionStore';
-import { InlineNotice, LoadingState } from '../../components/AdminState';
-import { EmptyState } from '../../components/EmptyState';
-import { StatusChip } from '../../components/StatusChip';
+} from '@/api/types';
+import { useSessionStore } from '@/auth/sessionStore';
+import { InlineNotice, LoadingState } from '@/components/AdminState';
+import { EmptyState } from '@/components/EmptyState';
+import { StatusChip } from '@/components/StatusChip';
+import { useI18n } from '@/i18n/I18nProvider';
+import type { TranslationKey } from '@/i18n/translations';
 
 type BookingPaginationMeta = {
   page: number;
@@ -60,6 +73,18 @@ type RescheduleDraft = {
   timein: string;
   timeout: string;
 };
+type BookingEditDraft = {
+  email: string;
+  endDate: string;
+  fName: string;
+  lName: string;
+  notes: string;
+  partySize: string;
+  phone: string;
+  startDate: string;
+  timein: string;
+  timeout: string;
+};
 type SavedBookingsView = {
   id: string;
   name: string;
@@ -76,36 +101,36 @@ type ActiveFilterChip = {
 };
 
 type LifecycleAction = {
-  confirmMessage: string;
+  confirmKey: TranslationKey;
   icon: typeof CheckCircle2;
-  label: string;
+  labelKey: TranslationKey;
   roles: Role[];
   targetStatus: LifecycleStatus;
 };
 
-const statusOptions: Array<{ label: string; value: BookingStatus | '' }> = [
-  { label: 'All statuses', value: '' },
-  { label: 'Pending', value: 'pending' },
-  { label: 'Approved', value: 'approved' },
-  { label: 'Completed', value: 'completed' },
-  { label: 'Cancelled', value: 'cancelled' },
-  { label: 'Rejected', value: 'rejected' },
-  { label: 'No-show', value: 'no_show' },
+const statusOptions: Array<{ labelKey: TranslationKey; value: BookingStatus | '' }> = [
+  { labelKey: 'bookings.allStatuses', value: '' },
+  { labelKey: 'status.pending', value: 'pending' },
+  { labelKey: 'status.approved', value: 'approved' },
+  { labelKey: 'status.completed', value: 'completed' },
+  { labelKey: 'status.cancelled', value: 'cancelled' },
+  { labelKey: 'status.rejected', value: 'rejected' },
+  { labelKey: 'status.no_show', value: 'no_show' },
 ];
 
-const riskOptions: Array<{ label: string; value: ConflictRiskLevel | '' }> = [
-  { label: 'All risk', value: '' },
-  { label: 'Low', value: 'low' },
-  { label: 'Medium', value: 'medium' },
-  { label: 'High', value: 'high' },
+const riskOptions: Array<{ labelKey: TranslationKey; value: ConflictRiskLevel | '' }> = [
+  { labelKey: 'risk.all', value: '' },
+  { labelKey: 'risk.low', value: 'low' },
+  { labelKey: 'risk.medium', value: 'medium' },
+  { labelKey: 'risk.high', value: 'high' },
 ];
 
-const sortFieldOptions: Array<{ label: string; value: BookingSortField }> = [
-  { label: 'Created', value: 'createdAt' },
-  { label: 'Start date', value: 'startDate' },
-  { label: 'End date', value: 'endDate' },
-  { label: 'Status', value: 'status' },
-  { label: 'Updated', value: 'updatedAt' },
+const sortFieldOptions: Array<{ labelKey: TranslationKey; value: BookingSortField }> = [
+  { labelKey: 'sort.createdAt', value: 'createdAt' },
+  { labelKey: 'sort.startDate', value: 'startDate' },
+  { labelKey: 'sort.endDate', value: 'endDate' },
+  { labelKey: 'sort.status', value: 'status' },
+  { labelKey: 'sort.updatedAt', value: 'updatedAt' },
 ];
 
 const allowedLifecycleTargets: Record<BookingStatus, LifecycleStatus[]> = {
@@ -119,37 +144,37 @@ const allowedLifecycleTargets: Record<BookingStatus, LifecycleStatus[]> = {
 
 const lifecycleActions: LifecycleAction[] = [
   {
-    confirmMessage: 'Approve this booking?',
+    confirmKey: 'bookings.confirmApprove',
     icon: CheckCircle2,
-    label: 'Approve',
+    labelKey: 'bookings.approve',
     roles: ['admin', 'owner'],
     targetStatus: 'approved',
   },
   {
-    confirmMessage: 'Reject this booking?',
+    confirmKey: 'bookings.confirmReject',
     icon: XCircle,
-    label: 'Reject',
+    labelKey: 'bookings.reject',
     roles: ['admin', 'owner'],
     targetStatus: 'rejected',
   },
   {
-    confirmMessage: 'Cancel this booking?',
+    confirmKey: 'bookings.confirmCancel',
     icon: Ban,
-    label: 'Cancel',
+    labelKey: 'bookings.cancel',
     roles: ['admin', 'owner', 'staff'],
     targetStatus: 'cancelled',
   },
   {
-    confirmMessage: 'Complete this booking?',
+    confirmKey: 'bookings.confirmComplete',
     icon: CheckCircle2,
-    label: 'Complete',
+    labelKey: 'bookings.complete',
     roles: ['admin', 'owner', 'staff'],
     targetStatus: 'completed',
   },
   {
-    confirmMessage: 'Mark this booking as no-show?',
+    confirmKey: 'bookings.confirmNoShow',
     icon: UserX,
-    label: 'No-show',
+    labelKey: 'bookings.noShow',
     roles: ['admin', 'owner', 'staff'],
     targetStatus: 'no_show',
   },
@@ -220,8 +245,20 @@ function getRiskLevel(booking: BookingDto): ConflictRiskLevel {
   return booking.conflictRisk?.level ?? 'low';
 }
 
-function formatStatusLabel(status: BookingStatus): string {
-  return status.replace('_', ' ');
+function getStatusLabel(status: BookingStatus, t: (key: TranslationKey) => string): string {
+  return t(`status.${status}` as TranslationKey);
+}
+
+function getRiskLabel(risk: ConflictRiskLevel, t: (key: TranslationKey) => string): string {
+  return t(`risk.${risk}` as TranslationKey);
+}
+
+function getSortFieldLabel(sortField: BookingSortField, t: (key: TranslationKey) => string): string {
+  return t(`sort.${sortField}` as TranslationKey);
+}
+
+function getSortOrderLabel(sortOrder: SortOrder, t: (key: TranslationKey) => string): string {
+  return t(sortOrder === 'asc' ? 'sort.ascending' : 'sort.descending');
 }
 
 function getAvailableLifecycleActions(status: BookingStatus, role?: Role): LifecycleAction[] {
@@ -241,6 +278,21 @@ function createRescheduleDraft(booking?: BookingDto): RescheduleDraft {
   return {
     endDate: formatInputDateTime(booking?.endDate),
     reason: '',
+    startDate: formatInputDateTime(booking?.startDate),
+    timein: formatInputDateTime(booking?.timein),
+    timeout: formatInputDateTime(booking?.timeout),
+  };
+}
+
+function createBookingEditDraft(booking?: BookingDto): BookingEditDraft {
+  return {
+    email: booking?.email ?? '',
+    endDate: formatInputDateTime(booking?.endDate),
+    fName: booking?.fName ?? '',
+    lName: booking?.lName ?? '',
+    notes: booking?.notes ?? '',
+    partySize: booking?.partySize ? String(booking.partySize) : '1',
+    phone: booking?.phone ?? '',
     startDate: formatInputDateTime(booking?.startDate),
     timein: formatInputDateTime(booking?.timein),
     timeout: formatInputDateTime(booking?.timeout),
@@ -278,6 +330,21 @@ function buildRescheduleBody(draft: RescheduleDraft): RescheduleBookingBody {
   };
 }
 
+function buildBookingUpdateBody(draft: BookingEditDraft) {
+  return {
+    email: draft.email.trim(),
+    endDate: toIsoDateTime(draft.endDate),
+    fName: draft.fName.trim(),
+    lName: draft.lName.trim(),
+    notes: draft.notes.trim() || undefined,
+    partySize: Number(draft.partySize),
+    phone: draft.phone.trim(),
+    startDate: toIsoDateTime(draft.startDate),
+    timein: toIsoDateTime(draft.timein),
+    timeout: toIsoDateTime(draft.timeout),
+  };
+}
+
 function normalizeBookingSearchState(state: Partial<BookingSearchState>): BookingSearchState {
   return {
     customerName: typeof state.customerName === 'string' ? state.customerName.trim() : defaultBookingSearchState.customerName,
@@ -300,7 +367,7 @@ function areSearchStatesEqual(left: BookingSearchState, right: BookingSearchStat
   );
 }
 
-function describeSearchState(state: BookingSearchState): string {
+function describeSearchState(state: BookingSearchState, t: (key: TranslationKey) => string): string {
   const parts = [];
 
   if (state.customerName) {
@@ -308,20 +375,17 @@ function describeSearchState(state: BookingSearchState): string {
   }
 
   if (state.status) {
-    const option = statusOptions.find((entry) => entry.value === state.status);
-    parts.push(option?.label ?? formatStatusLabel(state.status));
+    parts.push(getStatusLabel(state.status, t));
   }
 
   if (state.risk) {
-    const option = riskOptions.find((entry) => entry.value === state.risk);
-    parts.push(option?.label ?? `${state.risk} risk`);
+    parts.push(`${getRiskLabel(state.risk, t)} ${t('risk.label')}`);
   }
 
-  const sortField = sortFieldOptions.find((entry) => entry.value === state.sortBy);
-  parts.push(`${sortField?.label ?? state.sortBy} ${state.sortOrder === 'asc' ? 'ascending' : 'descending'}`);
+  parts.push(`${getSortFieldLabel(state.sortBy, t)} ${getSortOrderLabel(state.sortOrder, t)}`);
 
   if (state.page > 1) {
-    parts.push(`Page ${state.page}`);
+    parts.push(`${t('bookings.filterPage')} ${state.page}`);
   }
 
   return parts.join(' · ');
@@ -371,11 +435,11 @@ function readSavedViews(): SavedBookingsView[] {
   }
 }
 
-function DetailField({ label, value }: { label: string; value?: number | string }) {
+function DetailField({ label, notSetLabel, value }: { label: string; notSetLabel: string; value?: number | string }) {
   return (
     <div className="detail-field">
       <span>{label}</span>
-      <strong>{value || 'Not set'}</strong>
+      <strong>{value || notSetLabel}</strong>
     </div>
   );
 }
@@ -383,8 +447,12 @@ function DetailField({ label, value }: { label: string; value?: number | string 
 export function BookingsPage() {
   const queryClient = useQueryClient();
   const { session, token } = useSessionStore();
+  const { formatNumber, t } = useI18n();
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState<BookingEditDraft>(createBookingEditDraft());
+  const [isEditingBooking, setIsEditingBooking] = useState(false);
+  const [lifecycleReason, setLifecycleReason] = useState('');
   const [rescheduleDraft, setRescheduleDraft] = useState<RescheduleDraft>(createRescheduleDraft());
   const [suggestions, setSuggestions] = useState<BookingSuggestionDto[]>([]);
   const [savedViewName, setSavedViewName] = useState('');
@@ -417,34 +485,31 @@ export function BookingsPage() {
     if (customerName.trim()) {
       chips.push({
         id: 'customerName',
-        label: `Customer: ${customerName.trim()}`,
+        label: `${t('bookings.filterCustomer')}: ${customerName.trim()}`,
         onRemove: () => updateSearchParams({ customerName: defaultBookingSearchState.customerName, page: defaultBookingSearchState.page }),
       });
     }
 
     if (status) {
-      const option = statusOptions.find((entry) => entry.value === status);
       chips.push({
         id: 'status',
-        label: `Status: ${option?.label ?? formatStatusLabel(status)}`,
+        label: `${t('bookings.filterStatus')}: ${getStatusLabel(status, t)}`,
         onRemove: () => updateSearchParams({ page: defaultBookingSearchState.page, status: defaultBookingSearchState.status }),
       });
     }
 
     if (risk) {
-      const option = riskOptions.find((entry) => entry.value === risk);
       chips.push({
         id: 'risk',
-        label: `Risk: ${option?.label ?? `${risk} risk`}`,
+        label: `${t('bookings.filterRisk')}: ${getRiskLabel(risk, t)} ${t('risk.label')}`,
         onRemove: () => updateSearchParams({ page: defaultBookingSearchState.page, risk: defaultBookingSearchState.risk }),
       });
     }
 
     if (sortBy !== defaultBookingSearchState.sortBy || sortOrder !== defaultBookingSearchState.sortOrder) {
-      const option = sortFieldOptions.find((entry) => entry.value === sortBy);
       chips.push({
         id: 'sort',
-        label: `Sort: ${option?.label ?? sortBy} ${sortOrder === 'asc' ? 'ascending' : 'descending'}`,
+        label: `${t('bookings.filterSort')}: ${getSortFieldLabel(sortBy, t)} ${getSortOrderLabel(sortOrder, t)}`,
         onRemove: () =>
           updateSearchParams({
             page: defaultBookingSearchState.page,
@@ -457,17 +522,18 @@ export function BookingsPage() {
     if (page > defaultBookingSearchState.page) {
       chips.push({
         id: 'page',
-        label: `Page: ${page}`,
+        label: `${t('bookings.filterPage')}: ${formatNumber(page)}`,
         onRemove: () => updateSearchParams({ page: defaultBookingSearchState.page }),
       });
     }
 
     return chips;
-  }, [customerName, page, risk, sortBy, sortOrder, status]);
+  }, [customerName, formatNumber, page, risk, sortBy, sortOrder, status, t]);
   const hasActiveFilters = activeFilterChips.length > 0;
 
   const query: BookingListQuery = useMemo(
     () => ({
+      ...(session?.role !== 'owner' && session?.businessId ? { businessId: session.businessId } : {}),
       ...(customerName.trim() ? { customerName: customerName.trim() } : {}),
       ...(risk ? { conflictRiskLevel: risk } : {}),
       ...(status ? { status } : {}),
@@ -476,7 +542,7 @@ export function BookingsPage() {
       sortBy,
       sortOrder,
     }),
-    [customerName, page, risk, sortBy, sortOrder, status],
+    [customerName, page, risk, session?.businessId, session?.role, sortBy, sortOrder, status],
   );
 
   function updateSearchParams(
@@ -519,7 +585,7 @@ export function BookingsPage() {
 
     if (!name) {
       setSavedViewFeedback({
-        message: 'Enter a name before saving this view.',
+        message: t('bookings.savedViewRequired'),
         tone: 'error',
       });
       return;
@@ -543,9 +609,9 @@ export function BookingsPage() {
     setSavedViewFeedback({
       message: saved
         ? existingView
-          ? 'Saved view updated.'
-          : 'Saved view created.'
-        : 'Saved view changed here, but browser storage was unavailable.',
+          ? t('bookings.savedViewUpdated')
+          : t('bookings.savedViewCreated')
+        : t('bookings.savedViewStorageUnavailable'),
       tone: saved ? 'success' : 'error',
     });
   }
@@ -553,7 +619,7 @@ export function BookingsPage() {
   function handleApplySavedView(view: SavedBookingsView) {
     updateSearchParams(view.state);
     setSavedViewFeedback({
-      message: `"${view.name}" applied.`,
+      message: `"${view.name}" ${t('bookings.savedViewApplied')}`,
       tone: 'success',
     });
   }
@@ -563,7 +629,7 @@ export function BookingsPage() {
     setSavedViews(nextViews);
     const saved = persistSavedViews(nextViews);
     setSavedViewFeedback({
-      message: saved ? 'Saved view removed.' : 'Saved view changed here, but browser storage was unavailable.',
+      message: saved ? t('bookings.savedViewRemoved') : t('bookings.savedViewStorageUnavailable'),
       tone: saved ? 'success' : 'error',
     });
   }
@@ -588,7 +654,7 @@ export function BookingsPage() {
     enabled: Boolean(selectedBookingId),
     queryFn: async () => {
       if (!selectedBookingId) {
-        throw new Error('Booking selection is required.');
+        throw new Error(t('bookings.selectionRequired'));
       }
 
       const response = await getBooking(selectedBookingId, token ?? undefined);
@@ -609,6 +675,9 @@ export function BookingsPage() {
   const rescheduleAvailable = selectedBooking ? canRescheduleBooking(selectedBooking.status, session?.role) : false;
 
   useEffect(() => {
+    setEditDraft(createBookingEditDraft(selectedBooking));
+    setIsEditingBooking(false);
+    setLifecycleReason('');
     setSuggestions([]);
     setRescheduleDraft(createRescheduleDraft(selectedBooking));
   }, [selectedBooking?._id, selectedBooking?.startDate, selectedBooking?.endDate, selectedBooking?.timein, selectedBooking?.timeout]);
@@ -616,10 +685,15 @@ export function BookingsPage() {
   const lifecycleMutation = useMutation({
     mutationFn: async (targetStatus: LifecycleStatus) => {
       if (!selectedBookingId || !token) {
-        throw new Error('An active operator session is required.');
+        throw new Error(t('bookings.activeSessionRequired'));
       }
 
-      const response = await updateBookingStatus(selectedBookingId, targetStatus, {}, token);
+      const response = await updateBookingStatus(
+        selectedBookingId,
+        targetStatus,
+        lifecycleReason.trim() ? { reason: lifecycleReason.trim() } : {},
+        token,
+      );
 
       if (!response.success) {
         throw new Error(response.error.message);
@@ -628,16 +702,57 @@ export function BookingsPage() {
       return response.data;
     },
     onSuccess: (updatedBooking) => {
+      setLifecycleReason('');
       queryClient.setQueryData(['booking-detail', updatedBooking._id, token], updatedBooking);
       void queryClient.invalidateQueries({ queryKey: ['bookings'] });
       void queryClient.invalidateQueries({ queryKey: ['booking-detail', updatedBooking._id, token] });
     },
   });
 
+  const editMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedBookingId || !token) {
+        throw new Error(t('bookings.activeSessionRequired'));
+      }
+
+      const response = await updateBooking(selectedBookingId, buildBookingUpdateBody(editDraft), token);
+
+      if (!response.success) {
+        throw new Error(response.error.message);
+      }
+
+      return response.data;
+    },
+    onSuccess: (updatedBooking) => {
+      setIsEditingBooking(false);
+      queryClient.setQueryData(['booking-detail', updatedBooking._id, token], updatedBooking);
+      void queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      void queryClient.invalidateQueries({ queryKey: ['booking-detail', updatedBooking._id, token] });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedBookingId || !token) {
+        throw new Error(t('bookings.activeSessionRequired'));
+      }
+
+      const response = await deleteBooking(selectedBookingId, token);
+
+      if (!response.success) {
+        throw new Error(response.error.message);
+      }
+    },
+    onSuccess: () => {
+      setSelectedBookingId(null);
+      void queryClient.invalidateQueries({ queryKey: ['bookings'] });
+    },
+  });
+
   const suggestionMutation = useMutation({
     mutationFn: async () => {
       if (!selectedBooking) {
-        throw new Error('Booking selection is required.');
+        throw new Error(t('bookings.selectionRequired'));
       }
 
       const response = await getBookingSuggestions({
@@ -665,7 +780,7 @@ export function BookingsPage() {
   const rescheduleMutation = useMutation({
     mutationFn: async () => {
       if (!selectedBookingId || !token) {
-        throw new Error('An active operator session is required.');
+        throw new Error(t('bookings.activeSessionRequired'));
       }
 
       const response = await rescheduleBooking(selectedBookingId, buildRescheduleBody(rescheduleDraft), token);
@@ -685,11 +800,31 @@ export function BookingsPage() {
   });
 
   function handleLifecycleAction(action: LifecycleAction) {
-    if (lifecycleMutation.isPending || !window.confirm(action.confirmMessage)) {
+    if (lifecycleMutation.isPending || !window.confirm(t(action.confirmKey))) {
       return;
     }
 
     lifecycleMutation.mutate(action.targetStatus);
+  }
+
+  function handleEditDraftChange(field: keyof BookingEditDraft, value: string) {
+    setEditDraft((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  }
+
+  function handleBookingEditSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    editMutation.mutate();
+  }
+
+  function handleDeleteBooking() {
+    if (deleteMutation.isPending || !window.confirm('Delete this booking? This cannot be undone.')) {
+      return;
+    }
+
+    deleteMutation.mutate();
   }
 
   function handleDraftChange(field: keyof RescheduleDraft, value: string) {
@@ -705,7 +840,7 @@ export function BookingsPage() {
   }
 
   function handleRescheduleSubmit() {
-    if (rescheduleMutation.isPending || !window.confirm('Reschedule this booking?')) {
+    if (rescheduleMutation.isPending || !window.confirm(t('bookings.confirmReschedule'))) {
       return;
     }
 
@@ -726,20 +861,20 @@ export function BookingsPage() {
     <>
       <section className="workspace-header" aria-labelledby="bookings-title">
         <div>
-          <p className="eyebrow">Booking operations</p>
-          <h1 id="bookings-title">Bookings</h1>
-          <p className="lede">Search, filter, sort, and page through backend booking records.</p>
+          <p className="eyebrow">{t('bookings.operations')}</p>
+          <h1 id="bookings-title">{t('bookings.title')}</h1>
+          <p className="lede">{t('bookings.lede')}</p>
         </div>
-        <div className="header-actions" aria-label="Booking list actions">
-          <button className="icon-button" type="button" aria-label="Refresh bookings" onClick={() => bookingsQuery.refetch()}>
+        <div className="header-actions" aria-label={t('bookings.actions')}>
+          <button className="icon-button" type="button" aria-label={t('bookings.refresh')} onClick={() => bookingsQuery.refetch()}>
             <RefreshCw size={18} aria-hidden="true" />
           </button>
         </div>
       </section>
 
-      <section className="panel booking-controls" aria-label="Booking filters">
+      <section className="panel booking-controls" aria-label={t('bookings.filters')}>
         <label className="form-field">
-          Customer
+          {t('bookings.customer')}
           <span className="input-with-icon">
             <Search size={17} aria-hidden="true" />
             <input
@@ -750,13 +885,13 @@ export function BookingsPage() {
                   page: 1,
                 });
               }}
-              placeholder="Search by name"
+              placeholder={t('bookings.searchByName')}
             />
           </span>
         </label>
 
         <label className="form-field">
-          Status
+          {t('bookings.status')}
           <select
             value={status}
             onChange={(event) => {
@@ -767,15 +902,15 @@ export function BookingsPage() {
             }}
           >
             {statusOptions.map((option) => (
-              <option key={option.label} value={option.value}>
-                {option.label}
+              <option key={option.labelKey} value={option.value}>
+                {t(option.labelKey)}
               </option>
             ))}
           </select>
         </label>
 
         <label className="form-field">
-          Risk
+          {t('bookings.risk')}
           <select
             value={risk}
             onChange={(event) => {
@@ -786,15 +921,15 @@ export function BookingsPage() {
             }}
           >
             {riskOptions.map((option) => (
-              <option key={option.label} value={option.value}>
-                {option.label}
+              <option key={option.labelKey} value={option.value}>
+                {t(option.labelKey)}
               </option>
             ))}
           </select>
         </label>
 
         <label className="form-field">
-          Sort
+          {t('bookings.sort')}
           <select
             value={sortBy}
             onChange={(event) => {
@@ -806,7 +941,7 @@ export function BookingsPage() {
           >
             {sortFieldOptions.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {t(option.labelKey)}
               </option>
             ))}
           </select>
@@ -823,7 +958,7 @@ export function BookingsPage() {
           }}
         >
           <ArrowDownUp size={17} aria-hidden="true" />
-          {sortOrder === 'asc' ? 'Ascending' : 'Descending'}
+          {getSortOrderLabel(sortOrder, t)}
         </button>
       </section>
 
@@ -831,24 +966,24 @@ export function BookingsPage() {
         <section className="panel booking-active-filters" aria-labelledby="booking-active-filters-title">
           <div className="panel-heading booking-active-filters-heading">
             <div>
-              <p className="eyebrow">Current workspace</p>
-              <h2 id="booking-active-filters-title">Active filters</h2>
+              <p className="eyebrow">{t('bookings.currentWorkspace')}</p>
+              <h2 id="booking-active-filters-title">{t('bookings.activeFilters')}</h2>
             </div>
             <button
               className="text-button"
               type="button"
               onClick={() => updateSearchParams(defaultBookingSearchState)}
             >
-              Clear all
+              {t('bookings.clearAll')}
             </button>
           </div>
-          <div className="active-filter-chip-list" aria-label="Active booking filters">
+          <div className="active-filter-chip-list" aria-label={t('bookings.activeFilterList')}>
             {activeFilterChips.map((chip) => (
               <button
                 key={chip.id}
                 className="active-filter-chip"
                 type="button"
-                aria-label={`Remove ${chip.label}`}
+                aria-label={`${t('bookings.removeFilter')} ${chip.label}`}
                 onClick={chip.onRemove}
               >
                 <span>{chip.label}</span>
@@ -862,29 +997,29 @@ export function BookingsPage() {
       <section className="panel saved-view-panel" aria-labelledby="booking-saved-views-title">
         <div className="panel-heading">
           <div>
-            <p className="eyebrow">Workspace memory</p>
-            <h2 id="booking-saved-views-title">Saved views</h2>
+            <p className="eyebrow">{t('bookings.workspaceMemory')}</p>
+            <h2 id="booking-saved-views-title">{t('bookings.savedViews')}</h2>
           </div>
-          <p className="result-count">Browser only</p>
+          <p className="result-count">{t('bookings.browserOnly')}</p>
         </div>
-        <p className="body-copy">Save the current bookings filters, sorting, and page so you can reapply them quickly on this device.</p>
+        <p className="body-copy">{t('bookings.savedViewsCopy')}</p>
         <div className="saved-view-toolbar">
           <label className="form-field">
-            View name
+            {t('bookings.viewName')}
             <input
               value={savedViewName}
               maxLength={60}
               onChange={(event) => setSavedViewName(event.target.value)}
-              placeholder="Ex: High-risk approvals"
+              placeholder={t('bookings.viewNamePlaceholder')}
             />
           </label>
           <button className="secondary-button compact-button" type="button" onClick={handleSaveView}>
-            Save current view
+            {t('bookings.saveCurrentView')}
           </button>
         </div>
         {savedViewFeedback ? <InlineNotice tone={savedViewFeedback.tone} message={savedViewFeedback.message} /> : null}
         {savedViews.length ? (
-          <div className="saved-view-list" aria-label="Saved booking views">
+          <div className="saved-view-list" aria-label={t('bookings.savedViewList')}>
             {savedViews.map((view) => {
               const isActive = view.id === activeSavedViewId;
 
@@ -898,11 +1033,11 @@ export function BookingsPage() {
                   >
                     {view.name}
                   </button>
-                  <p className="saved-view-summary">{describeSearchState(view.state)}</p>
+                  <p className="saved-view-summary">{describeSearchState(view.state, t)}</p>
                   <button
                     className="icon-button saved-view-remove"
                     type="button"
-                    aria-label={`Remove ${view.name} saved view`}
+                    aria-label={`${t('bookings.removeSavedView')} ${view.name} ${t('bookings.savedViewSingular')}`}
                     onClick={() => handleRemoveSavedView(view.id)}
                   >
                     <X size={16} aria-hidden="true" />
@@ -912,44 +1047,44 @@ export function BookingsPage() {
             })}
           </div>
         ) : (
-          <p className="body-copy">No saved views yet.</p>
+          <p className="body-copy">{t('bookings.noSavedViews')}</p>
         )}
       </section>
 
       <section className="panel booking-list-panel" aria-labelledby="booking-list-title">
         <div className="panel-heading">
           <div>
-            <p className="eyebrow">Records</p>
-            <h2 id="booking-list-title">Booking list</h2>
+            <p className="eyebrow">{t('bookings.records')}</p>
+            <h2 id="booking-list-title">{t('bookings.bookingList')}</h2>
           </div>
           <p className="result-count">
-            {bookingsQuery.isFetching ? 'Refreshing' : `${pagination.total} total`}
+            {bookingsQuery.isFetching ? t('bookings.refreshing') : `${formatNumber(pagination.total)} ${t('bookings.total')}`}
           </p>
         </div>
 
         {bookingsQuery.isLoading ? (
-          <LoadingState label="Loading bookings" />
+          <LoadingState label={t('bookings.loading')} />
         ) : bookingsQuery.isError ? (
           <EmptyState
             icon={AlertTriangle}
-            title="Bookings could not load"
+            title={t('bookings.loadError')}
             description={(bookingsQuery.error as Error).message}
           />
         ) : bookings.length === 0 ? (
           <EmptyState
             icon={Search}
-            title="No bookings found"
-            description="Adjust the current filters or try a broader search."
+            title={t('bookings.empty')}
+            description={t('bookings.emptyDescription')}
           />
         ) : (
-          <div className="booking-table" role="table" aria-label="Bookings">
+          <div className="booking-table" role="table" aria-label={t('bookings.table')}>
             <div className="booking-table-row booking-table-head" role="row">
-              <span role="columnheader">Customer</span>
-              <span role="columnheader">Date</span>
-              <span role="columnheader">Time</span>
-              <span role="columnheader">Status</span>
-              <span role="columnheader">Risk</span>
-              <span role="columnheader">Detail</span>
+              <span role="columnheader">{t('bookings.customer')}</span>
+              <span role="columnheader">{t('bookings.date')}</span>
+              <span role="columnheader">{t('bookings.time')}</span>
+              <span role="columnheader">{t('bookings.status')}</span>
+              <span role="columnheader">{t('bookings.risk')}</span>
+              <span role="columnheader">{t('bookings.detail')}</span>
             </div>
             {bookings.map((booking) => {
               const riskLevel = getRiskLevel(booking);
@@ -965,14 +1100,14 @@ export function BookingsPage() {
                     {formatTime(booking.timein)} - {formatTime(booking.timeout)}
                   </span>
                   <span role="cell">
-                    <StatusChip status={booking.status}>{booking.status.replace('_', ' ')}</StatusChip>
+                    <StatusChip status={booking.status}>{getStatusLabel(booking.status, t)}</StatusChip>
                   </span>
                   <span role="cell">
-                    <span className={`risk-chip risk-${riskLevel}`}>{riskLevel} risk</span>
+                    <span className={`risk-chip risk-${riskLevel}`}>{getRiskLabel(riskLevel, t)} {t('risk.label')}</span>
                   </span>
                   <span role="cell">
                     <button className="text-button table-action" type="button" onClick={() => setSelectedBookingId(booking._id)}>
-                      View details
+                      {t('bookings.viewDetails')}
                     </button>
                   </span>
                 </article>
@@ -981,23 +1116,23 @@ export function BookingsPage() {
           </div>
         )}
 
-        <div className="pagination-bar" aria-label="Booking pagination">
+        <div className="pagination-bar" aria-label={t('bookings.pagination')}>
           <button
             className="icon-button"
             type="button"
-            aria-label="Previous page"
+            aria-label={t('bookings.previousPage')}
             disabled={pagination.page <= 1 || bookingsQuery.isFetching}
             onClick={() => updateSearchParams({ page: Math.max(1, page - 1) })}
           >
             <ChevronLeft size={18} aria-hidden="true" />
           </button>
           <span>
-            Page {pagination.page} of {pagination.totalPages}
+            {t('bookings.pageOf')} {formatNumber(pagination.page)} {t('bookings.of')} {formatNumber(pagination.totalPages)}
           </span>
           <button
             className="icon-button"
             type="button"
-            aria-label="Next page"
+            aria-label={t('bookings.nextPage')}
             disabled={pagination.page >= pagination.totalPages || bookingsQuery.isFetching}
             onClick={() => updateSearchParams({ page: page + 1 })}
           >
@@ -1010,35 +1145,128 @@ export function BookingsPage() {
         <aside className="detail-drawer" aria-labelledby="booking-detail-title" aria-modal="true" role="dialog">
           <div className="detail-drawer-header">
             <div>
-              <p className="eyebrow">Booking detail</p>
+              <p className="eyebrow">{t('bookings.detailEyebrow')}</p>
               <h2 id="booking-detail-title">
-                {selectedBooking ? getCustomerName(selectedBooking) : 'Loading booking'}
+                {selectedBooking ? getCustomerName(selectedBooking) : t('bookings.loadingBooking')}
               </h2>
             </div>
-            <button className="icon-button" type="button" aria-label="Close booking detail" onClick={() => setSelectedBookingId(null)}>
+            <button className="icon-button" type="button" aria-label={t('bookings.closeDetail')} onClick={() => setSelectedBookingId(null)}>
               <X size={18} aria-hidden="true" />
             </button>
           </div>
 
           {bookingDetailQuery.isLoading ? (
-            <LoadingState label="Loading booking detail" />
+            <LoadingState label={t('bookings.loadingDetail')} />
           ) : bookingDetailQuery.isError ? (
             <EmptyState
               icon={AlertTriangle}
-              title="Booking detail could not load"
+              title={t('bookings.detailLoadError')}
               description={(bookingDetailQuery.error as Error).message}
             />
           ) : selectedBooking ? (
             <div className="detail-content">
               <div className="detail-summary">
-                <StatusChip status={selectedBooking.status}>{formatStatusLabel(selectedBooking.status)}</StatusChip>
+                <StatusChip status={selectedBooking.status}>{getStatusLabel(selectedBooking.status, t)}</StatusChip>
                 <span className={`risk-chip risk-${getRiskLevel(selectedBooking)}`}>
-                  {getRiskLevel(selectedBooking)} risk
+                  {getRiskLabel(getRiskLevel(selectedBooking), t)} {t('risk.label')}
                 </span>
               </div>
 
-              <section className="detail-section" aria-label="Customer contact">
-                <h3>Customer</h3>
+              <section className="detail-section" aria-label="Booking record actions">
+                <div className="action-row">
+                  <button
+                    className="secondary-button compact-button"
+                    type="button"
+                    onClick={() => {
+                      setEditDraft(createBookingEditDraft(selectedBooking));
+                      setIsEditingBooking((current) => !current);
+                    }}
+                  >
+                    <Pencil size={17} aria-hidden="true" />
+                    {isEditingBooking ? 'Cancel edit' : 'Edit booking'}
+                  </button>
+                  {session?.role === 'owner' || session?.role === 'admin' ? (
+                    <button
+                      className="secondary-button compact-button danger-button"
+                      disabled={deleteMutation.isPending}
+                      type="button"
+                      onClick={handleDeleteBooking}
+                    >
+                      <Trash2 size={17} aria-hidden="true" />
+                      {deleteMutation.isPending ? 'Deleting' : 'Delete'}
+                    </button>
+                  ) : null}
+                </div>
+                {deleteMutation.isError ? (
+                  <InlineNotice tone="error" message={(deleteMutation.error as Error).message} icon={AlertTriangle} />
+                ) : null}
+              </section>
+
+              {isEditingBooking ? (
+                <form className="detail-section management-form" aria-label="Edit booking" onSubmit={handleBookingEditSubmit}>
+                  <h3>Edit booking</h3>
+                  <div className="form-grid">
+                    <label className="form-field">
+                      First name
+                      <input required value={editDraft.fName} onChange={(event) => handleEditDraftChange('fName', event.target.value)} />
+                    </label>
+                    <label className="form-field">
+                      Last name
+                      <input required value={editDraft.lName} onChange={(event) => handleEditDraftChange('lName', event.target.value)} />
+                    </label>
+                    <label className="form-field">
+                      Email
+                      <input required type="email" value={editDraft.email} onChange={(event) => handleEditDraftChange('email', event.target.value)} />
+                    </label>
+                    <label className="form-field">
+                      Phone
+                      <input required value={editDraft.phone} onChange={(event) => handleEditDraftChange('phone', event.target.value)} />
+                    </label>
+                    <label className="form-field">
+                      Party size
+                      <input
+                        min={1}
+                        required
+                        type="number"
+                        value={editDraft.partySize}
+                        onChange={(event) => handleEditDraftChange('partySize', event.target.value)}
+                      />
+                    </label>
+                  </div>
+                  <div className="reschedule-grid">
+                    <label className="form-field">
+                      {t('bookings.start')}
+                      <input required type="datetime-local" value={editDraft.startDate} onChange={(event) => handleEditDraftChange('startDate', event.target.value)} />
+                    </label>
+                    <label className="form-field">
+                      {t('bookings.end')}
+                      <input required type="datetime-local" value={editDraft.endDate} onChange={(event) => handleEditDraftChange('endDate', event.target.value)} />
+                    </label>
+                    <label className="form-field">
+                      {t('bookings.timeIn')}
+                      <input required type="datetime-local" value={editDraft.timein} onChange={(event) => handleEditDraftChange('timein', event.target.value)} />
+                    </label>
+                    <label className="form-field">
+                      {t('bookings.timeOut')}
+                      <input required type="datetime-local" value={editDraft.timeout} onChange={(event) => handleEditDraftChange('timeout', event.target.value)} />
+                    </label>
+                  </div>
+                  <label className="form-field">
+                    {t('bookings.notes')}
+                    <textarea value={editDraft.notes} onChange={(event) => handleEditDraftChange('notes', event.target.value)} />
+                  </label>
+                  {editMutation.isError ? (
+                    <InlineNotice tone="error" message={(editMutation.error as Error).message} icon={AlertTriangle} />
+                  ) : null}
+                  <button className="primary-button compact-button" disabled={editMutation.isPending} type="submit">
+                    <Save size={17} aria-hidden="true" />
+                    {editMutation.isPending ? t('bookings.saving') : 'Save booking'}
+                  </button>
+                </form>
+              ) : null}
+
+              <section className="detail-section" aria-label={t('bookings.customerContact')}>
+                <h3>{t('bookings.customer')}</h3>
                 <p className="detail-line">
                   <Mail size={16} aria-hidden="true" />
                   {selectedBooking.email}
@@ -1049,31 +1277,31 @@ export function BookingsPage() {
                 </p>
               </section>
 
-              <section className="detail-section" aria-label="Booking schedule">
-                <h3>Schedule</h3>
+              <section className="detail-section" aria-label={t('bookings.schedule')}>
+                <h3>{t('bookings.schedule')}</h3>
                 <p className="detail-line">
                   <CalendarClock size={16} aria-hidden="true" />
-                  {formatDateTime(selectedBooking.startDate)} from {formatTime(selectedBooking.timein)} to{' '}
+                  {formatDateTime(selectedBooking.startDate)} {t('bookings.scheduleFromTo')} {formatTime(selectedBooking.timein)} -{' '}
                   {formatTime(selectedBooking.timeout)}
                 </p>
                 <div className="detail-grid">
-                  <DetailField label="Party size" value={selectedBooking.partySize} />
-                  <DetailField label="Resource" value={selectedBooking.serviceResourceId} />
-                  <DetailField label="Business" value={selectedBooking.businessId} />
-                  <DetailField label="Customer ID" value={selectedBooking.customerId} />
+                  <DetailField label={t('bookings.partySize')} notSetLabel={t('bookings.notSet')} value={selectedBooking.partySize} />
+                  <DetailField label={t('bookings.resource')} notSetLabel={t('bookings.notSet')} value={selectedBooking.serviceResourceId} />
+                  <DetailField label={t('bookings.business')} notSetLabel={t('bookings.notSet')} value={selectedBooking.businessId} />
+                  <DetailField label={t('bookings.customerId')} notSetLabel={t('bookings.notSet')} value={selectedBooking.customerId} />
                 </div>
               </section>
 
               {selectedBooking.notes ? (
-                <section className="detail-section" aria-label="Booking notes">
-                  <h3>Notes</h3>
+                <section className="detail-section" aria-label={t('bookings.notes')}>
+                  <h3>{t('bookings.notes')}</h3>
                   <p className="body-copy">{selectedBooking.notes}</p>
                 </section>
               ) : null}
 
               {selectedBooking.conflictRisk ? (
-                <section className="detail-section" aria-label="Conflict risk">
-                  <h3>Risk signals</h3>
+                <section className="detail-section" aria-label={t('bookings.conflictRisk')}>
+                  <h3>{t('bookings.riskSignals')}</h3>
                   <p className="body-copy">{selectedBooking.conflictRisk.summary}</p>
                   <div className="signal-list">
                     {selectedBooking.conflictRisk.signals.map((signal) => (
@@ -1083,43 +1311,53 @@ export function BookingsPage() {
                 </section>
               ) : null}
 
-              <section className="detail-section" aria-label="Lifecycle actions">
-                <h3>Lifecycle actions</h3>
+              <section className="detail-section" aria-label={t('bookings.lifecycleActions')}>
+                <h3>{t('bookings.lifecycleActions')}</h3>
                 {lifecycleMutation.isError ? (
                   <InlineNotice tone="error" message={(lifecycleMutation.error as Error).message} icon={AlertTriangle} />
                 ) : null}
                 {availableLifecycleActions.length ? (
-                  <div className="lifecycle-action-grid">
-                    {availableLifecycleActions.map((action) => {
-                      const ActionIcon = action.icon;
-                      const isCurrentMutation = lifecycleMutation.variables === action.targetStatus;
+                  <>
+                    <label className="form-field">
+                      Status reason
+                      <input
+                        value={lifecycleReason}
+                        onChange={(event) => setLifecycleReason(event.target.value)}
+                        placeholder={t('bookings.optionalAuditNote')}
+                      />
+                    </label>
+                    <div className="lifecycle-action-grid">
+                      {availableLifecycleActions.map((action) => {
+                        const ActionIcon = action.icon;
+                        const isCurrentMutation = lifecycleMutation.variables === action.targetStatus;
 
-                      return (
-                        <button
-                          className={`secondary-button lifecycle-action lifecycle-action-${action.targetStatus}`}
-                          disabled={lifecycleMutation.isPending}
-                          key={action.targetStatus}
-                          type="button"
-                          onClick={() => handleLifecycleAction(action)}
-                        >
-                          <ActionIcon size={17} aria-hidden="true" />
-                          {lifecycleMutation.isPending && isCurrentMutation ? 'Saving' : action.label}
-                        </button>
-                      );
-                    })}
-                  </div>
+                        return (
+                          <button
+                            className={`secondary-button lifecycle-action lifecycle-action-${action.targetStatus}`}
+                            disabled={lifecycleMutation.isPending}
+                            key={action.targetStatus}
+                            type="button"
+                            onClick={() => handleLifecycleAction(action)}
+                          >
+                            <ActionIcon size={17} aria-hidden="true" />
+                            {lifecycleMutation.isPending && isCurrentMutation ? t('bookings.saving') : t(action.labelKey)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
                 ) : (
-                  <p className="body-copy">No lifecycle actions are available for this status and role.</p>
+                  <p className="body-copy">{t('bookings.noLifecycleActions')}</p>
                 )}
               </section>
 
-              <section className="detail-section" aria-label="Reschedule booking">
-                <h3>Reschedule</h3>
+              <section className="detail-section" aria-label={t('bookings.reschedule')}>
+                <h3>{t('bookings.reschedule')}</h3>
                 {rescheduleAvailable ? (
                   <form className="reschedule-form" onSubmit={handleSuggestionSubmit}>
                     <div className="reschedule-grid">
                       <label className="form-field">
-                        Start
+                        {t('bookings.start')}
                         <input
                           required
                           type="datetime-local"
@@ -1128,7 +1366,7 @@ export function BookingsPage() {
                         />
                       </label>
                       <label className="form-field">
-                        End
+                        {t('bookings.end')}
                         <input
                           required
                           type="datetime-local"
@@ -1137,7 +1375,7 @@ export function BookingsPage() {
                         />
                       </label>
                       <label className="form-field">
-                        Time in
+                        {t('bookings.timeIn')}
                         <input
                           required
                           type="datetime-local"
@@ -1146,7 +1384,7 @@ export function BookingsPage() {
                         />
                       </label>
                       <label className="form-field">
-                        Time out
+                        {t('bookings.timeOut')}
                         <input
                           required
                           type="datetime-local"
@@ -1156,11 +1394,11 @@ export function BookingsPage() {
                       </label>
                     </div>
                     <label className="form-field">
-                      Reason
+                      {t('bookings.reason')}
                       <input
                         value={rescheduleDraft.reason}
                         onChange={(event) => handleDraftChange('reason', event.target.value)}
-                        placeholder="Optional audit note"
+                        placeholder={t('bookings.optionalAuditNote')}
                       />
                     </label>
                     {suggestionMutation.isError ? (
@@ -1176,7 +1414,7 @@ export function BookingsPage() {
                         type="submit"
                       >
                         <Sparkles size={17} aria-hidden="true" />
-                        {suggestionMutation.isPending ? 'Checking' : 'Find suggestions'}
+                        {suggestionMutation.isPending ? t('bookings.checking') : t('bookings.findSuggestions')}
                       </button>
                       <button
                         className="primary-button compact-button"
@@ -1185,11 +1423,11 @@ export function BookingsPage() {
                         onClick={handleRescheduleSubmit}
                       >
                         <CalendarClock size={17} aria-hidden="true" />
-                        {rescheduleMutation.isPending ? 'Saving' : 'Reschedule'}
+                        {rescheduleMutation.isPending ? t('bookings.saving') : t('bookings.reschedule')}
                       </button>
                     </div>
                     {suggestions.length ? (
-                      <div className="suggestion-list" aria-label="Suggested booking slots">
+                      <div className="suggestion-list" aria-label={t('bookings.suggestedSlots')}>
                         {suggestions.map((suggestion) => (
                           <button
                             className="suggestion-option"
@@ -1209,17 +1447,17 @@ export function BookingsPage() {
                     ) : null}
                   </form>
                 ) : (
-                  <p className="body-copy">Reschedule is available for pending or approved bookings handled by operator roles.</p>
+                  <p className="body-copy">{t('bookings.rescheduleUnavailable')}</p>
                 )}
               </section>
 
-              <section className="detail-section" aria-label="Status history">
-                <h3>Status history</h3>
+              <section className="detail-section" aria-label={t('bookings.statusHistory')}>
+                <h3>{t('bookings.statusHistory')}</h3>
                 {selectedBooking.statusHistory?.length ? (
                   <div className="history-list">
                     {selectedBooking.statusHistory.map((entry) => (
                       <div className="history-entry" key={`${entry.toStatus}-${entry.changedAt}`}>
-                        <strong>{formatStatusLabel(entry.toStatus)}</strong>
+                        <strong>{getStatusLabel(entry.toStatus, t)}</strong>
                         <span>
                           {formatDateTime(entry.changedAt)} · {entry.changedByRole}
                           {entry.reason ? ` · ${entry.reason}` : ''}
@@ -1228,7 +1466,7 @@ export function BookingsPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="body-copy">No status history recorded.</p>
+                  <p className="body-copy">{t('bookings.noStatusHistory')}</p>
                 )}
               </section>
             </div>

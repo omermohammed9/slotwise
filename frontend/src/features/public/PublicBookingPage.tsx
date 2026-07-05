@@ -15,10 +15,10 @@ import {
 } from 'lucide-react';
 import { Link, useParams } from 'react-router';
 import { useSearchParams } from 'react-router';
-import { createBooking, getBookingSuggestions } from '../../api/bookings';
-import { getPublicBookingPageConfig } from '../../api/publicSurfaces';
-import type { BookingDto, BookingSuggestionDto, PublicBookingPageConfigDto, PublicResourcePreviewDto } from '../../api/types';
-import { EmptyState } from '../../components/EmptyState';
+import { createBooking, getBookingSuggestions } from '@/api/bookings';
+import { getPublicBookingPageConfig } from '@/api/publicSurfaces';
+import type { BookingDto, BookingSuggestionDto, PublicBookingPageConfigDto, PublicResourcePreviewDto } from '@/api/types';
+import { EmptyState } from '@/components/EmptyState';
 import {
   clampPartySize,
   combineDateTime,
@@ -28,7 +28,7 @@ import {
   formatInputTime,
   getInitialDate,
   validatePublicBookingDraft,
-} from './publicSurfaceUtils';
+} from '@/features/public/publicSurfaceUtils';
 
 type BookingDraft = {
   date: string;

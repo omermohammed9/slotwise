@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { inviteOperator, listOperators, updateOperatorRole, updateOperatorStatus, type OperatorAccountDto } from '../../api/operators';
-import type { Role } from '../../api/types';
-import { useSessionStore } from '../../auth/sessionStore';
+import { inviteOperator, listOperators, updateOperatorRole, updateOperatorStatus, type OperatorAccountDto } from '@/api/operators';
+import type { Role } from '@/api/types';
+import { useSessionStore } from '@/auth/sessionStore';
 
 const operatorRoles: Array<Exclude<Role, 'customer'>> = ['owner', 'admin', 'staff'];
 

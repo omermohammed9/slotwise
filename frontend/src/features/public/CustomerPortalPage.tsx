@@ -3,13 +3,13 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
 import { CalendarClock, Link2, Mail, ShieldCheck } from 'lucide-react';
 import { useSearchParams } from 'react-router';
-import { requestCustomerMagicLink, verifyCustomerMagicLink } from '../../api/auth';
-import { customerCancelBooking, customerRescheduleBooking, listBookings } from '../../api/bookings';
-import type { BookingDto } from '../../api/types';
-import { EmptyState } from '../../components/EmptyState';
-import { useCustomerSessionStore } from '../../auth/sessionStore';
-import { useSessionRevalidation } from '../../auth/useSessionRevalidation';
-import { combineDateTime, formatInputDate, formatInputTime } from './publicSurfaceUtils';
+import { requestCustomerMagicLink, verifyCustomerMagicLink } from '@/api/auth';
+import { customerCancelBooking, customerRescheduleBooking, listBookings } from '@/api/bookings';
+import type { BookingDto } from '@/api/types';
+import { EmptyState } from '@/components/EmptyState';
+import { useCustomerSessionStore } from '@/auth/sessionStore';
+import { useSessionRevalidation } from '@/auth/useSessionRevalidation';
+import { combineDateTime, formatInputDate, formatInputTime } from '@/features/public/publicSurfaceUtils';
 
 function formatBookingWindow(booking: BookingDto): string {
   try {

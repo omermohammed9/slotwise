@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { exportAuditLogsCsv, listAuditLogs, type AuditLogDto } from '../../api/auditLogs';
-import { useSessionStore } from '../../auth/sessionStore';
+import { exportAuditLogsCsv, listAuditLogs, type AuditLogDto } from '@/api/auditLogs';
+import { useSessionStore } from '@/auth/sessionStore';
 
 export function AuditLogPage() {
   const { token } = useSessionStore();

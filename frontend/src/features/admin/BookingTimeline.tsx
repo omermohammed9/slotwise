@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import type { BookingPreview } from './types';
+import type { BookingPreview } from '@/features/admin/types';
 
 type BookingTimelineProps = {
   bookings: readonly BookingPreview[];
