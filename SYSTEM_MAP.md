@@ -158,6 +158,7 @@ Client / Future Frontend
 - Test entry points: `tests/validators.test.js`, `tests/bookingService.test.js`, `tests/bookingController.test.js`
 - Route test entry point: `tests/bookingRoutes.test.js`
 - Frontend app entry point: `frontend/src/main.tsx`
+- Frontend import convention: `@/` resolves to `frontend/src` for app, test, and Vite code; avoid new deep relative frontend imports.
 - Frontend dashboard shell: `frontend/src/app/App.tsx`
 - Frontend route map: `frontend/src/app/routeMap.tsx`
 - Frontend app shell layout: `frontend/src/app/AppShell.tsx`
@@ -213,8 +214,8 @@ Client / Future Frontend
   - `PUT /bookings/:id`
   - `DELETE /bookings/:id`
 - Business profile routes:
-  - `POST /businesses`
-  - `GET /businesses`
+  - `POST /businesses` (protected by role and business-scope authorization)
+  - `GET /businesses` (supports optional `businessId` filtering for scoped business-profile reads)
   - `GET /businesses/templates`
   - `GET /businesses/templates/:templateKey`
   - `GET /businesses/public/:slug/booking-page`
@@ -258,12 +259,13 @@ Client / Future Frontend
 - Runtime packages: `axios`, `dotenv`, `express`, `libphonenumber-js`, `mongoose`, `validator`.
 - Development packages: `@types/express`, `@types/validator`, `nodemon`, `ts-node`.
 - Phase 15 can be verified through normal unsandboxed npm or through `C:\Program Files\nodejs\npm.cmd` inside Codex; only the Codex PowerShell/sandbox `npm.ps1` path remains broken.
-- Current direct version targets declared in `package.json`: `axios@^1.17.0`, `dotenv@^17.4.2`, `express@^5.2.1`, `libphonenumber-js@^1.13.6`, `mongoose@^9.7.0`, `validator@^13.15.35`, `@types/express@^5.0.6`, `@types/validator@^13.15.10`, `nodemon@^3.1.14`, `ts-node@^10.9.2`.
+- Current direct version targets declared in `package.json`: `axios@^1.18.1`, `dotenv@^17.4.2`, `express@^5.2.1`, `libphonenumber-js@^1.13.8`, `mongoose@^9.7.3`, `validator@^13.15.35`, `@types/express@^5.0.6`, `@types/validator@^13.15.10`, `nodemon@^3.1.14`, `ts-node@^10.9.2`.
+- Frontend package health is current within the approved major-version scope as of July 5, 2026; frontend `npm outdated` only reports the deferred `react-router` major upgrade from `7.18.1` to `8.1.0`.
 - The initial audit reported 17 vulnerabilities, and the final audit result is now 0 vulnerabilities.
 - Deprecated `@types/mongoose` has been removed.
 - `dotenv` was upgraded to `17.4.2` with an explicit quiet-mode workaround in `src/config/env.ts`.
 - `express` was upgraded to `5.2.1` with `@types/express` `5.0.6`.
-- `mongoose` was upgraded to `9.7.0`, with small type-compatibility adjustments in `src/interfaces/booking.interface.ts` and `src/utils/validators.ts`.
+- `mongoose` was upgraded to `9.7.3`, with small type-compatibility adjustments in `src/interfaces/booking.interface.ts` and `src/utils/validators.ts`.
 - Remaining package-health issues are machine-level toolchain concerns rather than repository dependency gaps: Node is `v26.3.0` Current instead of LTS, normal npm works at `11.16.0` outside the sandbox, and moving to Node `v24.16.0` LTS remains blocked by the prior administrator-only installer/uninstall step.
 - Candidate future packages must be justified before adoption and documented here after approval.
 
@@ -350,3 +352,8 @@ Codex-specific governance should live in `.codex/`. If `.agents/` exists, treat 
 - Phase 16.27 expanded `/admin/resources` over the existing `/service-resources` detail/update contract with resource edit drawers, richer field editing, and availability override controls; explicit clearing of already persisted nested override keys is still limited by the current backend PATCH contract.
 - Phase 16.28 expanded `/admin/customers` over the existing `/customers` create/update contract with business-aware create flow, customer profile editing, notes/preference fields, and preserved booking-history context.
 - Phase 16.25 hardened operator and customer session handling without backend or storage-model changes by revalidating real current sessions through `GET /auth/session` on route entry plus focus/visibility return, refreshing in-memory session metadata, and clearing rejected sessions with explicit expiry messaging.
+- The July 5, 2026 alignment pass added backend `GET /businesses?businessId=...` filtering, protected `POST /businesses` with the business-scope guard, and updated non-owner frontend admin/staff views to pass the active session business scope into business, booking, timeline, dashboard, customer, resource, and settings queries.
+- `/admin/bookings` now exposes generic booking edits, owner/admin deletion, lifecycle action reasons, reschedule, suggestions, and status history over the existing booking API surface.
+- `/admin/settings` now keeps business creation owner-facing while exposing advanced availability, notification, widget, and public-page settings editing over the existing business API surface.
+- The frontend API client now supports configurable CSRF cookie lookup through `VITE_SLOTWISE_CSRF_COOKIE_NAME`.
+- Frontend production builds now use Vite manual chunks for large dependency groups, and TypeScript config includes the current deprecation compatibility setting needed by the installed compiler line.

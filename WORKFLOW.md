@@ -45,6 +45,8 @@
 - Frontend build: from `frontend/`, run `npm run build`
 - Frontend tests: from `frontend/`, run `npm run test:run`
 - Frontend audit: from `frontend/`, run `npm audit --audit-level=moderate`
+- Frontend import convention: use `@/` for imports from `frontend/src` rather than `../` or `../../`; keep the alias in sync across `frontend/tsconfig.app.json`, `frontend/tsconfig.node.json`, and `frontend/vite.config.ts`.
+- Backend import convention: keep current relative imports unless a runtime-safe backend alias strategy is approved and verified.
 - Dependency audit: `npm audit`
 - Safe vulnerability fix: `npm audit fix`
 - Outdated package review: `npm outdated`
@@ -62,6 +64,8 @@ For documentation-only Phase 13 planning work, manual brief review and cross-doc
 For documentation-only Phase 14 frontend implementation planning/selection work, manual roadmap review and targeted markdown sync checks are sufficient verification. Do not scaffold frontend source, install frontend packages, or change auth/session behavior without explicit approval.
 For approved frontend implementation work, run frontend install/audit when package changes are involved, then run frontend build and tests. Use the in-app browser for visual QA when available; if the browser runtime is blocked, document the blocker and run a local HTTP smoke check.
 For Phase 16 frontend/backend alignment work, update `IMPLEMENTATION_PLAN.md` after each small task and keep the coverage matrix current. Low reasoning is sufficient for documentation/audit-only updates, medium is required for frontend routes/API/components/tests, and high is required before auth, customer sessions, or lifecycle action UI.
+For frontend dependency updates, run `npm audit`, `npm outdated`, `npm run build`, and `npm run test:run` from `frontend/`. Safe wanted-version updates can be applied in the current major line; major upgrades such as `react-router` 8 require a separate migration plan and regression pass.
+If Vite emits a chunk-size warning after dependency or route growth, first inspect the bundle shape and update `frontend/vite.config.ts` manual chunks for stable dependency groups before treating the warning as harmless.
 
 ## API Convention
 - Prefer the REST aliases documented in `README.md`.

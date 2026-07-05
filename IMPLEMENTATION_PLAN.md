@@ -688,7 +688,7 @@ Progress:
 | 15.3 Run security audit | Security | Done | Medium | Yes | `npm audit --audit-level=moderate` succeeds through normal unsandboxed npm. |
 | 15.4 Run safe audit fix | Security | Done | Medium | Yes | Approved non-force `npm audit fix` updated `form-data` to `4.0.6` and cleared vulnerabilities to 0. |
 | 15.5 Review force fixes separately | Security | Done | High | Yes | No distinct `npm audit fix --force` pass is needed after the June 16, 2026 non-force audit repair. |
-| 15.6 Check outdated packages | Audit | Done | Medium | Yes | `npm outdated` currently reports only compatible `axios` `1.17.0` -> `1.18.0`; no force audit action is indicated. |
+| 15.6 Check outdated packages | Audit | Done | Medium | Yes | Root `npm outdated` is clean after the July 5, 2026 safe-update pass; frontend `npm outdated` only reports the deferred `react-router` major. |
 | 15.7 Update compatible packages | DevOps | Done | Medium | Yes | `npm update`, compile, tests |
 | 15.8 Upgrade major versions with migration notes | Refactor | Done | High | Yes | `dotenv` 17, `express` 5, and `mongoose` 9 applied with targeted compatibility fixes |
 | 15.9 Remove obsolete packages | DevOps | Done | Medium | Yes | Deprecated `@types/mongoose` removed; compile/tests passed |
@@ -755,7 +755,7 @@ Current npm execution note:
 - Moving this machine from current `v26.3.0` to LTS `v24.16.0` remains a machine-level installer/uninstall task; the previous official MSI attempt failed with Windows Installer error `1730` because administrator rights were required to remove the existing machine-wide Node installation.
 
 Current manifest-based inventory:
-- Final runtime: `axios@1.17.0`, `dotenv@17.4.2`, `express@5.2.1`, `libphonenumber-js@1.13.6`, `mongoose@9.7.0`, `validator@13.15.35`
+- Current runtime after the July 5, 2026 safe-update pass: `axios@1.18.1`, `dotenv@17.4.2`, `express@5.2.1`, `libphonenumber-js@1.13.8`, `mongoose@9.7.3`, `validator@13.15.35`
 - Final development: `@types/express@5.0.6`, `@types/validator@13.15.10`, `nodemon@3.1.14`, `ts-node@10.9.2`
 - Obsolete package removed: `@types/mongoose`
 
@@ -770,8 +770,8 @@ Outdated snapshot:
 - Obsolete package cleanup completed: deprecated `@types/mongoose` was removed successfully.
 - `dotenv` was upgraded to `17.4.2`; `src/config/env.ts` now sets `DOTENV_CONFIG_QUIET` and passes `quiet: true` to preserve quiet startup/test behavior.
 - `express` was upgraded to `5.2.1` with `@types/express` `5.0.6`; `src/controllers/booking.controller.ts` now uses typed route params for Express 5 compatibility.
-- `mongoose` was upgraded to `9.7.0`; `src/utils/validators.ts` now uses a minimal local cast inside `endDateValidator`, and `src/interfaces/booking.interface.ts` keeps `_id` as a required `mongoose.Types.ObjectId` for current Mongoose typing.
-- Final project dependency state: `npm outdated` reports a compatible `axios` update from `1.17.0` to `1.18.0`; this is not an audit-force blocker and can be handled in a normal compatible-update pass.
+- `mongoose` was upgraded to `9.7.3`; `src/utils/validators.ts` now uses a minimal local cast inside `endDateValidator`, and `src/interfaces/booking.interface.ts` keeps `_id` as a required `mongoose.Types.ObjectId` for current Mongoose typing.
+- Current project dependency state: root `npm outdated` is clean; frontend `npm outdated` only reports the deferred `react-router` major from `7.18.1` to `8.1.0`.
 
 ## Phase 16: Frontend/Backend Feature Alignment
 Status: Done
@@ -982,6 +982,8 @@ Verification:
 - Phase 16.25 verification: `frontend/` build passed with `frontend/node_modules/.bin/vite.cmd build`.
 - Phase 16.25 verification: same-shell Vite preview HTTP smoke checks returned `200` for `http://127.0.0.1:4173/admin` and `http://127.0.0.1:4173/portal`.
 - Phase 16.25 verification: in-app browser smoke remains blocked by the known Codex Windows sandbox/runtime issue `CreateProcessAsUserW failed: 5`; no re-investigation was done in this slice.
+- Localization Stage 6 verification: Customers screen localization and the frontend import-alias rewrite passed `node node_modules\typescript\bin\tsc -b`, `node node_modules\vitest\vitest.mjs run App.test.tsx` with 41 tests, and `node node_modules\vite\bin\vite.js build`.
+- Frontend architecture note: `@/` now resolves to `frontend/src` for frontend app/test/build code; backend relative imports were intentionally left unchanged because the CommonJS backend does not yet have runtime alias resolution.
 - Browser/in-app smoke remains blocked by the known Codex Windows sandbox/runtime error `CreateProcessAsUserW failed: 5`; no re-investigation was done in this slice.
 - Phase 16.22 browser/in-app smoke was not retried because the known Codex Windows sandbox/runtime blocker `CreateProcessAsUserW failed: 5` remains unresolved at the environment level.
 
@@ -1081,3 +1083,30 @@ Remaining risks:
 - Phase progress is updated after every completed task.
 - Medium/high tasks ask for approval before implementation starts.
 - Dependency health is audited, vulnerabilities are fixed or documented, packages are current within approved migration scope, and new packages are justified before adoption.
+
+## July 5, 2026 Alignment And Dependency Closure
+Status: Done, with one deferred major-version package migration
+
+Completed:
+- Backend `GET /businesses` now supports `businessId` filtering through controller, service, and repository layers.
+- Backend `POST /businesses` now includes the business-scope authorization guard, matching the customer and service-resource protected collection-write pattern.
+- Frontend non-owner admin/staff views now pass the active session business scope into business, booking, timeline, dashboard, customer, resource, and settings queries where applicable.
+- `/admin/settings` now hides business creation controls for non-owner sessions, matching the protected `POST /businesses` route boundary.
+- `/admin/bookings` now exposes general booking editing, owner/admin deletion, lifecycle reasons, reschedule, suggestions, and status history over the existing backend booking APIs.
+- `/admin/settings` now exposes business creation and advanced availability, notification, widget, and public-page settings editing over the existing backend business APIs.
+- Frontend CSRF cookie lookup now supports `VITE_SLOTWISE_CSRF_COOKIE_NAME`.
+- Frontend TypeScript config now includes the current deprecation compatibility setting, and Vite production chunking splits large dependency groups so the build no longer emits the chunk-size warning.
+- Safe backend/frontend dependency updates are applied, and both root and frontend audits report 0 vulnerabilities.
+
+Verification:
+- Root `npm test` passed with 133 tests.
+- Follow-up scoped verification passed with `.\node_modules\.bin\tsc.cmd`, `node --test tests\businessRoutes.test.js`, `node --test tests\businessAuthorization.test.js`, and `node --test tests\*.test.js` at 133 tests.
+- Follow-up frontend settings verification passed with `frontend/node_modules/.bin/vitest.cmd run src/app/App.test.tsx` at 42 tests, `frontend/node_modules/.bin/tsc.cmd -b`, and `frontend/node_modules/.bin/vite.cmd build`.
+- Frontend `npm run test:run` passed with 50 tests.
+- Frontend `npm run build` passed without the prior Vite chunk-size warning.
+- Root and frontend `npm audit` report 0 vulnerabilities.
+- Root `npm outdated` is clean.
+- Frontend `npm outdated` only reports `react-router` latest `8.1.0`; the current wanted version remains `7.18.1`.
+
+Deferred:
+- `react-router` 8 migration remains deferred because it is a major upgrade that needs a separate route behavior review and regression pass.

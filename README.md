@@ -26,6 +26,11 @@ Current workspace folder: `Slotwise`.
 - The first isolated frontend scaffold now exists under `frontend/` with Vite, React, TypeScript, TanStack Query, Tailwind CSS, an admin dashboard shell, API/session foundations, and smoke tests.
 - Phase 16 frontend/backend alignment is complete for the current app foundation. Its coverage matrix, route-map slice, shared API DTO/client slice, operator auth screen slice, query-backed bookings list, booking detail drawer, role-aware lifecycle actions, operator reschedule/suggestion flows, timeline view, dashboard analytics, cancellation/no-show insights, customer management create/edit flows, business settings with template preview plus working-hours/blackout editors, resource screens with edit drawers and availability override editing, public booking page flow, customer portal flow, embeddable widget flow, shared admin states, responsive/accessibility QA pass, and the approved session-revalidation hardening slice are complete.
 - Production-readiness hardening now includes cookie-session CSRF protection, strict configured CORS, production cookie/proxy/HTTPS controls, auth rate limiting, business-scoped authorization checks, operator invitation/password-reset/account administration foundations, audit logs, migration registry, first-owner setup, separate notification worker startup, request IDs, structured logging, health/readiness endpoints, and role-aware owner/admin/staff frontend portals.
+- The July 5, 2026 alignment pass closed the remaining business-scope gaps: `GET /businesses` accepts `businessId`, non-owner frontend collection views pass the active session business scope for bookings, timeline, dashboard analytics, customers, resources, and settings, and `POST /businesses` now uses the same business-scope guard as other protected business-domain collection writes.
+- `/admin/bookings` now covers general booking edits, owner/admin deletion, lifecycle action reasons, reschedule, suggestions, and status history from the existing booking APIs.
+- `/admin/settings` now keeps business creation owner-facing while covering template selection, working hours, blackout dates, and advanced availability/notification/widget/public-page settings over the existing business APIs.
+- Frontend CSRF cookie lookup is configurable with `VITE_SLOTWISE_CSRF_COOKIE_NAME`, matching backend deployments that customize `SLOTWISE_CSRF_COOKIE_NAME`.
+- Frontend production chunking is configured in Vite, and the current frontend build succeeds without the previous chunk-size warning.
 - The active roadmap now plans Repository Pattern, platform features, and future admin/customer UI/UX.
 
 ## Requirements
@@ -90,6 +95,8 @@ Frontend configuration from `frontend/`:
 
 - Create `frontend/.env` from `frontend/.env.example` when the frontend should call a non-default API origin.
 - `VITE_SLOTWISE_API_BASE_URL` defaults to `http://localhost:3000` in code when unset.
+- `VITE_SLOTWISE_CSRF_COOKIE_NAME` defaults to `slotwise_csrf` in code when unset and should match backend `SLOTWISE_CSRF_COOKIE_NAME` if that backend cookie name is customized.
+- Frontend source imports use the `@/` alias for `frontend/src` instead of deep relative paths such as `../../api/...`; the alias is configured in `frontend/tsconfig.app.json`, `frontend/tsconfig.node.json`, and `frontend/vite.config.ts`.
 
 If bare `npm` is broken in the Codex PowerShell/sandbox path, use:
 
@@ -113,7 +120,8 @@ If bare `npm` is broken in the Codex PowerShell/sandbox path, use:
 - Dependency modernization is tracked in Phase 15: audit, safe fixes, outdated-package review, compatible updates, major upgrades with migration notes, and justified package adoption only when a real backend need exists.
 - Normal unsandboxed npm works on this machine and was re-verified at `11.16.0` on June 16, 2026 with `npm run build` and `npm test`.
 - The remaining npm issue is Codex PowerShell/sandbox-specific: `C:\Program Files\nodejs\npm.ps1` selects `C:\Users\omarz\AppData\Roaming\npm\node_modules\npm\bin\npm-cli.js`, which the sandbox cannot read/execute. Use `C:\Program Files\nodejs\npm.cmd` or the bundled CLI path inside Codex.
-- Phase 15 dependency modernization is complete for the repository: audit vulnerabilities are 0, `form-data` was repaired to `4.0.6` through approved non-force `npm audit fix`, deprecated `@types/mongoose` was removed, `dotenv` was upgraded to `17.4.2`, `express` was upgraded to `5.2.1`, and `mongoose` was upgraded to `9.7.0`.
+- Dependency modernization is current as of July 5, 2026: root and frontend audits report 0 vulnerabilities, root `npm outdated` is clean, `axios` is `1.18.1`, `libphonenumber-js` is `1.13.8`, `mongoose` is `9.7.3`, and the frontend dependency tree has been safely updated within the current major-version scope.
+- The only known package update intentionally deferred is `react-router@8.1.0`, because the frontend is on the latest wanted `7.x` line and the `8.x` jump requires a separate migration plan and regression pass.
 - Current machine Node is `v26.3.0` as of June 16, 2026. Official Node metadata lists `v24.16.0` as Latest LTS, `v26.3.0` as Current/Latest Release, and the v23 line as EOL; moving this machine to LTS remains an administrator-level installer/uninstall task based on the prior Windows Installer `1730` blocker.
 - New packages should be introduced only when they are required for security, validation, logging, testing, API documentation, configuration safety, or approved frontend/backend expansion.
 
@@ -174,8 +182,8 @@ Health and readiness checks are mounted at `/health` and `/ready`.
 
 ## Phase 11 Management Routes
 
-- `POST /businesses`
-- `GET /businesses`
+- `POST /businesses` requires owner access or an explicit matching business scope; the current create payload does not support non-owner cross-business creation.
+- `GET /businesses` supports optional `businessId` filtering for scoped business-profile reads
 - `GET /businesses/templates`
 - `GET /businesses/templates/:templateKey`
 - `GET /businesses/public/:slug/booking-page`
@@ -302,6 +310,8 @@ Health and readiness checks are mounted at `/health` and `/ready`.
 - The approved Phase 16.24 `/admin/bookings` active-filter-chip slice is now complete, so the existing customer/status/risk/sort/page workspace state also surfaces lightweight removable chips plus a clear-all reset back to the default clean URL.
 - The approved Phase 16.25 session-hardening slice is now complete, so real operator and customer sessions revalidate against the backend on entry and tab return, refresh current-session metadata in memory, and fail closed with clear expiry messaging while keeping token storage memory-only.
 - The approved grouped admin-management slice is now complete through Phase 16.28, so `/admin/settings` now edits working hours and blackout dates, `/admin/resources` now supports edit drawers plus availability override editing, and `/admin/customers` now supports create/edit flows over existing backend APIs; explicit clearing of already persisted nested resource override keys still needs backend contract support.
+- The Stage 6 Customers localization slice is complete: `/admin/customers` uses the shared i18n provider for UI-controlled copy, Arabic labels, notification/status labels, and locale-aware customer counts/date-time display while leaving backend/customer-entered data unchanged.
+- The frontend import convention now uses `@/` aliases across `frontend/src`; backend `src/` imports remain relative until a runtime-safe backend alias loader/module strategy is approved.
 - The current frontend implementation phase is Phase 16; route-map/app-shell routing, shared API DTO/client modules, operator auth/memory-session flow, current-session revalidation for real operator/customer sessions, the query-backed `/admin/bookings` list with URL-persistent list state, browser-local saved views, and removable active-filter chips, the booking detail drawer, role-aware lifecycle actions, operator reschedule/suggestion flows, the query-backed `/admin/timeline` view, dashboard analytics, cancellation/no-show insights, customer management create/edit coverage, business settings with read-only template preview plus working-hours/blackout editors, resource management with edit drawers and availability override editing, the public `/book/:slug` booking flow, the customer `/portal` magic-link and booking-management flow, the compact `/widget/:slug` embed flow, shared admin states, the responsive/accessibility QA pass, and the approved 16.21 public-surface hardening pass are complete.
 - Production-readiness frontend work now adds role-aware `/owner`, `/admin`, and `/staff` portal families, `/forbidden`, owner user administration, owner/admin audit visibility, CSRF-aware client behavior, normalized auth/security error handling, and light/dark theme foundation.
 - The June 16, 2026 hardening pass added focused verification for CORS/preflight, production HTTPS rejection, tenant route guard wiring, business-scoped audit-log reads, core migration model registration, duplicate first-owner refusal, and frontend 401/403 API error normalization.

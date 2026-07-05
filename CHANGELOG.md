@@ -1,6 +1,14 @@
 # Changelog
 
 ## Unreleased
+- Completed a July 5, 2026 frontend/backend alignment closure pass: backend `GET /businesses` now honors `businessId`, non-owner admin/staff frontend collection queries pass the active session business scope, and booking/timeline/dashboard/customer/resource/settings screens now avoid unscoped business reads where the session already identifies a business.
+- Expanded `/admin/bookings` so the existing booking detail drawer can edit general booking fields, delete bookings for owner/admin operators, and submit lifecycle action reasons through the existing status-action API surface.
+- Expanded `/admin/settings` with business creation plus editable advanced business configuration JSON for availability rules, notification settings, widget settings, and public booking-page settings.
+- Aligned `/admin/settings` with the protected `POST /businesses` scope guard by keeping business creation controls owner-only in non-owner admin/staff sessions.
+- Added `VITE_SLOTWISE_CSRF_COOKIE_NAME` frontend configuration so the SPA CSRF cookie lookup can stay aligned with backend `SLOTWISE_CSRF_COOKIE_NAME` deployments.
+- Added frontend TypeScript 6 deprecation compatibility settings and Vite production manual chunking for React, router, date, chart, icon, vendor, and app code; the frontend production build now succeeds without the prior chunk-size warning.
+- Updated safe in-range backend and frontend packages, repaired the frontend `undici` audit advisory with non-force `npm audit fix`, and verified root/frontend audits at 0 vulnerabilities. `react-router@8.1.0` remains deferred because it is a major migration outside the safe update scope.
+- Verified the closure pass with root `npm test` passing 133 tests, frontend `npm run test:run` passing 50 tests, frontend `npm run build` passing, root/frontend `npm audit` reporting 0 vulnerabilities, root `npm outdated` clean, and frontend `npm outdated` showing only the deferred `react-router` major.
 - Completed the Phase 15 machine/runtime closure pass by documenting the exact normal-shell versus Codex sandbox npm behavior, correcting current machine Node to `v26.3.0`, recording Node `v24.16.0` as the LTS target, and keeping the administrator-only installer step as the remaining Node blocker.
 - Applied an approved non-force `npm audit fix` that updated the vulnerable `form-data` path to `4.0.6`; follow-up audit reports 0 vulnerabilities, so a distinct `npm audit fix --force` pass is not needed.
 - Scoped the backend `tsconfig.json` to `src/**/*.ts` so root backend build/test no longer sweeps in the isolated `frontend/` workspace.
@@ -117,7 +125,7 @@
 - Removed deprecated `@types/mongoose` and verified compile/tests still pass.
 - Upgraded `dotenv` to `17.4.2` and restored quiet env-loading behavior for tests and local startup.
 - Upgraded `express` to `5.2.1` with `@types/express` `5.0.6` and tightened controller route-param typing for compatibility.
-- Upgraded `mongoose` to `9.7.0` and aligned validator/document typing with the new type surface.
+- Upgraded `mongoose` to `9.7.0`, later safely updated to `9.7.3`, and aligned validator/document typing with the new type surface.
 - Aligned `package.json` and the lockfile root metadata to the final audited dependency versions.
 - Repaired the normal unsandboxed npm workflow by updating user-level npm to `11.16.0` and re-verifying `npm run build` and `npm test`; June 16, 2026 verification still passes.
 - Documented that the current machine Node is `v26.3.0` Current, the official LTS target is `v24.16.0`, and moving to LTS remains blocked by the prior Windows Installer administrator requirement.
@@ -156,3 +164,4 @@
 - Documented request observability foundations: request IDs, `x-request-id`, structured JSON logging, safe error/not-found middleware, `/health`, and `/ready`.
 - Documented role-aware frontend portal families for `/owner`, `/admin`, and `/staff`, plus `/forbidden`, filtered navigation, user administration, and audit visibility.
 - Documented the light/dark theme foundation and clarified that browser persistence is limited to theme preference, not auth/session tokens.
+- Guarded `POST /businesses` with business-scope authorization and added route coverage so protected business-profile creation follows the same tenant boundary as customer and service-resource collection writes.

@@ -65,6 +65,7 @@
 - `UI_UX_DESIGN_BRIEF.md` now acts as the active Phase 13 frontend planning artifact.
 - `FRONTEND_IMPLEMENTATION_ROADMAP.md` now acts as the active Phase 14 frontend implementation planning and selection artifact.
 - `frontend/` now contains the first isolated Vite + React + TypeScript frontend scaffold for Slotwise.
+- `frontend/` now uses the `@/` source alias for imports from `frontend/src`, configured in the frontend TypeScript and Vite configs.
 - `frontend/src/app/routeMap.tsx` now defines role-aware owner/admin/staff route families plus public/customer routes.
 - `frontend/src/auth/ForbiddenPage.tsx` provides the blocked-route state.
 - `frontend/src/features/admin/UserAdminPage.tsx` provides the owner-facing operator administration surface.
@@ -130,11 +131,17 @@ Current Codex governance status:
 - MongoDB SRV connections can now use optional `SLOTWISE_DNS_SERVERS` overrides when local DNS resolvers refuse Atlas SRV lookups.
 - Ignore rules and editor defaults are now in place, but lint/format tooling is still intentionally deferred until the repository has a chosen CI/workflow baseline.
 - Cookie-session CSRF protection, configured CORS, production HTTPS/proxy/cookie validation, and auth route rate limiting are now in place.
-- Business-scoped authorization middleware now protects business, booking, customer, service-resource, timeline, and insight routes where business scope is required.
+- Business-scoped authorization middleware now protects business, booking, customer, service-resource, timeline, and insight routes where business scope is required, including protected business-profile collection creation.
 - Operator invitation, invitation acceptance, password reset, role update, activation, and deactivation foundations now exist.
 - Audit-log persistence, API access, and frontend audit visibility now exist. Admin audit-log reads are scoped to the admin actor business; owners can query across businesses.
 - Migration registry, migration state persistence, core index synchronization migration, dry-run/status commands, and first-owner setup now exist.
 - API observability now includes request IDs, structured logs, health/readiness routes, and safe error/not-found middleware.
+- Backend business-profile list reads now honor `businessId`, giving the frontend a backend-supported way to request the active session business only.
+- Non-owner frontend admin/staff views now pass session business scope into booking, timeline, dashboard, customer, resource, and settings queries instead of relying on broad collection reads.
+- `/admin/bookings` now exposes general booking edit, owner/admin delete, and lifecycle reason submission over the existing booking APIs.
+- `/admin/settings` now keeps business creation owner-facing while exposing advanced availability, notification, widget, and public-page settings editors over the existing business APIs.
+- Frontend CSRF cookie lookup now uses `VITE_SLOTWISE_CSRF_COOKIE_NAME` with a `slotwise_csrf` fallback so custom backend CSRF cookie names can be mirrored by the SPA.
+- Frontend build hardening now includes TypeScript 6 deprecation compatibility and Vite manual chunk splitting; the current production build passes without the prior chunk-size warning.
 
 ## Current Execution Plan
 - Use `IMPLEMENTATION_PLAN.md` as the active phase plan.
@@ -162,6 +169,9 @@ Current Codex governance status:
 - Phase 15 audit status: dependency inventory, `npm audit`, and `npm outdated` can run through normal unsandboxed npm or through `C:\Program Files\nodejs\npm.cmd` inside Codex; the repository dependency modernization work is now complete.
 - Phase 15 current status: runtime packages are modernized within the approved scope, audit status is 0 vulnerabilities after approved non-force repair of `form-data` to `4.0.6`, and compile/tests pass after scoping backend TypeScript to `src/**/*.ts`.
 - Phase 16 status: frontend/backend feature alignment is complete through the core admin/customer/public/widget surfaces.
+- Phase 16 closure status: the July 5, 2026 alignment pass added business-scope query propagation, backend business-list filtering, business-profile create route scope guarding, owner-only settings business creation controls, booking edit/delete/lifecycle reasons, advanced settings editing, and Vite chunk/build hardening.
+- Frontend localization/import status: Stage 6 Customers localization is complete, and frontend source imports are standardized on `@/`; backend relative imports remain unchanged pending a runtime-safe alias strategy.
+- Current package status: root and frontend audits report 0 vulnerabilities; root `npm outdated` is clean; frontend `npm outdated` only reports the deferred `react-router` major from `7.18.1` to `8.1.0`.
 - Phase 17 status: production-readiness hardening foundations are implemented, including CSRF, cookie/CORS/proxy hardening, auth rate limiting, runtime validation, tenant authorization, operator account administration, scoped audit logs with mutation coverage for booking/business/customer/resource flows, migration registry, first-owner setup, worker separation, request IDs, structured logging, health/readiness, role-aware frontend portals, forbidden state, and light/dark theme foundation. Chrome-backed local route and axe smoke passed for the public/auth routes, live Atlas migration status/dry-run are verified, and authenticated role-specific staging browser QA remains the next step.
 - Remaining environment-level gap: machine Node is `v26.3.0` Current as of June 16, 2026; official Node metadata lists `v24.16.0` as Latest LTS and the v23 line as EOL. Moving the machine to LTS remains blocked by the prior Windows Installer administrator requirement unless an admin performs the install/uninstall step.
 - Current database connectivity status: live Atlas verification passes outside the restricted sandbox. `npm run migrate:status` reports `20260616-sync-core-indexes` applied, and `npm run migrate:dry-run` reports it skipped.

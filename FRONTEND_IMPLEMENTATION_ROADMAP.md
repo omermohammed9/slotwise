@@ -7,6 +7,8 @@ Phase 14 itself stayed planning-only. The later `frontend/` scaffold and Phase 1
 
 This document is now also the frontend-facing status companion for the production-readiness hardening work completed after Phase 16. The current frontend no longer represents only a first admin scaffold: it includes role-aware owner/admin/staff routes, public booking surfaces, customer portal flows, CSRF-aware API handling, audit and user administration surfaces, and a light/dark theme foundation.
 
+The July 5, 2026 alignment closure also records the current dependency/build posture: safe frontend package updates are applied, the audit result is 0 vulnerabilities, production builds use manual Vite chunks without the prior chunk-size warning, and `react-router` 8 remains a deferred major-version migration.
+
 ## Selection Summary
 - App model: a separate TypeScript single-page frontend app that consumes the existing Slotwise API.
 - Framework direction: React with Vite.
@@ -44,6 +46,14 @@ This selection keeps the frontend independent from the Express backend, allows s
 - Install result: `npm install` through the bundled npm CLI fallback completed with 0 reported vulnerabilities.
 - Follow-up audit result: `npm audit --audit-level=moderate` completed with 0 vulnerabilities.
 
+## July 5, 2026 Package And Build Snapshot
+- Current safe-update scope is applied for the frontend dependency tree, including the wanted-version updates for Vite, Vitest, React Router 7, TanStack Query, Tailwind CSS, React Hook Form, Recharts, Lucide React, Playwright, and axe Playwright tooling.
+- Frontend audit reports 0 vulnerabilities after a non-force audit repair of the transitive `undici` advisory.
+- `react-router@8.1.0` is intentionally deferred because it is a major upgrade from the current wanted `7.18.1` line.
+- `frontend/tsconfig.app.json` and `frontend/tsconfig.node.json` include the current TypeScript deprecation compatibility setting required by the installed compiler line.
+- `frontend/vite.config.ts` defines manual chunks for stable dependency groups so `npm run build` passes without the previous Vite chunk-size warning.
+- Latest verification for this closure: `npm run build` passed, `npm run test:run` passed with 50 tests, `npm audit` reported 0 vulnerabilities, and `npm outdated` only reported the deferred React Router major.
+
 ## First Scaffold Snapshot
 - `frontend/` now exists as a separate Vite + React + TypeScript app.
 - The first screen is an operational admin dashboard shell with navigation, KPI cards, booking queue, timeline, memory-session posture, and widget-isolation note.
@@ -58,18 +68,18 @@ This selection keeps the frontend independent from the Express backend, allows s
 ## Phase 16 Alignment Snapshot
 - The frontend/backend alignment phase is now Phase 16 because Phase 15 is already used for completed dependency modernization.
 - The Phase 16 coverage matrix lives in `IMPLEMENTATION_PLAN.md`.
-- Current admin coverage now includes the app shell, memory-only operator session, query-backed dashboard analytics, cancellation/no-show insights, bookings, timeline, customers, settings, resources, and settings template-preview screens over existing backend APIs.
+- Current admin coverage now includes the app shell, memory-only operator session, query-backed dashboard analytics, cancellation/no-show insights, bookings, timeline, customers, settings, resources, business creation, advanced business settings, and settings template-preview screens over existing backend APIs.
 - Route-map/app-shell routing is complete with central route metadata, shell links, role-aware admin routes, public-surface routes, responsive styling, and route navigation tests.
-- Shared API DTO/client modules are complete with typed wrappers for auth, bookings, businesses, service/resources, customers, public booking-page config, and widget config.
+- Shared API DTO/client modules are complete with typed wrappers for auth, bookings, businesses, service/resources, customers, public booking-page config, and widget config. Business list reads can now include `businessId` query scope.
 - Operator auth screens and memory-session flow are complete with `/login`, protected admin routes, memory-only session metadata, and logout UI.
 - The bookings list slice is complete with a query-backed `/admin/bookings` screen, customer search, status/risk filters, sorting, pagination controls, responsive record rendering, URL-persistent list state for reload/share-safe admin views, and browser-local saved views for lightweight operator workspace recall.
-- The booking detail slice is complete with a drawer backed by `GET /bookings/:id`, covering contact, schedule, notes, conflict risk, operational IDs, status history, role-aware lifecycle actions, operator rescheduling, and nearby suggestions.
+- The booking detail slice is complete with a drawer backed by `GET /bookings/:id`, covering contact, schedule, notes, conflict risk, operational IDs, status history, generic booking edits, owner/admin deletion, role-aware lifecycle actions with reason text, operator rescheduling, and nearby suggestions.
 - The booking lifecycle actions slice is complete with approve, reject, cancel, complete, and no-show mutations gated by operator role and confirmation prompts.
 - The booking reschedule and suggestion slice is complete for operator-managed pending/approved bookings without customer magic-link/session storage changes.
 - The timeline/calendar slice is complete with a query-backed `/admin/timeline` view, filters, summary metrics, day groups, risk markers, and reschedule badges.
 - The dashboard analytics slice is complete with query-backed KPI, lifecycle funnel, utilization, and peak-time panels.
 - Cancellation/no-show insights now appear on `/admin` with summary cards, weekday trend bars, and reason summaries using the existing dashboard filters.
-- Business settings now have query-backed profile selection, editable profile basics, working-hours and blackout-date editors, save mutation states, operating-readiness summaries, and read-only business template gallery/preview coverage on `/admin/settings`.
+- Business settings now have query-backed profile selection, business creation, editable profile basics, working-hours and blackout-date editors, advanced availability/notification/widget/public-page settings editors, save mutation states, operating-readiness summaries, and read-only business template gallery/preview coverage on `/admin/settings`.
 - Service/resource management now has query-backed filters, resource list states, create form, active/inactive toggles, edit drawers, and availability override editing on `/admin/resources`.
 - Customer management now has query-backed filters, a customer directory, create/edit flows, profile details, and booking-history entry points on `/admin/customers`.
 - Public booking page flow is complete on `/book/:slug` with backend-config branding, service/resource selection, date/time and customer detail inputs, party-size/notes support, suggestion feedback, submit states, success/error/empty states, and responsive public layout.

@@ -3,6 +3,14 @@
 ## Summary
 Initial audit found a compact Express/Mongoose booking API with missing project documentation, missing tests, and several configuration and security risks.
 
+## July 5, 2026 Alignment And Dependency Audit
+- Backend/frontend alignment gaps found in the current pass are resolved: business-profile list reads now support `businessId`, non-owner frontend views pass session business scope into business, booking, timeline, dashboard, customer, resource, and settings queries, and the admin UI now exposes the existing backend booking edit/delete and business creation/advanced settings capabilities.
+- The follow-up business-scope route review closed a protected collection-write gap: `POST /businesses` now includes the same `requireBusinessScopeAccess` guard used by other business-domain collection writes, with focused route coverage.
+- The matching frontend settings review now keeps business creation controls owner-only so admin/staff sessions do not present a create action that the guarded backend route rejects.
+- Frontend build health is improved: TypeScript 6 deprecation compatibility is configured, Vite manual chunking separates large dependency groups, and the production build no longer emits the prior chunk-size warning.
+- Dependency health is clean within the approved safe-update scope: root and frontend `npm audit` report 0 vulnerabilities, root `npm outdated` is clean, and the frontend only reports the deferred `react-router` major upgrade from `7.18.1` to `8.1.0`.
+- Verification passed with root `npm test` at 133 tests, frontend `npm run test:run` at 50 tests, frontend `npm run build`, and root/frontend audit checks.
+
 ## Findings
 
 ### High
@@ -138,7 +146,7 @@ Project documentation now exists across the README, system map, workflow, task m
 - CI remains intentionally deferred until the workspace is attached to a real Git provider/repository and a concrete team workflow is chosen.
 
 ## Phase 15 Inventory Snapshot
-- Final runtime dependencies confirmed from manifest, lockfile, and `npm ls --depth=0`: `axios@1.17.0`, `dotenv@17.4.2`, `express@5.2.1`, `libphonenumber-js@1.13.6`, `mongoose@9.7.0`, `validator@13.15.35`.
+- Current runtime dependencies confirmed after the July 5, 2026 safe-update pass: `axios@1.18.1`, `dotenv@17.4.2`, `express@5.2.1`, `libphonenumber-js@1.13.8`, `mongoose@9.7.3`, `validator@13.15.35`.
 - Final development dependencies confirmed from manifest, lockfile, and `npm ls --depth=0`: `@types/express@5.0.6`, `@types/validator@13.15.10`, `nodemon@3.1.14`, `ts-node@10.9.2`.
 - Obsolete dependency removed: `@types/mongoose`.
 - `npm ls --depth=0` succeeded through `C:\Program Files\nodejs\npm.cmd` and matched the final manifest inventory.
@@ -154,9 +162,9 @@ Project documentation now exists across the README, system map, workflow, task m
 - Compatible updates were applied with `npm update`.
 - `dotenv` has been upgraded to `17.4.2`.
 - `express` has been upgraded to `5.2.1` with `@types/express` `5.0.6`.
-- `mongoose` has been upgraded to `9.7.0`.
+- `mongoose` has been upgraded to `9.7.3`.
 - Deprecated `@types/mongoose` has now been removed.
-- Final `npm outdated` state reports a compatible `axios` update from `1.17.0` to `1.18.0`; this is not an audit-force requirement.
+- Final root `npm outdated` state is clean after the July 5, 2026 safe-update pass.
 
 ## Phase 15 Verification Snapshot
 - `npm run build` passes through normal unsandboxed npm on June 16, 2026.
