@@ -82,9 +82,9 @@ export class BusinessProfileService {
         }
     }
 
-    public async getAllBusinessProfiles(): Promise<IBusinessProfile[]> {
+    public async getAllBusinessProfiles(filter: { businessId?: string } = {}): Promise<IBusinessProfile[]> {
         try {
-            return await this.businessProfileRepository.findAll();
+            return await this.businessProfileRepository.findAll(filter);
         } catch (error) {
             throw new Error("Error getting business profiles");
         }

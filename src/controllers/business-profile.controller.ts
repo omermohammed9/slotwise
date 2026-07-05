@@ -32,9 +32,10 @@ export class BusinessProfileController {
         }
     };
 
-    public getAllBusinessProfiles = async (_req: Request, res: Response): Promise<Response> => {
+    public getAllBusinessProfiles = async (req: Request, res: Response): Promise<Response> => {
         try {
-            const profiles = await this.businessProfileService.getAllBusinessProfiles();
+            const businessId = typeof req.query.businessId === "string" ? req.query.businessId : undefined;
+            const profiles = await this.businessProfileService.getAllBusinessProfiles({ businessId });
             return sendSuccess(res, 200, profiles);
         } catch (error) {
             return sendError(res, 400, (error as Error).message);

@@ -13,7 +13,7 @@ const router = express.Router();
 const businessProfileController = new BusinessProfileController();
 const requireBusinessManagerRole = requireRole(["owner", "admin"]);
 
-router.post("/", requireBusinessManagerRole, validateCreateBusinessProfile, businessProfileController.createBusinessProfile);
+router.post("/", requireBusinessManagerRole, requireBusinessScopeAccess, validateCreateBusinessProfile, businessProfileController.createBusinessProfile);
 router.get("/", requireBusinessManagerRole, requireBusinessScopeAccess, businessProfileController.getAllBusinessProfiles);
 router.get("/public/:slug/widget", validateBusinessSlugParam, businessProfileController.getPublicWidgetConfig);
 router.get("/public/:slug/booking-page", validateBusinessSlugParam, businessProfileController.getPublicBookingPageConfig);

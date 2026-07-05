@@ -51,6 +51,7 @@ test("service resource routes are registered", () => {
 });
 
 test("business-scoped collection routes require explicit business scope access", () => {
+    assertRouteHasHandler(businessRouter, "/", "post", "requireBusinessScopeAccess");
     assertRouteHasHandler(businessRouter, "/", "get", "requireBusinessScopeAccess");
     assertRouteHasHandler(businessRouter, "/:id", "get", "requireBusinessScopeAccess");
     assertRouteHasHandler(businessRouter, "/:id", "patch", "requireBusinessScopeAccess");

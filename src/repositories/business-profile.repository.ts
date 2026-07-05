@@ -2,7 +2,7 @@ import { IBusinessProfile } from "../interfaces/business.interface";
 import businessProfileModel from "../models/business-profile.model";
 
 export interface BusinessProfileRepositoryContract {
-    findAll(): Promise<IBusinessProfile[]>;
+    findAll(filter?: { businessId?: string }): Promise<IBusinessProfile[]>;
     findById(id: string): Promise<IBusinessProfile | null>;
     findBySlug(slug: string): Promise<IBusinessProfile | null>;
     findActiveById(id: string): Promise<IBusinessProfile | null>;
@@ -22,8 +22,10 @@ export class BusinessProfileRepository implements BusinessProfileRepositoryContr
         return BusinessProfileRepository.instance;
     }
 
-    public async findAll(): Promise<IBusinessProfile[]> {
-        return businessProfileModel.find().sort({ createdAt: -1 });
+    public async findAll(filter: { businessId?: string } = {}): Promise<IBusinessProfile[]> {
+        return businessProfileModel.find({
+            ...(filter.businessId ? { _id: filter.businessId } : {}),
+        }).sort({ createdAt: -1 });
     }
 
     public async findById(id: string): Promise<IBusinessProfile | null> {

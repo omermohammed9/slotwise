@@ -16,6 +16,25 @@ const createResponse = () => ({
     },
 });
 
+test("getAllBusinessProfiles forwards the requested business scope", async () => {
+    let receivedFilter;
+    const controller = new BusinessProfileController({
+        getAllBusinessProfiles: async (filter) => {
+            receivedFilter = filter;
+            return [{ _id: "business-1", name: "North Studio" }];
+        },
+    });
+
+    const req = { query: { businessId: "business-1" } };
+    const res = createResponse();
+
+    await controller.getAllBusinessProfiles(req, res);
+
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(receivedFilter, { businessId: "business-1" });
+    assert.equal(res.jsonPayload.data[0].name, "North Studio");
+});
+
 test("getPublicWidgetConfig returns public widget payload", async () => {
     const controller = new BusinessProfileController({
         getPublicWidgetConfig: async () => ({
