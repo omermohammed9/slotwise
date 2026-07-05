@@ -8,7 +8,7 @@ npm run migrate:dry-run
 npm run migrate
 ```
 
-The default migration currently synchronizes Mongoose indexes for the core collections. Run `migrate:dry-run` in CI/staging to see pending work, then `migrate` during deployment before starting new API/worker processes.
+The migration registry currently includes the initial core index synchronization and a follow-up booking index sync for business-scoped list reads. Run `migrate:dry-run` in CI/staging to see pending work, then `migrate` during deployment before starting new API/worker processes.
 
 Required indexed surfaces include operator accounts, auth sessions, verification tokens, businesses, bookings, customers, service resources, notification jobs, and audit logs. New schema/index changes should be added as new registry entries instead of editing historical migration ids.
 

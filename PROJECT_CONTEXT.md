@@ -128,6 +128,7 @@ Current Codex governance status:
 - Privileged status-action routes now require persistent operator login and bearer sessions.
 - Legacy bookings with empty `statusHistory` now surface a synthetic baseline entry and persist one on the next status change.
 - Booking filter queries now rely on normalized searchable fields with index support, plus a one-time legacy backfill for older records.
+- Booking list indexes now include business-scoped `createdAt` and status/date access paths for non-owner collection reads.
 - MongoDB SRV connections can now use optional `SLOTWISE_DNS_SERVERS` overrides when local DNS resolvers refuse Atlas SRV lookups.
 - Ignore rules and editor defaults are now in place, but lint/format tooling is still intentionally deferred until the repository has a chosen CI/workflow baseline.
 - Cookie-session CSRF protection, configured CORS, production HTTPS/proxy/cookie validation, and auth route rate limiting are now in place.

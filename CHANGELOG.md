@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Added business-scoped booking list indexes for `businessId + createdAt` and `businessId + status + startDate`, plus a follow-up migration entry to sync those indexes on already-migrated deployments.
 - Completed a July 5, 2026 frontend/backend alignment closure pass: backend `GET /businesses` now honors `businessId`, non-owner admin/staff frontend collection queries pass the active session business scope, and booking/timeline/dashboard/customer/resource/settings screens now avoid unscoped business reads where the session already identifies a business.
 - Expanded `/admin/bookings` so the existing booking detail drawer can edit general booking fields, delete bookings for owner/admin operators, and submit lifecycle action reasons through the existing status-action API surface.
 - Expanded `/admin/settings` with business creation plus editable advanced business configuration JSON for availability rules, notification settings, widget settings, and public booking-page settings.

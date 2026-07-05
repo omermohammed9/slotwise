@@ -101,6 +101,8 @@ const bookingSchema = new mongoose.Schema<IBooking>({
 
 bookingSchema.index({ status: 1, startDate: 1 });
 bookingSchema.index({ businessId: 1, serviceResourceId: 1, startDate: 1, timein: 1 });
+bookingSchema.index({ businessId: 1, createdAt: -1 });
+bookingSchema.index({ businessId: 1, status: 1, startDate: 1 });
 bookingSchema.index({ customerId: 1, createdAt: -1 });
 bookingSchema.index({ "conflictRisk.level": 1, "conflictRisk.score": -1 });
 bookingSchema.index({ createdAt: -1 });

@@ -293,6 +293,7 @@ Codex-specific governance should live in `.codex/`. If `.agents/` exists, treat 
 - Booking cancellation/completion, no-show, and reschedule routes are now available behind owner/admin/staff bearer-session access.
 - Booking list reads now support repository-backed filtering, pagination, and sorting through `GET /bookings` query parameters.
 - Booking list text filters now target normalized searchable fields with supporting indexes.
+- Booking list indexes now include business-scoped access paths for default `createdAt` sorting and status/date filtering.
 - Booking suggestions are now exposed through `POST /bookings/suggestions` and reuse the booking service availability rules to generate ranked nearby alternatives.
 - Booking conflict-risk snapshots are now persisted in booking documents and can be filtered through booking-list queries by `conflictRiskLevel`.
 - Booking timeline data is now exposed through `GET /bookings/timeline`, grouped by day with sorted booking entries and per-day summary counts.

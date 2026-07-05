@@ -1092,6 +1092,7 @@ Completed:
 - Backend `POST /businesses` now includes the business-scope authorization guard, matching the customer and service-resource protected collection-write pattern.
 - Frontend non-owner admin/staff views now pass the active session business scope into business, booking, timeline, dashboard, customer, resource, and settings queries where applicable.
 - `/admin/settings` now hides business creation controls for non-owner sessions, matching the protected `POST /businesses` route boundary.
+- Booking schema indexes now include business-scoped list access paths for default `createdAt` sorting and status/date filtering, with a new migration id to sync the indexes after the already-applied core index migration.
 - `/admin/bookings` now exposes general booking editing, owner/admin deletion, lifecycle reasons, reschedule, suggestions, and status history over the existing backend booking APIs.
 - `/admin/settings` now exposes business creation and advanced availability, notification, widget, and public-page settings editing over the existing backend business APIs.
 - Frontend CSRF cookie lookup now supports `VITE_SLOTWISE_CSRF_COOKIE_NAME`.
@@ -1102,6 +1103,7 @@ Verification:
 - Root `npm test` passed with 133 tests.
 - Follow-up scoped verification passed with `.\node_modules\.bin\tsc.cmd`, `node --test tests\businessRoutes.test.js`, `node --test tests\businessAuthorization.test.js`, and `node --test tests\*.test.js` at 133 tests.
 - Follow-up frontend settings verification passed with `frontend/node_modules/.bin/vitest.cmd run src/app/App.test.tsx` at 42 tests, `frontend/node_modules/.bin/tsc.cmd -b`, and `frontend/node_modules/.bin/vite.cmd build`.
+- Follow-up booking index verification passed with `.\node_modules\.bin\tsc.cmd`, `node --test tests\migrations.test.js`, and `node --test tests\*.test.js` at 134 tests.
 - Frontend `npm run test:run` passed with 50 tests.
 - Frontend `npm run build` passed without the prior Vite chunk-size warning.
 - Root and frontend `npm audit` report 0 vulnerabilities.

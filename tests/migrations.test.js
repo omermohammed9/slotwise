@@ -7,6 +7,7 @@ test("migration registry is ordered and includes core index migration", () => {
     assert.equal(migrations.length >= 1, true);
     assert.deepEqual(migrations.map((migration) => migration.id), [...migrations.map((migration) => migration.id)].sort());
     assert.equal(migrations[0].id, "20260616-sync-core-indexes");
+    assert.equal(migrations[1].id, "20260705-sync-booking-business-list-indexes");
 });
 
 test("core index migration registers every core collection model", () => {
@@ -25,4 +26,12 @@ test("core index migration registers every core collection model", () => {
     ].forEach((modelName) => {
         assert.ok(mongoose.models[modelName], `Expected ${modelName} to be registered`);
     });
+});
+
+test("booking model includes business-scoped list indexes", () => {
+    const bookingModel = require("../dist/models/booking.model").default;
+    const indexFields = bookingModel.schema.indexes().map(([fields]) => JSON.stringify(fields));
+
+    assert.ok(indexFields.includes(JSON.stringify({ businessId: 1, createdAt: -1 })));
+    assert.ok(indexFields.includes(JSON.stringify({ businessId: 1, status: 1, startDate: 1 })));
 });

@@ -244,6 +244,7 @@ Project documentation now exists across the README, system map, workflow, task m
 - Legacy bookings with empty `statusHistory` now receive a synthetic system-authored baseline entry in API responses.
 - Future status changes for older bookings now persist a backfilled legacy baseline entry before appending the real transition.
 - Booking list text filters now query normalized indexed fields instead of broad unanchored regex against primary user-facing fields.
+- Business-scoped booking list reads now have targeted compound indexes for default `createdAt` sorting and status/date filtering, with a new migration entry required on deployed databases.
 - The dedicated booking metadata backfill command exists, but running it is currently blocked by the configured MongoDB host refusing the connection from this machine.
 - After adding DNS override support, the backfill diagnosis improved from resolver refusal to `ENOTFOUND`, confirming the active MongoDB SRV hostname itself is invalid.
 - Phase 11 business-flexibility features are now implemented for multiple booking use cases.

@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import { connectDB } from "../config/db";
 import "../models/audit-log.model";
 import "../models/auth-session.model";
-import "../models/booking.model";
+import bookingModel from "../models/booking.model";
 import "../models/business-profile.model";
 import "../models/customer.model";
 import migrationStateModel from "../models/migration-state.model";
@@ -23,6 +23,13 @@ export const migrations: Migration[] = [
         run: async () => {
             const models = Object.values(mongoose.models).filter((model) => model.modelName !== "MigrationState");
             await Promise.all(models.map((model) => model.syncIndexes()));
+        },
+    },
+    {
+        id: "20260705-sync-booking-business-list-indexes",
+        description: "Synchronize booking indexes for business-scoped list and status/date reads",
+        run: async () => {
+            await bookingModel.syncIndexes();
         },
     },
 ];
